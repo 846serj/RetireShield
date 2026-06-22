@@ -3,18 +3,31 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+function getAuthRedirectUrl() {
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "");
+  const baseUrl = configuredBaseUrl || window.location.origin;
+  return `${baseUrl}/auth/callback`;
+}
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const [err, setErr] = useState("");
 
   async function send() {
+    const normalizedEmail = email.trim();
     setErr("");
+    setSending(true);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      email: normalizedEmail,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl(),
+        shouldCreateUser: true,
+      },
     });
+    setSending(false);
     if (error) setErr(error.message);
     else setSent(true);
   }
@@ -32,10 +45,10 @@ export default function Login() {
             className="w-full rounded-xl border-2 border-slate-300 px-4 py-3 text-lg"
           />
           <button
-            disabled={!email.includes("@")} onClick={send}
+            disabled={!email.trim().includes("@") || sending} onClick={send}
             className="w-full rounded-xl bg-brand px-6 py-3 text-lg font-bold text-white disabled:opacity-50"
           >
-            Email me a sign-in link
+            {sending ? "Sending..." : "Email me a sign-in link"}
           </button>
           {err && <p className="text-bad text-sm">{err}</p>}
           <p className="text-xs text-slate-500">No passwords. We email you a one-time link.</p>
