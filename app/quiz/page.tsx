@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { QUESTIONS } from "@/lib/questions";
 import { US_STATES } from "@/lib/usStates";
@@ -178,10 +179,13 @@ export default function Quiz() {
             <p className="mt-2 text-slate-200">
               Get ongoing alerts when something affects your score — scams in your state, benefit changes, rising costs.
             </p>
-            <button className="mt-4 rounded-xl bg-brand px-6 py-3 text-lg font-bold">
+            <Link
+              href="/upgrade?plan=annual"
+              className="mt-4 inline-block rounded-xl bg-brand px-6 py-3 text-lg font-bold"
+            >
               Start 3-day free trial
-            </button>
-            <p className="mt-2 text-xs text-slate-400">Wire to Stripe in Phase 4 of the launch runbook.</p>
+            </Link>
+            <p className="mt-2 text-xs text-slate-400">Review the plan terms before starting your trial.</p>
           </div>
         </div>
       )}
