@@ -13,9 +13,11 @@ export async function GET(req: Request) {
   if (!sub?.stripe_customer_id) return NextResponse.redirect(new URL("/dashboard", req.url));
 
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? new URL(req.url).origin;
+  const portalConfig = process.env.STRIPE_PORTAL_CONFIGURATION;
   const portal = await stripe.billingPortal.sessions.create({
     customer: sub.stripe_customer_id,
     return_url: `${base}/dashboard`,
+    ...(portalConfig ? { configuration: portalConfig } : {}),
   });
   return NextResponse.redirect(portal.url);
 }

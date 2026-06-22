@@ -1,11 +1,11 @@
-# RetireGuard v0 — starter
+# RetireShield v0 — starter
 
 A runnable Next.js app for the **free Retirement Safety Score** wedge: landing → 9-question quiz →
 score + 4 sub-scores + 3 actions, gated behind email capture. Education only, no account/brokerage linking.
 
 This is the self-contained free-Score half of the launch. The monetized half (accounts, Stripe
 3-day-trial→annual, paid features, the auto-renew compliance flow) is **stubbed** here and built per
-`../RetireGuard-v0-Launch-Runbook.md` — those need your accounts and a lawyer, so they aren't pre-wired.
+`../RetireShield-v0-Launch-Runbook.md` — those need your accounts and a lawyer, so they aren't pre-wired.
 
 ## Run it locally (works with zero setup)
 
@@ -59,8 +59,13 @@ lib/stripe.ts, lib/subscription.ts, lib/email.ts
 ```
 
 To activate: `npm install` (pulls in `stripe` + `@supabase/ssr`), run the full `supabase-schema.sql`,
-create the Stripe product/prices (annual $199 with `trial_period_days=3`, monthly $29), set the env vars,
-and add the webhook endpoint + signing secret. Then test with Stripe test cards.
+run `npm run stripe:setup` with `STRIPE_SECRET_KEY` set to create the `RetireShield Premium` product, the annual $199 price with `trial_period_days=3`, the monthly $29 price, and a Customer Portal configuration. Add the printed `STRIPE_PRICE_ANNUAL`, `STRIPE_PRICE_MONTHLY`, and `STRIPE_PORTAL_CONFIGURATION` env vars, then add the webhook endpoint + signing secret. Then test with Stripe test cards.
+
+Stripe Dashboard checklist before live launch:
+
+- Billing → Subscriptions and emails: keep the trial-ending reminder email turned ON.
+- Customer Portal: use the generated configuration or verify one-click cancellation is enabled.
+- Products: confirm `RetireShield Premium` has the $199/year price with a 3-day trial and the $29/month price.
 
 **Hard gate (Phase 6):** a lawyer must review the `/upgrade` copy, the consent checkbox, the trial-ending
 reminder, the one-click cancel, and the three legal pages **before you switch Stripe to live mode.**

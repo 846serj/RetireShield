@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: retireguard
+    name: retireshield
     runtime: node
     plan: free
     buildCommand: npm ci && npm run build

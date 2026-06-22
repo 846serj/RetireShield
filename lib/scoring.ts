@@ -1,5 +1,5 @@
 // Retirement Safety Score — pure, testable scoring logic.
-// Education only, NOT advice. No account/brokerage linking. See RetireGuard-v0-Build-Layout.md §5.
+// Education only, NOT advice. No account/brokerage linking. See RetireShield-v0-Build-Layout.md §5.
 
 export type Answers = {
   age: number;

@@ -21,7 +21,7 @@ export default function Login() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
-      <h1 className="text-3xl font-bold mb-6">Sign in to RetireGuard</h1>
+      <h1 className="text-3xl font-bold mb-6">Sign in to RetireShield</h1>
       {sent ? (
         <p className="text-lg">Check your email for a secure sign-in link.</p>
       ) : (
