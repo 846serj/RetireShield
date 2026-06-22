@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-function getAuthRedirectUrl() {
+function getAuthRedirectUrl(nextPath: string) {
   const configuredBaseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "");
   const baseUrl = configuredBaseUrl || window.location.origin;
-  return `${baseUrl}/auth/callback`;
+  const callbackUrl = new URL(`${baseUrl}/auth/callback`);
+  callbackUrl.searchParams.set("next", nextPath);
+  return callbackUrl.toString();
 }
 
-export default function Login() {
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const nextPath = useMemo(() => {
+    const next = searchParams.get("next");
+    return next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+  }, [searchParams]);
+
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -23,7 +32,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
-        emailRedirectTo: getAuthRedirectUrl(),
+        emailRedirectTo: getAuthRedirectUrl(nextPath),
         shouldCreateUser: true,
       },
     });
@@ -55,5 +64,13 @@ export default function Login() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-md px-4 py-16">Loading sign in…</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
