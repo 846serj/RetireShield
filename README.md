@@ -41,6 +41,24 @@ lib/scoring.test.ts   sanity tests
 supabase-schema.sql   the leads table
 ```
 
+
+## Supabase Auth email troubleshooting
+
+The login screen uses Supabase passwordless magic links, not a separate password signup form. It calls
+`supabase.auth.signInWithOtp()` with `shouldCreateUser: true`, so a first-time email address is created
+when Supabase successfully sends the link.
+
+If the UI says the link was sent but no email arrives, check these items first:
+
+1. Render must define `NEXT_PUBLIC_BASE_URL` as the exact public site origin, for example
+   `https://your-app.onrender.com` or your custom domain. Do not include a trailing path.
+2. Supabase → Authentication → URL Configuration must use the same production origin as the Site URL and
+   must allow `https://your-app.onrender.com/auth/callback` (and any custom-domain callback) in Redirect URLs.
+3. Supabase → Authentication → Logs is the source of truth for delivery failures, SMTP handoff errors,
+   redirect-url rejections, and email rate-limit errors.
+4. For production, configure custom SMTP in Supabase. Supabase's built-in auth email service is intended for
+   testing and has tight delivery/rate limitations.
+
 ## Phase 3–6 scaffold (now included — add keys + a lawyer)
 
 These files are written but **not runtime-verified** (they need the new deps + your Stripe/Supabase keys):
