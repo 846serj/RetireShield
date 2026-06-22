@@ -6,7 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 
 function getAuthRedirectUrl(nextPath: string) {
   const configuredBaseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "");
-  const baseUrl = configuredBaseUrl || window.location.origin;
+  const currentOrigin = window.location.origin;
+  const configuredIsLocalhost = configuredBaseUrl ? new URL(configuredBaseUrl).hostname === "localhost" : false;
+  const currentIsLocalhost = window.location.hostname === "localhost";
+  const baseUrl = configuredBaseUrl && (!configuredIsLocalhost || currentIsLocalhost) ? configuredBaseUrl : currentOrigin;
   const callbackUrl = new URL(`${baseUrl}/auth/callback`);
   callbackUrl.searchParams.set("next", nextPath);
   return callbackUrl.toString();
