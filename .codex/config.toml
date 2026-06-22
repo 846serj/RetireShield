@@ -1,0 +1,4 @@
+# Project-scoped Codex plugin configuration.
+# Install/enable the OpenAI-curated Stripe plugin for this workspace.
+[plugins."stripe@openai-curated"]
+enabled = true
