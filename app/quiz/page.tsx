@@ -174,7 +174,7 @@ export default function Quiz() {
 
           {/* Phase 4-5: this CTA becomes the 3-day trial -> annual upgrade (see runbook). */}
           <div className="rounded-2xl bg-ink text-white p-6 text-center">
-            <h3 className="text-xl font-bold">Want RetireGuard to watch this for you?</h3>
+            <h3 className="text-xl font-bold">Want RetireShield to watch this for you?</h3>
             <p className="mt-2 text-slate-200">
               Get ongoing alerts when something affects your score — scams in your state, benefit changes, rising costs.
             </p>

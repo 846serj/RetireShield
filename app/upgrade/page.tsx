@@ -21,7 +21,7 @@ export default function Upgrade() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-12">
-      <h1 className="text-3xl font-bold mb-6">Let RetireGuard watch your retirement</h1>
+      <h1 className="text-3xl font-bold mb-6">Let RetireShield watch your retirement</h1>
 
       <div className="rounded-2xl border-2 border-brand p-6 mb-4">
         <div className="text-2xl font-extrabold">Premium — $199/year</div>
