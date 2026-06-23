@@ -16,14 +16,15 @@ const featureLinks = [
 const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Pricing", href: "/upgrade" },
-  { label: "Resources", href: "/#resources" },
+  { label: "Resources", href: "/resources" },
+  { label: "About", href: "/about" },
 ];
 
 const footerColumns = [
-  { title: "Product", links: ["Safety Score", "Monitoring", "AI Coach", "Scam Shield"] },
-  { title: "Company", links: ["About", "Contact", "Careers", "Partners"] },
-  { title: "Resources", links: ["Retirement Watch", "Guides", "Calculators", "Help Center"] },
-  { title: "Legal", links: ["Privacy", "Terms", "Disclosures", "Security"] },
+  { title: "Product", links: [{ label: "Safety Score", href: "/features/safety-score" }, { label: "Monitoring", href: "/features/monitoring" }, { label: "AI Coach", href: "/features/ai-coach" }, { label: "Scam Shield", href: "/features/scam-shield" }] },
+  { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Contact", href: "mailto:hello@retireshield.com" }, { label: "Careers", href: "#" }, { label: "Partners", href: "#" }] },
+  { title: "Resources", links: [{ label: "Retirement Watch", href: "/resources" }, { label: "Guides", href: "/resources" }, { label: "Calculators", href: "/quiz" }, { label: "Help Center", href: "#" }] },
+  { title: "Legal", links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Disclosures", href: "/about#trust-heading" }, { label: "Security", href: "/about#trust-heading" }] },
 ];
 
 function Logo() {
@@ -117,7 +118,8 @@ export function SiteHeader() {
               )}
             </div>
             <Link href="/upgrade" className="text-ink no-underline hover:text-brand">Pricing</Link>
-            <Link href="/#resources" className="text-ink no-underline hover:text-brand">Resources</Link>
+            <Link href="/resources" className="text-ink no-underline hover:text-brand">Resources</Link>
+            <Link href="/about" className="text-ink no-underline hover:text-brand">About</Link>
           </nav>
 
           <div className="hidden items-center gap-4 lg:flex">
@@ -187,7 +189,7 @@ export function SiteFooter() {
               <div key={column.title}>
                 <h2 className="font-sans text-base font-extrabold text-ink">{column.title}</h2>
                 <ul className="mt-4 space-y-3 text-base">
-                  {column.links.map((link) => <li key={link}><a href="#" className="text-slate-600 no-underline hover:text-brand">{link}</a></li>)}
+                  {column.links.map((link) => <li key={link.label}><a href={link.href} className="text-slate-600 no-underline hover:text-brand">{link.label}</a></li>)}
                 </ul>
               </div>
             ))}
