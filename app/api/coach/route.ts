@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasPaidAccess } from "@/lib/subscription";
 import { getAnthropicClient, anthropicModel, timeoutSignal } from "@/lib/ai/client";
-import { SAFETY_SYSTEM } from "@/lib/ai/guardrails";
+import { coachGuardrailResponse, SAFETY_SYSTEM } from "@/lib/ai/guardrails";
 import { runProjection } from "@/lib/engine/projection";
 import { runMonteCarlo } from "@/lib/engine/montecarlo";
 import { compareSocialSecurity } from "@/lib/engine/socialSecurity";
@@ -77,6 +77,9 @@ export async function POST(req: Request) {
     const body = await req.json();
     const incoming = cleanMessages(body.messages);
     if (incoming.length === 0) return NextResponse.json({ error: "messages required" }, { status: 400 });
+
+    const guardrail = coachGuardrailResponse(incoming.at(-1)?.content ?? "");
+    if (guardrail) return new Response(guardrail, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
 
     const { data: profileRow } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
     if (!profileRow) return new Response("Please complete your retirement profile before using the AI coach.", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } });
