@@ -60,3 +60,13 @@ test("projection forces RMDs in the first age-73 year", () => {
   assert.equal(projection.years.find((row) => row.age === 72)?.withdrawals.rmd, 0);
   assert.ok((projection.years.find((row) => row.age === 73)?.withdrawals.rmd ?? 0) > 0);
 });
+
+test("Monte Carlo gives strong plans a high success rate and weak plans a low rate", async () => {
+  const { runMonteCarlo } = await import("../lib/engine/montecarlo");
+  const strong = runMonteCarlo({ ...baseProfile, balance_taxable: 500000, balance_tax_deferred: 1200000, balance_roth: 300000 }, 300, { seed: "strong-plan" });
+  const weak = runMonteCarlo({ ...baseProfile, balance_taxable: 10000, balance_tax_deferred: 30000, balance_roth: 0 }, 300, { seed: "weak-plan" });
+
+  assert.ok(strong.probabilityOfSuccess > 0.85, `expected strong plan success > 85%, got ${strong.probabilityOfSuccess}`);
+  assert.ok(weak.probabilityOfSuccess < 0.25, `expected weak plan success < 25%, got ${weak.probabilityOfSuccess}`);
+  assert.equal(strong.paths.length, runProjection(baseProfile).years.length);
+});

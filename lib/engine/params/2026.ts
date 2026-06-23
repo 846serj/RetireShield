@@ -9,6 +9,14 @@ export const EXPECTED_RETURNS = {
   cash: 0.02,
 } as const;
 
+export const DEFAULT_ASSUMPTIONS = {
+  allocationAssumptions: {
+    stock: { expectedReturn: EXPECTED_RETURNS.stock, stdev: 0.16 },
+    bond: { expectedReturn: EXPECTED_RETURNS.bond, stdev: 0.06 },
+    cash: { expectedReturn: EXPECTED_RETURNS.cash, stdev: 0.01 },
+  },
+} as const;
+
 export const ORDINARY_BRACKETS = {
   single: [
     { upTo: 11925, rate: 0.10 },

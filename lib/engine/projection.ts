@@ -31,7 +31,7 @@ function socialSecurityForAge(monthlyFraBenefit: number, claimAge: number | null
   return monthlyFraBenefit * 12 * adjustment * (1 + SOCIAL_SECURITY_COLA) ** (age - claimAge);
 }
 
-export function runProjection(profile: FinancialProfile) {
+export function runProjection(profile: FinancialProfile, options: { annualReturns?: number[] } = {}) {
   const startAge = currentAge(profile.birthdate);
   const status = filingStatusFromMaritalStatus(profile.marital_status);
   const rate = expectedReturn(profile);
@@ -60,9 +60,10 @@ export function runProjection(profile: FinancialProfile) {
     const taxDraw = withdraw(extraTax, balances);
     const withdrawals = { taxable: draw.taxable + taxDraw.taxable, taxDeferred: draw.taxDeferred + taxDraw.taxDeferred, roth: draw.roth + taxDraw.roth, rmd };
 
-    balances.taxable *= 1 + rate;
-    balances.taxDeferred *= 1 + rate;
-    balances.roth *= 1 + rate;
+    const annualReturn = options.annualReturns?.[yearIndex] ?? rate;
+    balances.taxable *= 1 + annualReturn;
+    balances.taxDeferred *= 1 + annualReturn;
+    balances.roth *= 1 + annualReturn;
     const total = balances.taxable + balances.taxDeferred + balances.roth;
     if (depletionAge === null && total <= 1 && age < profile.planning_horizon_age) depletionAge = age;
     rows.push({ year: CURRENT_YEAR + yearIndex, age, income, spending, taxes: finalTax.total, withdrawals, endBalances: { ...balances, total } });
