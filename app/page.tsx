@@ -1,8 +1,22 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import HomeRedirector from "@/components/HomeRedirector";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
+async function hasActiveSession() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return false;
+
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return !!user;
+}
+
+export default async function Home() {
+  if (await hasActiveSession()) redirect("/dashboard");
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+      <HomeRedirector />
       <h1 className="text-4xl sm:text-5xl font-extrabold text-ink leading-tight">
         Is your retirement going to be okay?
       </h1>
