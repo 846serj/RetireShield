@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendConfirmationEmail, sendToList, type EmailSegment } from "@/lib/email";
+import { enrollInWinback, sendConfirmationEmail, sendToList, type EmailSegment } from "@/lib/email";
 
 // Stripe webhook: keeps the `subscriptions` table in sync. Add this URL + signing secret in Stripe.
 // Note: this route is excluded from middleware (it needs the raw body, no session).
@@ -77,6 +77,9 @@ export async function POST(req: Request) {
     const customerEmail = await customerEmailForSubscription(sub);
     if (customerEmail) {
       await sendToList(customerEmail, segment);
+      if (segment === "free-only" && (sub.status === "canceled" || sub.status === "deleted")) {
+        await enrollInWinback(customerEmail);
+      }
     }
   }
 

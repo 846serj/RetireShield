@@ -114,6 +114,37 @@ export async function sendToList(email: string, segment: EmailSegment) {
   return upsertContact(email, segment);
 }
 
+export async function enrollInWinback(email: string) {
+  try {
+    const apiKey = process.env.ESP_API_KEY;
+    const publicationId = process.env.BEEHIIV_PUBLICATION_ID;
+    const automationId = process.env.BEEHIIV_WINBACK_AUTOMATION_ID;
+
+    if (!apiKey || !automationId) {
+      console.log(
+        "[ESP] Missing ESP_API_KEY or BEEHIIV_WINBACK_AUTOMATION_ID; skipping Beehiiv win-back enrollment",
+      );
+      return;
+    }
+
+    if (!publicationId) {
+      console.error("[ESP] BEEHIIV_PUBLICATION_ID is missing; skipping Beehiiv win-back enrollment");
+      return;
+    }
+
+    await beehiivRequest(
+      `${BEEHIIV_API_BASE}/publications/${publicationId}/automations/${automationId}/journeys`,
+      apiKey,
+      {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      },
+    );
+  } catch (error) {
+    console.error("[ESP] Beehiiv win-back enrollment error", error);
+  }
+}
+
 export async function sendConfirmationEmail(email: string) {
   return upsertContact(email, "trialing");
 }
