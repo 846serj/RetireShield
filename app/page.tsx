@@ -185,6 +185,33 @@ export default async function Home() {
         </Container>
       </section>
 
+      <section className="bg-gradient-to-b from-white via-band to-white py-12 sm:py-16 lg:py-20" aria-labelledby="safety-score-heading">
+        <Container className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
+          <div>
+            <Eyebrow>SECTION 7 — THE SAFETY SCORE, EXPLAINED</Eyebrow>
+            <h2 id="safety-score-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              A single number you can actually understand.
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">
+              Your Retirement Safety Score combines four things that decide whether your money lasts: your guaranteed income, how sustainable your spending is, your exposure to inflation, and your cushion against market drops. Improve any one of them and watch your score climb.
+            </p>
+            <div className="mt-8 rounded-3xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+              <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-slate-500">Band legend</p>
+              <div className="mt-4 grid gap-3 text-sm font-bold text-slate-700 sm:grid-cols-2">
+                <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-score-secure" />Secure 80–100</div>
+                <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-score-mostlySecure" />Mostly Secure 60–79</div>
+                <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-score-atRisk" />At Risk 40–59</div>
+                <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-score-vulnerable" />Vulnerable below 40</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mx-auto w-full max-w-lg">
+            <ScoreGauge value={76} delta="▲ +6 this month" />
+          </div>
+        </Container>
+      </section>
+
       <section id="how-it-works" className="bg-white py-12 sm:py-16 lg:py-20" aria-labelledby="how-it-works-heading">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
