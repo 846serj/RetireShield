@@ -1,10 +1,12 @@
 import { CURRENT_YEAR, EXPECTED_RETURNS, FULL_RETIREMENT_AGE, RMD_START_AGE, SOCIAL_SECURITY_COLA } from "./params/2026";
+import { bracketFillRoom } from "./roth";
 import { filingStatusFromMaritalStatus, rmdAmount, totalIncomeTaxes } from "./tax";
 import type { FinancialProfile } from "./types";
 
 export type ProjectionYear = {
   year: number; age: number; income: number; spending: number; taxes: number;
   withdrawals: { taxable: number; taxDeferred: number; roth: number; rmd: number };
+  taxStrategy?: string;
   endBalances: { taxable: number; taxDeferred: number; roth: number; total: number };
 };
 
@@ -25,13 +27,22 @@ function withdraw(amount: number, balances: { taxable: number; taxDeferred: numb
   return { taxable, taxDeferred, roth, unmet: need };
 }
 
+function withdrawTaxOptimized(amount: number, balances: { taxable: number; taxDeferred: number; roth: number }, taxDeferredRoom: number) {
+  let need = Math.max(0, amount);
+  const taxable = Math.min(balances.taxable, need); balances.taxable -= taxable; need -= taxable;
+  const bracketTaxDeferred = Math.min(balances.taxDeferred, need, Math.max(0, taxDeferredRoom)); balances.taxDeferred -= bracketTaxDeferred; need -= bracketTaxDeferred;
+  const roth = Math.min(balances.roth, need); balances.roth -= roth; need -= roth;
+  const taxDeferred = bracketTaxDeferred + Math.min(balances.taxDeferred, need); balances.taxDeferred -= taxDeferred - bracketTaxDeferred; need -= taxDeferred - bracketTaxDeferred;
+  return { taxable, taxDeferred, roth, unmet: need };
+}
+
 function socialSecurityForAge(monthlyFraBenefit: number, claimAge: number | null, age: number) {
   if (!claimAge || age < claimAge) return 0;
   const adjustment = claimAge < FULL_RETIREMENT_AGE ? 1 - (FULL_RETIREMENT_AGE - claimAge) * 0.06 : 1 + (claimAge - FULL_RETIREMENT_AGE) * 0.08;
   return monthlyFraBenefit * 12 * adjustment * (1 + SOCIAL_SECURITY_COLA) ** (age - claimAge);
 }
 
-export function runProjection(profile: FinancialProfile, options: { annualReturns?: number[] } = {}) {
+export function runProjection(profile: FinancialProfile, options: { annualReturns?: number[]; drawdownMode?: "standard" | "taxOptimized"; targetBracketRate?: number } = {}) {
   const startAge = currentAge(profile.birthdate);
   const status = filingStatusFromMaritalStatus(profile.marital_status);
   const rate = expectedReturn(profile);
@@ -52,7 +63,10 @@ export function runProjection(profile: FinancialProfile, options: { annualReturn
     balances.taxDeferred -= rmd;
     const firstTax = totalIncomeTaxes({ status, ages: [age], ordinaryIncome: pension + rmd, socialSecurity: ss, longTermCapitalGains: 0, state: profile.state });
     const gapBeforeTaxes = Math.max(0, spending + firstTax.total - income - rmd);
-    const draw = withdraw(gapBeforeTaxes, balances);
+    const taxDeferredRoom = options.drawdownMode === "taxOptimized"
+      ? bracketFillRoom({ status, ages: [age], ordinaryIncome: pension + rmd, socialSecurity: ss, targetBracketRate: options.targetBracketRate ?? 0.12, avoidIrmaa: true })
+      : Infinity;
+    const draw = options.drawdownMode === "taxOptimized" ? withdrawTaxOptimized(gapBeforeTaxes, balances, taxDeferredRoom) : withdraw(gapBeforeTaxes, balances);
     const taxableBasisRatio = profile.balance_taxable > 0 ? Math.min(1, Math.max(0, (profile.taxable_cost_basis ?? profile.balance_taxable) / profile.balance_taxable)) : 1;
     const capGains = draw.taxable * (1 - taxableBasisRatio);
     const finalTax = totalIncomeTaxes({ status, ages: [age], ordinaryIncome: pension + rmd + draw.taxDeferred, socialSecurity: ss, longTermCapitalGains: capGains, state: profile.state });
@@ -66,7 +80,7 @@ export function runProjection(profile: FinancialProfile, options: { annualReturn
     balances.roth *= 1 + annualReturn;
     const total = balances.taxable + balances.taxDeferred + balances.roth;
     if (depletionAge === null && total <= 1 && age < profile.planning_horizon_age) depletionAge = age;
-    rows.push({ year: CURRENT_YEAR + yearIndex, age, income, spending, taxes: finalTax.total, withdrawals, endBalances: { ...balances, total } });
+    rows.push({ year: CURRENT_YEAR + yearIndex, age, income, spending, taxes: finalTax.total, withdrawals, endBalances: { ...balances, total }, taxStrategy: options.drawdownMode === "taxOptimized" ? "Fills low ordinary brackets with tax-deferred withdrawals, then uses Roth dollars before crossing the next projected IRMAA cliff when possible." : undefined });
   }
   return { years: rows, depletionAge };
 }

@@ -109,3 +109,35 @@ test("guardrails returns modified Guyton-Klinger rules and a simulated path", as
   assert.equal(result.path[0]?.action, "start");
   assert.ok((result.path[0]?.spending ?? 0) > 0);
 });
+
+test("bracket-fill room respects the selected ordinary bracket ceiling", async () => {
+  const { bracketFillRoom } = await import("../lib/engine/roth");
+  const room = bracketFillRoom({ status: "single", ages: [60], ordinaryIncome: 20000, socialSecurity: 0, targetBracketRate: 0.12 });
+
+  assert.equal(room, 43475);
+});
+
+test("bracket-fill room stops at the next IRMAA cliff when avoidance is enabled", async () => {
+  const { bracketFillRoom, nextIrmaaCliff } = await import("../lib/engine/roth");
+
+  assert.equal(nextIrmaaCliff(105000, "single"), 106000);
+  assert.equal(bracketFillRoom({ status: "single", ages: [65], ordinaryIncome: 105000, socialSecurity: 0, targetBracketRate: 0.24, avoidIrmaa: true }), 1000);
+});
+
+test("Roth conversion analysis fills low-income years without crossing IRMAA where possible", async () => {
+  const { analyzeRothConversion } = await import("../lib/engine/roth");
+  const analysis = analyzeRothConversion({ ...baseProfile, birthdate: "1966-01-01", balance_tax_deferred: 500000, ss_claim_age: 70, pension_amount: null, planning_horizon_age: 75 });
+
+  assert.equal(analysis.framing, "education");
+  assert.ok(analysis.totalConverted > 0);
+  assert.ok(analysis.years.every((year) => year.projectedMagi <= 106000));
+});
+
+test("tax-optimized drawdown uses Roth assets before exceeding managed tax-deferred room", () => {
+  const projection = runProjection({ ...baseProfile, birthdate: "1966-01-01", balance_taxable: 0, balance_tax_deferred: 500000, balance_roth: 200000, ss_claim_age: 70, spending_essential_monthly: 9000, spending_discretionary_monthly: 0, planning_horizon_age: 61 }, { drawdownMode: "taxOptimized", targetBracketRate: 0.12 });
+  const firstYear = projection.years[0];
+
+  assert.ok((firstYear?.withdrawals.taxDeferred ?? 0) <= 53000);
+  assert.ok((firstYear?.withdrawals.roth ?? 0) > 0);
+  assert.ok(firstYear?.taxStrategy?.includes("IRMAA"));
+});

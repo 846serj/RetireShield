@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { runMonteCarlo } from "@/lib/engine/montecarlo";
 import { runProjection } from "@/lib/engine/projection";
+import { analyzeRothConversion } from "@/lib/engine/roth";
 import { guardrails } from "@/lib/engine/withdrawal";
 import { compareSocialSecurity } from "@/lib/engine/socialSecurity";
 import type { FinancialProfile } from "@/lib/engine/types";
@@ -51,6 +52,8 @@ export default async function PlanPage() {
 
   const typedProfile = profile as FinancialProfile;
   const projection = runProjection(typedProfile);
+  const taxOptimizedProjection = runProjection(typedProfile, { drawdownMode: "taxOptimized" });
+  const rothConversion = analyzeRothConversion(typedProfile);
   const monteCarlo = runMonteCarlo(typedProfile, 1000, { seed: user.id });
   const socialSecurity = compareSocialSecurity(typedProfile);
   const guardrailPlan = guardrails(typedProfile);
@@ -120,6 +123,50 @@ export default async function PlanPage() {
                   <div>{dollars(row.spending)}</div>
                   <div>{Number.isFinite(row.withdrawalRate) ? percent(row.withdrawalRate) : "—"}</div>
                   <div className="capitalize text-slate-600">{row.action}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-6 rounded-3xl border-2 border-purple-100 bg-purple-50 p-5 sm:p-7">
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.15fr] lg:items-start">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-purple-700">Education only</p>
+            <h2 className="mt-2 text-3xl font-extrabold">Tax & Roth</h2>
+            <p className="mt-3 text-slate-700">This educational view compares a tax-aware withdrawal order and a bracket-fill Roth conversion illustration. It is not tax advice; coordinate any action with a qualified tax professional.</p>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <p className="font-bold text-slate-500">Tax-aware ending balance</p>
+                <p className="text-2xl font-extrabold">{dollars(taxOptimizedProjection.years.at(-1)?.endBalances.total ?? 0)}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <p className="font-bold text-slate-500">Modeled Roth conversions</p>
+                <p className="text-2xl font-extrabold">{dollars(rothConversion.totalConverted)}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <p className="font-bold text-slate-500">Federal tax impact</p>
+                <p className="text-2xl font-extrabold">{dollars(rothConversion.lifetimeFederalTaxImpact)}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <p className="font-bold text-slate-500">IRMAA impact</p>
+                <p className="text-2xl font-extrabold">{dollars(rothConversion.lifetimeIrmaaImpact)}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-600">{rothConversion.note}</p>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-purple-100 bg-white">
+            <div className="grid grid-cols-4 gap-2 bg-purple-100 p-3 text-xs font-bold uppercase tracking-wide text-purple-900">
+              <div>Age</div><div>Conversion</div><div>Projected MAGI</div><div>IRMAA</div>
+            </div>
+            <div className="divide-y divide-purple-50">
+              {(rothConversion.years.length ? rothConversion.years.slice(0, 8) : [{ age: typedProfile.target_retirement_age ?? 0, conversion: 0, projectedMagi: 0, irmaaWithConversion: 0 }]).map((row) => (
+                <div key={`${row.age}-${row.conversion}`} className="grid grid-cols-4 gap-2 p-3 text-sm">
+                  <div className="font-extrabold">{row.age || "—"}</div>
+                  <div>{dollars(row.conversion)}</div>
+                  <div>{dollars(row.projectedMagi)}</div>
+                  <div>{dollars(row.irmaaWithConversion)}</div>
                 </div>
               ))}
             </div>
