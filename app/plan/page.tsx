@@ -7,6 +7,8 @@ import { guardrails } from "@/lib/engine/withdrawal";
 import { compareSocialSecurity } from "@/lib/engine/socialSecurity";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { createClient } from "@/lib/supabase/server";
+import { hasPaidAccess } from "@/lib/subscription";
+import CoachChat from "@/components/CoachChat";
 
 function dollars(value: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
@@ -49,6 +51,7 @@ export default async function PlanPage() {
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
   if (!profile) redirect("/plan/setup");
+  const paid = await hasPaidAccess(user.id);
 
   const typedProfile = profile as FinancialProfile;
   const projection = runProjection(typedProfile);
@@ -217,6 +220,8 @@ export default async function PlanPage() {
           </div>
         </div>
       </section>
+
+      {paid ? <CoachChat /> : null}
 
       <section className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white">
         <div className="grid grid-cols-5 gap-2 bg-slate-100 p-4 text-sm font-bold text-slate-600">
