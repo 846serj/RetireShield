@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import HomeRedirector from "@/components/HomeRedirector";
+import { ComparisonRow } from "@/components/ComparisonRow";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { StatTile } from "@/components/StatTile";
 import { Button, Container, Eyebrow } from "@/components/ui";
@@ -73,6 +74,43 @@ export default async function Home() {
             </div>
           </div>
           */}
+        </Container>
+      </section>
+
+      <section className="bg-white py-12 sm:py-16 lg:py-20">
+        <Container>
+          <div className="mx-auto max-w-3xl text-center">
+            <Eyebrow>OLD WAY VS RETIRESHIELD WAY</Eyebrow>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Most retirement tools hand you a scary percentage. We hand you an answer.
+            </h2>
+          </div>
+          <div className="mt-10">
+            <ComparisonRow
+              cards={[
+                {
+                  title: "The old way",
+                  quote: "You have a 78% chance of success.",
+                  tone: "muted",
+                  children: (
+                    <>
+                      A number and a worry. What do you actually do with that?
+                    </>
+                  ),
+                },
+                {
+                  title: "The RetireShield way",
+                  quote: "Your Safety Score is 82. Your income covers your essentials, and here are the two things to shore up.",
+                  tone: "brand",
+                  children: (
+                    <>
+                      Clear. Specific. In plain dollars.
+                    </>
+                  ),
+                },
+              ]}
+            />
+          </div>
         </Container>
       </section>
     </main>
