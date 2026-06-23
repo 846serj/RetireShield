@@ -22,6 +22,8 @@ export default function Quiz() {
   const [email, setEmail] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [emailNotice, setEmailNotice] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const done = step >= QUESTIONS.length;
   const result = useMemo(() => (done ? computeScores(answers as unknown as Answers) : null), [done, answers]);
@@ -35,27 +37,42 @@ export default function Quiz() {
   }
 
   async function submitEmail() {
+    const normalizedEmail = email.trim();
     setSubmitting(true);
+    setEmailNotice("");
+    setEmailError("");
     try {
       const params = new URLSearchParams(window.location.search);
-      await fetch("/api/lead", {
+      const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
+          email: normalizedEmail,
           answers,
           result,
           source: params.get("utm_source") || "direct",
           campaign: params.get("utm_campaign") || "",
         }),
       });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload.ok) {
+        setEmailError("We could not save your email. Please check it and try again.");
+        return;
+      }
       // Cache so a new account can "claim" this score after sign-up (see ScoreHydrator).
       try {
         localStorage.setItem("rg_score", JSON.stringify({ answers, result }));
       } catch {
         /* ignore */
       }
+      setEmailNotice(
+        payload.verificationEmailSent
+          ? "We sent you a secure verification link. Open it when you're ready to start checkout or view your dashboard."
+          : "Your results are unlocked. Sign in before checkout so we can attach your subscription to your account.",
+      );
       setRevealed(true);
+    } catch {
+      setEmailError("We could not reach the server. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -137,17 +154,19 @@ export default function Quiz() {
               className="flex-1 rounded-xl border-2 border-slate-300 px-4 py-3 text-lg"
             />
             <button
-              disabled={!email.includes("@") || submitting}
+              disabled={!email.trim().includes("@") || submitting}
               onClick={submitEmail}
               className="rounded-xl bg-brand px-6 py-3 text-lg font-bold text-white disabled:opacity-50"
             >
               {submitting ? "…" : "Show my results"}
             </button>
           </div>
-          <p className="mt-3 text-xs text-slate-500">No spam. Unsubscribe anytime.</p>
+          {emailError && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{emailError}</p>}
+          <p className="mt-3 text-xs text-slate-500">No spam. We also email you a secure verification link for checkout.</p>
         </div>
       ) : (
         <div className="mt-10 space-y-6">
+          {emailNotice && <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-slate-700">{emailNotice}</p>}
           <div className="space-y-4">
             {(Object.keys(SUB_LABEL) as (keyof SubScores)[]).map((k) => (
               <div key={k}>
