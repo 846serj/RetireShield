@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { QUESTIONS } from "@/lib/questions";
 import { US_STATES } from "@/lib/usStates";
 import { computeScores, actions, type Answers, type SubScores } from "@/lib/scoring";
@@ -24,6 +26,13 @@ export default function Quiz() {
   const [submitting, setSubmitting] = useState(false);
   const [emailNotice, setEmailNotice] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [accountDismissed, setAccountDismissed] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const [accountNotice, setAccountNotice] = useState("");
+  const router = useRouter();
 
   const done = step >= QUESTIONS.length;
   const result = useMemo(() => (done ? computeScores(answers as unknown as Answers) : null), [done, answers]);
@@ -65,18 +74,57 @@ export default function Quiz() {
       } catch {
         /* ignore */
       }
-      setEmailNotice(
-        payload.verificationEmailSent
-          ? "We sent you a secure verification link. Open it when you're ready to start checkout or view your dashboard."
-          : payload.verificationEmailRateLimited
-            ? "Your results are unlocked. We already sent a secure verification link recently, so please check your inbox before requesting another one."
-            : "Your results are unlocked. Sign in before checkout so we can attach your subscription to your account.",
-      );
+      setEmailNotice("Your results are unlocked. You can review them here, or optionally create a free account below to save your score and turn on monitoring.");
       setRevealed(true);
     } catch {
       setEmailError("We could not reach the server. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+
+  async function createAccount() {
+    const normalizedEmail = email.trim().toLowerCase();
+    setAccountError("");
+    setAccountNotice("");
+
+    if (!normalizedEmail.includes("@")) {
+      setAccountError("Please enter a valid email address above before creating an account.");
+      return;
+    }
+
+    if (password.length < 8) {
+      setAccountError("Please choose a password with at least 8 characters.");
+      return;
+    }
+
+    setCreatingAccount(true);
+    try {
+      const supabase = createClient();
+      // Required Supabase setting: Auth → “Confirm email” OFF, so password signUp
+      // returns an active session immediately after the visitor chooses a password.
+      const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password });
+      if (error) {
+        const message = error.message.toLowerCase();
+        if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+          setAccountNotice("You already have an account — log in instead.");
+        } else {
+          setAccountError(error.message || "We could not create your account. Please try again.");
+        }
+        return;
+      }
+
+      if (!data.session) {
+        setAccountError("Your account was created, but email confirmation is still on. Please contact support so we can finish sign-in.");
+        return;
+      }
+
+      router.push("/dashboard");
+    } catch {
+      setAccountError("We could not reach the sign-up service. Please try again.");
+    } finally {
+      setCreatingAccount(false);
     }
   }
 
@@ -164,7 +212,7 @@ export default function Quiz() {
             </button>
           </div>
           {emailError && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{emailError}</p>}
-          <p className="mt-3 text-xs text-slate-500">No spam. We also email you a secure verification link for checkout.</p>
+          <p className="mt-3 text-xs text-slate-500">No spam. Creating an account is optional after you see your results.</p>
         </div>
       ) : (
         <div className="mt-10 space-y-6">
@@ -193,6 +241,68 @@ export default function Quiz() {
               ))}
             </div>
           </div>
+
+          {!accountDismissed && (
+            <div className="rounded-2xl border-2 border-brand bg-blue-50 p-6">
+              <h3 className="text-2xl font-bold">Create your free account</h3>
+              <p className="mt-2 text-lg text-slate-700">Save your score and turn on monthly monitoring — pick a password.</p>
+              <div className="mt-5 grid gap-4">
+                <div>
+                  <label htmlFor="account-email" className="block text-base font-bold text-ink">Email address</label>
+                  <input
+                    id="account-email"
+                    type="email"
+                    value={email.trim().toLowerCase()}
+                    readOnly
+                    className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-lg text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="account-password" className="block text-base font-bold text-ink">Password</label>
+                  <div className="mt-2 flex rounded-xl border-2 border-slate-300 bg-white focus-within:border-brand">
+                    <input
+                      id="account-password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      minLength={8}
+                      autoComplete="new-password"
+                      className="min-h-14 flex-1 rounded-l-xl px-4 text-lg outline-none"
+                      aria-describedby="password-help"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((show) => !show)}
+                      className="rounded-r-xl px-4 text-base font-bold text-brand underline"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  <p id="password-help" className="mt-2 text-sm text-slate-600">At least 8 characters.</p>
+                </div>
+              </div>
+              {accountError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{accountError}</p>}
+              {accountNotice && <p className="mt-4 rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-700">{accountNotice} <Link href="/login" className="font-bold text-brand underline">Log in instead</Link>.</p>}
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={createAccount}
+                  disabled={creatingAccount || password.length < 8}
+                  className="rounded-xl bg-brand px-6 py-3 text-lg font-bold text-white disabled:opacity-50"
+                >
+                  {creatingAccount ? "Creating account…" : "Create my account"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountDismissed(true)}
+                  className="rounded-xl border-2 border-slate-300 px-6 py-3 text-lg font-bold text-ink"
+                >
+                  No thanks, maybe later
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Phase 4-5: this CTA becomes the 3-day trial -> annual upgrade (see runbook). */}
           <div className="rounded-2xl bg-ink text-white p-6 text-center">
