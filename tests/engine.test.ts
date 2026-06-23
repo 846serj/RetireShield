@@ -70,3 +70,18 @@ test("Monte Carlo gives strong plans a high success rate and weak plans a low ra
   assert.ok(weak.probabilityOfSuccess < 0.25, `expected weak plan success < 25%, got ${weak.probabilityOfSuccess}`);
   assert.equal(strong.paths.length, runProjection(baseProfile).years.length);
 });
+
+test("Social Security early reductions and delayed credits match SSA monthly formulas", async () => {
+  const { socialSecurityClaimAdjustment, compareSocialSecurity } = await import("../lib/engine/socialSecurity");
+
+  assert.equal(Math.round(socialSecurityClaimAdjustment(62) * 1000) / 1000, 0.7);
+  assert.equal(Math.round(socialSecurityClaimAdjustment(67) * 1000) / 1000, 1);
+  assert.equal(Math.round(socialSecurityClaimAdjustment(70) * 1000) / 1000, 1.24);
+
+  const comparison = compareSocialSecurity({ ...baseProfile, ss_benefit_fra: 2000, planning_horizon_age: 90 }, { monteCarloRuns: 10 });
+  assert.equal(comparison.framing, "education");
+  assert.equal(comparison.strategies.find((strategy) => strategy.claimAge === 62)?.monthlyBenefit, 1400);
+  assert.equal(comparison.strategies.find((strategy) => strategy.claimAge === 67)?.monthlyBenefit, 2000);
+  assert.equal(comparison.strategies.find((strategy) => strategy.claimAge === 70)?.monthlyBenefit, 2480);
+  assert.ok(comparison.breakEvenAges.some((item) => item.earlierClaimAge === 62 && item.laterClaimAge === 70));
+});

@@ -2,11 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { runMonteCarlo } from "@/lib/engine/montecarlo";
 import { runProjection } from "@/lib/engine/projection";
+import { compareSocialSecurity } from "@/lib/engine/socialSecurity";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { createClient } from "@/lib/supabase/server";
 
 function dollars(value: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+}
+
+function percent(value: number) {
+  return `${Math.round(value * 100)}%`;
 }
 
 function BalanceChart({ points, bands }: { points: { age: number; total: number }[]; bands: { age: number; p10: number; p50: number; p90: number }[] }) {
@@ -46,6 +51,7 @@ export default async function PlanPage() {
   const typedProfile = profile as FinancialProfile;
   const projection = runProjection(typedProfile);
   const monteCarlo = runMonteCarlo(typedProfile, 1000, { seed: user.id });
+  const socialSecurity = compareSocialSecurity(typedProfile);
   const last = projection.years.at(-1);
   const successPct = Math.round(monteCarlo.probabilityOfSuccess * 100);
   const statusText = projection.depletionAge === null
@@ -81,6 +87,51 @@ export default async function PlanPage() {
           <Link href="/plan/setup" className="font-bold text-brand underline">Edit profile</Link>
         </div>
         <BalanceChart points={projection.years.map((row) => ({ age: row.age, total: row.endBalances.total }))} bands={monteCarlo.paths} />
+      </section>
+
+
+      <section className="mb-6 rounded-3xl border-2 border-blue-100 bg-blue-50 p-5 sm:p-7">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-brand">Education comparison</p>
+            <h2 className="text-2xl font-extrabold">Social Security claiming ages</h2>
+            <p className="mt-2 max-w-3xl text-slate-700">{socialSecurity.assumptions.note}</p>
+          </div>
+          <p className="text-sm font-semibold text-slate-600">FRA {socialSecurity.assumptions.fullRetirementAge} · COLA {(socialSecurity.assumptions.cola * 100).toFixed(1)}%</p>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white">
+          <div className="grid grid-cols-5 gap-2 bg-slate-100 p-3 text-xs font-bold uppercase tracking-wide text-slate-600">
+            <div>Claim</div><div>Monthly</div><div>Success</div><div>Lifetime to horizon</div><div>Tradeoff</div>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {socialSecurity.strategies.map((strategy) => (
+              <div key={strategy.claimAge} className="grid grid-cols-5 gap-2 p-3 text-sm">
+                <div className="font-extrabold">Age {strategy.claimAge}<span className="block text-xs font-semibold text-slate-500">{strategy.adjustmentPct > 0 ? "+" : ""}{strategy.adjustmentPct}% vs FRA</span></div>
+                <div>{dollars(strategy.monthlyBenefit)}<span className="block text-xs text-slate-500">{strategy.spouse ? `${dollars(strategy.householdMonthlyBenefit)} household` : "worker benefit"}</span></div>
+                <div>{percent(strategy.successRate)}</div>
+                <div>{dollars(strategy.lifetimeValueToHorizon)}</div>
+                <div className="text-slate-600">{strategy.tradeoffs[0]}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h3 className="font-extrabold">Selected break-even examples</h3>
+            <ul className="mt-2 space-y-1 text-sm text-slate-700">
+              {socialSecurity.breakEvenAges.filter((item) => item.earlierClaimAge === 62 && [67, 70].includes(item.laterClaimAge)).map((item) => (
+                <li key={`${item.earlierClaimAge}-${item.laterClaimAge}`}>Age {item.laterClaimAge} catches age {item.earlierClaimAge} {item.breakEvenAge ? `around age ${item.breakEvenAge}` : "after the planning horizon"}.</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl bg-white p-4 shadow-sm">
+            <h3 className="font-extrabold">Tradeoffs to discuss</h3>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+              {socialSecurity.tradeoffs.map((tradeoff) => <li key={tradeoff}>{tradeoff}</li>)}
+              {socialSecurity.spouseSurvivor ? <li>{socialSecurity.spouseSurvivor.note}</li> : null}
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white">
