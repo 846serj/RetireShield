@@ -41,7 +41,7 @@ function Logo() {
   );
 }
 
-export function SiteHeader() {
+export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
   const [announcementVisible, setAnnouncementVisible] = useState(true);
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -123,8 +123,20 @@ export function SiteHeader() {
           </nav>
 
           <div className="hidden items-center gap-4 lg:flex">
-            <Link href="/login" className="font-bold text-ink no-underline hover:text-brand">Log in</Link>
-            <Button href="/quiz" className="min-h-12 px-5 py-2 text-base">Get my free Safety Score</Button>
+            {userEmail ? (
+              <>
+                <Button href="/dashboard" className="min-h-12 px-5 py-2 text-base">Dashboard</Button>
+                <span className="max-w-48 truncate text-sm font-semibold text-slate-600" title={userEmail}>{userEmail}</span>
+                <form action="/auth/sign-out" method="post">
+                  <button type="submit" className="font-bold text-ink no-underline hover:text-brand">Sign out</button>
+                </form>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="font-bold text-ink no-underline hover:text-brand">Log in</Link>
+                <Button href="/quiz" className="min-h-12 px-5 py-2 text-base">Get my free Safety Score</Button>
+              </>
+            )}
           </div>
 
           <button
@@ -157,8 +169,20 @@ export function SiteHeader() {
               {navLinks.slice(1).map((link) => <Link key={link.label} href={link.href} className="rounded-xl px-3 py-3 text-ink no-underline hover:bg-band" onClick={() => setDrawerOpen(false)}>{link.label}</Link>)}
             </nav>
             <div className="mt-auto grid gap-3 pt-8">
-              <Link href="/login" className="text-center font-bold text-ink no-underline" onClick={() => setDrawerOpen(false)}>Log in</Link>
-              <Button href="/quiz" onClick={() => setDrawerOpen(false)} className="w-full text-base">Get my free Safety Score</Button>
+              {userEmail ? (
+                <>
+                  <Button href="/dashboard" onClick={() => setDrawerOpen(false)} className="w-full text-base">Dashboard</Button>
+                  <p className="truncate text-center text-sm font-semibold text-slate-600">{userEmail}</p>
+                  <form action="/auth/sign-out" method="post" className="text-center">
+                    <button type="submit" className="font-bold text-ink no-underline">Sign out</button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="text-center font-bold text-ink no-underline" onClick={() => setDrawerOpen(false)}>Log in</Link>
+                  <Button href="/quiz" onClick={() => setDrawerOpen(false)} className="w-full text-base">Get my free Safety Score</Button>
+                </>
+              )}
             </div>
           </div>
         </div>

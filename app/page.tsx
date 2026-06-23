@@ -1,19 +1,17 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { BadgeDollarSign, Banknote, BellRing, Bot, Calculator, HeartPulse, Landmark, LineChart, LockKeyhole, MessageCircleQuestion, ShieldCheck, ShieldAlert, Sparkles, TrendingUp, UserCheck, WalletCards } from "lucide-react";
-import HomeRedirector from "@/components/HomeRedirector";
 import { ComparisonRow } from "@/components/ComparisonRow";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { StatTile } from "@/components/StatTile";
 import { Button, Container, Eyebrow } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 
-async function hasActiveSession() {
+async function getSessionEmail() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return false;
 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  return !!user;
+  return user?.email ?? null;
 }
 
 const featureCards = [
@@ -282,11 +280,10 @@ const trustStats = [
 ];
 
 export default async function Home() {
-  if (await hasActiveSession()) redirect("/dashboard");
+  const userEmail = await getSessionEmail();
 
   return (
     <main>
-      <HomeRedirector />
       <section className="overflow-hidden bg-gradient-to-br from-white via-surface to-band py-12 sm:py-16 lg:py-20">
         <Container className="grid items-center gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
           <div className="text-center lg:text-left">
@@ -298,8 +295,8 @@ export default async function Home() {
               Get your free Retirement Safety Score in about 2 minutes. Answer 9 simple questions — no account, no linking your bank — and see exactly where you stand, in plain English.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
-              <Button href="/quiz" className="px-7 py-4 text-xl">
-                Get my free Safety Score
+              <Button href={userEmail ? "/dashboard" : "/quiz"} className="px-7 py-4 text-xl">
+                {userEmail ? "Go to my dashboard" : "Get my free Safety Score"}
               </Button>
               <Button href="#how-it-works" variant="ghost" className="px-7 py-4 text-xl">
                 See how it works

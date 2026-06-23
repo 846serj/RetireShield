@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendSupabaseMagicLink } from "@/lib/auth/magicLink";
 import { sendToList } from "@/lib/email";
-import { getPublicBaseUrl } from "@/lib/siteUrl";
 
 function isValidEmail(email: unknown): email is string {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-async function sendVerificationLink(req: NextRequest, email: string) {
-  const callbackUrl = new URL(`${getPublicBaseUrl(req.url)}/auth/callback`);
-  callbackUrl.searchParams.set("next", "/upgrade?plan=annual");
-
-  return sendSupabaseMagicLink(email, callbackUrl.toString());
-}
-
-// Saves a captured lead and emails a Supabase magic link so the visitor can verify
-// their address / create an account before starting checkout.
+// Saves a captured lead. Account creation is an explicit optional password step after results.
 export async function POST(req: NextRequest) {
   let body: any;
   try {
@@ -57,12 +47,10 @@ export async function POST(req: NextRequest) {
   }
 
   await sendToList(normalizedEmail, "free");
-  const verification = await sendVerificationLink(req, normalizedEmail);
 
   return NextResponse.json({
     ok: true,
-    verificationEmailSent: verification.sent,
-    verificationEmailRateLimited: Boolean(!verification.sent && verification.rateLimited),
-    retryAfterSeconds: !verification.sent && verification.rateLimited ? verification.retryAfterSeconds : undefined,
+    verificationEmailSent: false,
+    verificationEmailRateLimited: false,
   });
 }
