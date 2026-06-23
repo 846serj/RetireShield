@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BadgeDollarSign, Banknote, BellRing, Bot, Calculator, HeartPulse, Landmark, LineChart, MessageCircleQuestion, ShieldCheck, ShieldAlert, TrendingUp, WalletCards } from "lucide-react";
+import { BadgeDollarSign, Banknote, BellRing, Bot, Calculator, HeartPulse, Landmark, LineChart, LockKeyhole, MessageCircleQuestion, ShieldCheck, ShieldAlert, Sparkles, TrendingUp, UserCheck, WalletCards } from "lucide-react";
 import HomeRedirector from "@/components/HomeRedirector";
 import { ComparisonRow } from "@/components/ComparisonRow";
 import { ScoreGauge } from "@/components/ScoreGauge";
@@ -111,6 +112,113 @@ function QACard({ tag, question, answer }: { tag: string; question: string; answ
         <h3 className="mt-5 text-xl font-extrabold leading-7 tracking-tight text-ink">{question}</h3>
       </div>
       <p className="mt-6 text-lg font-semibold leading-8 text-slate-700">{answer}</p>
+    </article>
+  );
+}
+
+const pricingPlans = [
+  {
+    name: "Free",
+    price: "$0",
+    description: "Safety Score + 3 actions",
+  },
+  {
+    name: "Plus",
+    price: "$19/mo",
+    description: "Monthly monitoring + AI coach",
+  },
+  {
+    name: "Premium",
+    price: "$39/mo",
+    description: "Unlimited coach, Medicare/SS deep tools, score history",
+    highlight: "Most popular",
+  },
+  {
+    name: "Concierge",
+    price: "$99–199/mo",
+    description: "A human retirement coach, done-for-you checkups",
+  },
+];
+
+function PricingCard({ name, price, description, highlight }: { name: string; price: string; description: string; highlight?: string }) {
+  return (
+    <Link
+      href="/pricing"
+      className={`relative flex h-full flex-col rounded-3xl border p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-brand/20 ${
+        highlight ? "border-brand bg-brand text-white shadow-lg" : "border-slate-200 bg-white text-ink hover:border-brand/30"
+      }`}
+    >
+      {highlight ? (
+        <span className="absolute right-5 top-5 rounded-full bg-white px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-brand">
+          {highlight}
+        </span>
+      ) : null}
+      <h3 className={`text-xl font-extrabold ${highlight ? "pr-28 text-white" : "text-ink"}`}>{name}</h3>
+      <p className={`mt-5 text-4xl font-extrabold tracking-tight ${highlight ? "text-white" : "text-brand"}`}>{price}</p>
+      <p className={`mt-4 flex-1 text-lg font-semibold leading-8 ${highlight ? "text-white/90" : "text-slate-700"}`}>{description}</p>
+      <span className={`mt-6 text-sm font-extrabold uppercase tracking-[0.16em] ${highlight ? "text-white" : "text-brand"}`}>
+        Compare plans →
+      </span>
+    </Link>
+  );
+}
+
+const trustSafetyCards = [
+  {
+    icon: LockKeyhole,
+    title: "We never link your bank.",
+    description: "You type what you want, nothing connected.",
+  },
+  {
+    icon: UserCheck,
+    title: "Education, not sales.",
+    description: "No products pushed, no commissions, no pressure.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Your data is yours.",
+    description: "Private and secure; we never sell it.",
+  },
+];
+
+function FeatureCard({ icon: Icon, title, description }: { icon: typeof ShieldCheck; title: string; description: string }) {
+  return (
+    <article className="group h-full rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-brand/30 hover:shadow-lg sm:p-8">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand transition group-hover:bg-brand group-hover:text-white">
+        <Icon className="h-7 w-7" aria-hidden="true" strokeWidth={1.8} />
+      </div>
+      <h3 className="mt-6 text-2xl font-extrabold tracking-tight text-ink">{title}</h3>
+      <p className="mt-3 text-lg leading-8 text-slate-700">{description}</p>
+    </article>
+  );
+}
+
+const testimonials = [
+  {
+    quote: "[placeholder] RetireShield helped me see the next right step instead of worrying about everything at once.",
+    name: "Retiree testimonial",
+    detail: "Placeholder quote until real customer story is approved",
+  },
+  {
+    quote: "[placeholder] The Safety Score made our retirement plan feel understandable for the first time.",
+    name: "Couple testimonial",
+    detail: "Placeholder quote until real customer story is approved",
+  },
+  {
+    quote: "[placeholder] I liked that I did not have to connect accounts or talk to a salesperson.",
+    name: "Privacy-first testimonial",
+    detail: "Placeholder quote until real customer story is approved",
+  },
+];
+
+function Testimonial({ quote, name, detail }: { quote: string; name: string; detail: string }) {
+  return (
+    <article className="flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <p className="text-lg font-semibold leading-8 text-slate-700">“{quote}”</p>
+      <div className="mt-6 border-t border-slate-100 pt-5">
+        <p className="font-extrabold text-ink">{name}</p>
+        <p className="mt-1 text-sm font-semibold text-slate-500">{detail}</p>
+      </div>
     </article>
   );
 }
@@ -391,6 +499,91 @@ export default async function Home() {
           <p className="mt-3 text-center text-sm font-semibold text-slate-500 lg:hidden">
             Swipe to see more. Animation pauses when you touch or focus a card.
           </p>
+        </Container>
+      </section>
+
+      <section className="bg-gradient-to-b from-white via-band to-white py-12 sm:py-16 lg:py-20" aria-labelledby="pricing-preview-heading">
+        <Container>
+          <div className="mx-auto max-w-3xl text-center">
+            <Eyebrow>SECTION 11 — PRICING PREVIEW</Eyebrow>
+            <h2 id="pricing-preview-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Start free. Upgrade only if it helps.
+            </h2>
+          </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {pricingPlans.map((plan) => (
+              <PricingCard key={plan.name} {...plan} />
+            ))}
+          </div>
+
+          <div className="mt-8 rounded-3xl border border-brand/20 bg-white p-6 text-center shadow-sm sm:p-8">
+            <p className="text-lg font-bold leading-8 text-ink">
+              An advisor charges around 1% of your savings every year — about $5,000 a year on $500,000. RetireShield Premium is $39 a month.
+            </p>
+            <div className="mt-5">
+              <Button href="/pricing" variant="secondary" className="px-7 py-4 text-xl">
+                Compare plans →
+              </Button>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-white py-12 sm:py-16 lg:py-20" aria-labelledby="trust-safety-heading">
+        <Container>
+          <div className="mx-auto max-w-3xl text-center">
+            <Eyebrow>SECTION 12 — TRUST &amp; SAFETY</Eyebrow>
+            <h2 id="trust-safety-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Built to be trusted by people who&apos;ve earned the right to be careful.
+            </h2>
+          </div>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {trustSafetyCards.map((card) => (
+              <FeatureCard key={card.title} {...card} />
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-band py-12 sm:py-16 lg:py-20" aria-labelledby="testimonials-heading">
+        <Container>
+          <div className="mx-auto max-w-3xl text-center">
+            <Eyebrow>SECTION 13 — TESTIMONIALS</Eyebrow>
+            <h2 id="testimonials-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Retirees sleeping better.
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">
+              Real customer stories will live here once approved; placeholder quotes keep the structure ready.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {testimonials.map((testimonial) => (
+              <Testimonial key={testimonial.name} {...testimonial} />
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-brand py-12 text-white sm:py-16 lg:py-20" aria-labelledby="final-cta-heading">
+        <Container>
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-white" aria-hidden="true">
+              <Sparkles className="h-8 w-8" strokeWidth={1.8} />
+            </div>
+            <Eyebrow className="mt-6 text-white/80">SECTION 14 — FINAL CTA</Eyebrow>
+            <h2 id="final-cta-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              See where your retirement stands — free, in 2 minutes.
+            </h2>
+            <div className="mt-8">
+              <Button href="/quiz" variant="secondary" className="border-white bg-white px-7 py-4 text-xl text-brand hover:bg-band">
+                Get my free Safety Score
+              </Button>
+            </div>
+            <p className="mt-5 text-lg font-semibold text-white/85">No account. No bank linking. No catch.</p>
+          </div>
         </Container>
       </section>
 
