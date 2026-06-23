@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { BadgeDollarSign, Banknote, HeartPulse, Landmark, LineChart, ShieldAlert, TrendingUp, WalletCards } from "lucide-react";
+import { BadgeDollarSign, Banknote, Bot, Calculator, HeartPulse, Landmark, LineChart, MessageCircleQuestion, ShieldCheck, ShieldAlert, TrendingUp, WalletCards } from "lucide-react";
 import HomeRedirector from "@/components/HomeRedirector";
 import { ComparisonRow } from "@/components/ComparisonRow";
 import { ScoreGauge } from "@/components/ScoreGauge";
@@ -208,6 +208,65 @@ export default async function Home() {
 
           <div className="mx-auto w-full max-w-lg">
             <ScoreGauge value={76} delta="▲ +6 this month" />
+          </div>
+        </Container>
+      </section>
+
+      <section className="bg-white py-12 sm:py-16 lg:py-20" aria-labelledby="ai-coach-heading">
+        <Container className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
+          <div>
+            <Eyebrow>YOUR RETIREMENT, ON CALL</Eyebrow>
+            <h2 id="ai-coach-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+              Ask anything. Get a straight answer, grounded in real numbers.
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">
+              Wondering &quot;Can I afford to help my grandkids?&quot; or &quot;Did that market dip hurt me?&quot; Ask in plain English and get a clear answer based on your own situation.
+            </p>
+            <div className="mt-8 rounded-3xl border-2 border-brand/40 bg-brand/5 p-6 shadow-sm sm:p-8">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand text-white shadow-sm" aria-hidden="true">
+                  <ShieldCheck className="h-6 w-6" strokeWidth={2} />
+                </div>
+                <div>
+                  <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-brand">Real math, not guesswork</p>
+                  <p className="mt-3 text-lg font-semibold leading-8 text-ink">
+                    We don&apos;t do the math with AI. Every number comes from proven retirement and tax calculations — the AI just explains it in plain English. So you can trust the answer.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-lg">
+            <div className="absolute -right-4 -top-4 h-28 w-28 rounded-full bg-brand/10 blur-2xl" aria-hidden="true" />
+            <div className="absolute -bottom-6 -left-6 h-32 w-32 rounded-full bg-accent/20 blur-2xl" aria-hidden="true" />
+            <div className="relative rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl sm:p-6">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand text-white" aria-hidden="true">
+                  <Bot className="h-6 w-6" strokeWidth={1.9} />
+                </div>
+                <div>
+                  <p className="text-sm font-extrabold text-ink">RetireShield Coach</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Based on your plan</p>
+                </div>
+              </div>
+              <div className="mt-5 space-y-4">
+                <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-brand px-5 py-4 text-white shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <MessageCircleQuestion className="mt-1 h-5 w-5 shrink-0" aria-hidden="true" />
+                    <p className="text-sm font-semibold leading-6">Did that market dip hurt my retirement?</p>
+                  </div>
+                </div>
+                <div className="max-w-[90%] rounded-2xl rounded-tl-sm border border-slate-200 bg-surface px-5 py-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <Calculator className="mt-1 h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
+                    <p className="text-sm leading-6 text-slate-700">
+                      Your Safety Score is still in the secure range. The dip lowered your market-cushion sub-score, but your guaranteed income still covers your essentials.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </Container>
       </section>
