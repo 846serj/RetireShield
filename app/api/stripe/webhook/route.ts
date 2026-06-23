@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendConfirmationEmail } from "@/lib/email";
+import { sendConfirmationEmail, sendToList, type EmailSegment } from "@/lib/email";
 
 // Stripe webhook: keeps the `subscriptions` table in sync. Add this URL + signing secret in Stripe.
 // Note: this route is excluded from middleware (it needs the raw body, no session).
@@ -34,21 +34,71 @@ export async function POST(req: Request) {
     });
   }
 
+  function segmentForStripeStatus(status?: string): EmailSegment | null {
+    switch (status) {
+      case "trialing":
+        return "trialing";
+      case "active":
+        return "paid";
+      case "canceled":
+      case "deleted":
+      case "unpaid":
+        return "free-only";
+      default:
+        return null;
+    }
+  }
+
+  async function customerEmailForSubscription(sub: any): Promise<string | null> {
+    if (sub.customer && typeof sub.customer === "object" && sub.customer.email) {
+      return sub.customer.email;
+    }
+
+    if (!sub.customer || typeof sub.customer !== "string") {
+      return null;
+    }
+
+    try {
+      const customer = await stripe.customers.retrieve(sub.customer);
+      if (!customer.deleted && customer.email) {
+        return customer.email;
+      }
+    } catch (error) {
+      console.error("stripe customer lookup failed:", error);
+    }
+
+    return null;
+  }
+
+  async function syncSubscriptionSegment(sub: any) {
+    const segment = segmentForStripeStatus(sub.status);
+    if (!segment) return;
+
+    const customerEmail = await customerEmailForSubscription(sub);
+    if (customerEmail) {
+      await sendToList(customerEmail, segment);
+    }
+  }
+
   switch (event.type) {
     case "checkout.session.completed": {
       const s = event.data.object as any;
       if (s.subscription) {
         const sub = await stripe.subscriptions.retrieve(s.subscription);
         await upsert(sub);
+        await syncSubscriptionSegment(sub);
         if (s.customer_details?.email) await sendConfirmationEmail(s.customer_details.email);
       }
       break;
     }
     case "customer.subscription.updated":
     case "customer.subscription.created":
-    case "customer.subscription.deleted":
-      await upsert(event.data.object);
+    case "customer.subscription.deleted": {
+      const sub = event.data.object;
+      await upsert(sub);
+      await syncSubscriptionSegment(sub);
       break;
+    }
   }
 
   return NextResponse.json({ received: true });

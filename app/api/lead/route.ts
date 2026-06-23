@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendToList } from "@/lib/email";
 
 // Saves a captured lead. If Supabase env vars are set, it persists to the `leads` table;
 // otherwise it logs to the server console so the app runs with zero setup.
@@ -41,6 +42,6 @@ export async function POST(req: NextRequest) {
     console.log("[lead captured — no DB configured]", JSON.stringify(row));
   }
 
-  // TODO (Phase 7): push to ESP here, tagged segment = "free".
+  await sendToList(email, "free");
   return NextResponse.json({ ok: true });
 }
