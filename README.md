@@ -51,9 +51,9 @@ when Supabase successfully sends the link.
 If the UI says the link was sent but no email arrives, check these items first:
 
 1. Render must define `NEXT_PUBLIC_BASE_URL` as the exact public site origin, for this app:
-   `https://retireguard.onrender.com`. Do not include a trailing slash or path.
+   `https://RetireShield.com`. Do not include a trailing slash or path.
 2. Supabase → Authentication → URL Configuration must use the same production origin as the Site URL and
-   must allow `https://retireguard.onrender.com/auth/callback` (and any custom-domain callback) in Redirect URLs.
+   must allow `https://RetireShield.com/auth/callback` (and any custom-domain callback) in Redirect URLs.
    If the email link still points at localhost, redeploy after changing the Render environment variable because
    `NEXT_PUBLIC_*` values are baked into the client bundle at build time.
 3. Supabase → Authentication → Logs is the source of truth for delivery failures, SMTP handoff errors,

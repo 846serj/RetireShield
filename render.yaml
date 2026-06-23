@@ -9,4 +9,4 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: NEXT_PUBLIC_BASE_URL
-        value: https://retireguard.onrender.com
+        value: https://RetireShield.com

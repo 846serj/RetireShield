@@ -1,4 +1,4 @@
-const DEFAULT_PUBLIC_BASE_URL = "https://retireguard.onrender.com";
+const DEFAULT_PUBLIC_BASE_URL = "https://RetireShield.com";
 
 function normalizeBaseUrl(url: string | undefined) {
   if (!url) return undefined;
@@ -21,7 +21,7 @@ function isLocalhost(url: string) {
  *
  * Hosted platforms can expose internal request origins such as https://localhost:10000.
  * Those origins are not reachable from customer emails, so production links must prefer
- * NEXT_PUBLIC_BASE_URL and ultimately fall back to the Render public domain.
+ * NEXT_PUBLIC_BASE_URL and ultimately fall back to the RetireShield public domain.
  */
 export function getPublicBaseUrl(fallbackOrigin?: string) {
   const configuredBaseUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_BASE_URL);
