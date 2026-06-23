@@ -20,20 +20,25 @@ const variants: Record<ButtonVariant, string> = {
   ghost: "bg-transparent text-brand border-transparent hover:bg-band hover:text-brand-dark",
 };
 
-export function Button({ children, variant = "primary", className = "", ...props }: ButtonProps) {
+export function Button(props: ButtonProps) {
+  const { children, variant = "primary", className = "" } = props;
   const classes = `inline-flex min-h-14 items-center justify-center rounded-xl border-2 px-6 py-3 text-lg font-bold leading-snug no-underline transition-colors ${variants[variant]} ${className}`;
 
-  if ("href" in props && props.href) {
+  if (props.href !== undefined) {
+    const { children: linkChildren, variant: _variant, className: _className, href, ...linkProps } = props;
+
     return (
-      <Link className={classes} {...props} href={props.href}>
-        {children}
+      <Link className={classes} {...linkProps} href={href}>
+        {linkChildren}
       </Link>
     );
   }
 
+  const { children: buttonChildren, variant: _variant, className: _className, href: _href, ...buttonProps } = props;
+
   return (
-    <button className={classes} {...props}>
-      {children}
+    <button className={classes} {...buttonProps}>
+      {buttonChildren}
     </button>
   );
 }
