@@ -42,9 +42,11 @@ supabase-schema.sql   the leads table
 ```
 
 
-## Supabase Auth troubleshooting
+## Supabase Auth email troubleshooting
 
-The login screen supports regular email/password sign-in for existing account holders, plus passwordless magic links as a fallback. New users can create a password account with `supabase.auth.signUp()`. Users who previously only used magic links can use the reset-password option to set a password, and the magic-link fallback still calls `supabase.auth.signInWithOtp()` with `shouldCreateUser: true`.
+The login screen uses Supabase passwordless magic links, not a separate password signup form. It calls
+`supabase.auth.signInWithOtp()` with `shouldCreateUser: true`, so a first-time email address is created
+when Supabase successfully sends the link.
 
 If the UI says the link was sent but no email arrives, check these items first:
 
@@ -66,7 +68,7 @@ These files are written but **not runtime-verified** (they need the new deps + y
 ```
 lib/supabase/{client,server}.ts   browser + server Supabase clients (@supabase/ssr)
 middleware.ts                     refreshes the auth session
-app/login + app/auth/callback     password sign-in, signup, reset, and magic-link fallback
+app/login + app/auth/callback     magic-link sign-in
 app/dashboard                     authed; shows saved score, gates paid section
 app/upgrade                       pricing + CONSENT checkbox + auto-renew terms (Phase 6)
 app/api/checkout                  Stripe Checkout (subscription, 3-day trial on annual price)
