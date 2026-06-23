@@ -85,3 +85,27 @@ test("Social Security early reductions and delayed credits match SSA monthly for
   assert.equal(comparison.strategies.find((strategy) => strategy.claimAge === 70)?.monthlyBenefit, 2480);
   assert.ok(comparison.breakEvenAges.some((item) => item.earlierClaimAge === 62 && item.laterClaimAge === 70));
 });
+
+test("safe spending solver finds the highest spending near the target success rate", async () => {
+  const { solveSafeSpending } = await import("../lib/engine/withdrawal");
+  const result = solveSafeSpending({ ...baseProfile, balance_taxable: 500000, balance_tax_deferred: 900000, balance_roth: 100000 }, 0.85);
+
+  assert.ok(result.annualSpending > 0, "expected a positive safe spending amount");
+  assert.ok(result.monthlySpending > 0, "expected a positive monthly spending amount");
+  assert.ok(result.successRate >= 0.85, `expected solved success rate to hit target, got ${result.successRate}`);
+  assert.equal(result.targetSuccess, 0.85);
+});
+
+test("guardrails returns modified Guyton-Klinger rules and a simulated path", async () => {
+  const { guardrails } = await import("../lib/engine/withdrawal");
+  const result = guardrails({ ...baseProfile, balance_taxable: 600000, balance_tax_deferred: 800000, balance_roth: 100000 });
+
+  assert.ok(result.rules.note.includes("Guyton-Klinger"));
+  assert.ok(result.rules.raiseTrigger < result.rules.withdrawalRate);
+  assert.ok(result.rules.cutTrigger > result.rules.withdrawalRate);
+  assert.equal(result.rules.raisePct, 0.10);
+  assert.equal(result.rules.cutPct, 0.10);
+  assert.equal(result.path.length, runProjection(baseProfile).years.length);
+  assert.equal(result.path[0]?.action, "start");
+  assert.ok((result.path[0]?.spending ?? 0) > 0);
+});

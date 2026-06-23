@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { runMonteCarlo } from "@/lib/engine/montecarlo";
 import { runProjection } from "@/lib/engine/projection";
+import { guardrails } from "@/lib/engine/withdrawal";
 import { compareSocialSecurity } from "@/lib/engine/socialSecurity";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { createClient } from "@/lib/supabase/server";
@@ -52,6 +53,8 @@ export default async function PlanPage() {
   const projection = runProjection(typedProfile);
   const monteCarlo = runMonteCarlo(typedProfile, 1000, { seed: user.id });
   const socialSecurity = compareSocialSecurity(typedProfile);
+  const guardrailPlan = guardrails(typedProfile);
+  const currentGuardrail = guardrailPlan.path[0];
   const last = projection.years.at(-1);
   const successPct = Math.round(monteCarlo.probabilityOfSuccess * 100);
   const statusText = projection.depletionAge === null
@@ -89,6 +92,40 @@ export default async function PlanPage() {
         <BalanceChart points={projection.years.map((row) => ({ age: row.age, total: row.endBalances.total }))} bands={monteCarlo.paths} />
       </section>
 
+      <section className="mb-6 rounded-3xl border-2 border-emerald-100 bg-emerald-50 p-5 sm:p-7">
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.15fr] lg:items-start">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-emerald-700">Dynamic withdrawal guardrails</p>
+            <h2 className="mt-2 text-3xl font-extrabold">Your safe spending this year is about {dollars(currentGuardrail?.spending ?? 0)}</h2>
+            <p className="mt-3 text-slate-700">{guardrailPlan.rules.note}</p>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <p className="font-bold text-slate-500">Raise guardrail</p>
+                <p className="text-2xl font-extrabold">{percent(guardrailPlan.rules.raiseTrigger)}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 shadow-sm">
+                <p className="font-bold text-slate-500">Cut guardrail</p>
+                <p className="text-2xl font-extrabold">{percent(guardrailPlan.rules.cutTrigger)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white">
+            <div className="grid grid-cols-4 gap-2 bg-emerald-100 p-3 text-xs font-bold uppercase tracking-wide text-emerald-900">
+              <div>Age</div><div>Spending</div><div>Withdrawal rate</div><div>Rule</div>
+            </div>
+            <div className="divide-y divide-emerald-50">
+              {guardrailPlan.path.filter((_, i) => i < 5 || i % 5 === 0).slice(0, 9).map((row) => (
+                <div key={row.age} className="grid grid-cols-4 gap-2 p-3 text-sm">
+                  <div className="font-extrabold">{row.age}</div>
+                  <div>{dollars(row.spending)}</div>
+                  <div>{Number.isFinite(row.withdrawalRate) ? percent(row.withdrawalRate) : "—"}</div>
+                  <div className="capitalize text-slate-600">{row.action}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="mb-6 rounded-3xl border-2 border-blue-100 bg-blue-50 p-5 sm:p-7">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
