@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       subscription_data: { metadata: { user_id: user.id, plan: normalizedPlan } },
       // Trial is configured on the annual Price (trial_period_days = 3) in the Stripe dashboard.
       allow_promotion_codes: true,
-      success_url: `${base}/dashboard?welcome=1`,
+      success_url: `${base}/dashboard?welcome=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/upgrade`,
     });
 
