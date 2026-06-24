@@ -33,6 +33,7 @@ export default function Quiz() {
   const [accountDismissed, setAccountDismissed] = useState(false);
   const [accountError, setAccountError] = useState("");
   const [accountNotice, setAccountNotice] = useState("");
+  const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false);
   const router = useRouter();
 
   const done = step >= QUESTIONS.length;
@@ -89,6 +90,7 @@ export default function Quiz() {
     const normalizedEmail = email.trim().toLowerCase();
     setAccountError("");
     setAccountNotice("");
+    setAwaitingEmailConfirmation(false);
 
     if (!normalizedEmail.includes("@")) {
       setAccountError("Please enter a valid email address above before creating an account.");
@@ -103,9 +105,13 @@ export default function Quiz() {
     setCreatingAccount(true);
     try {
       const supabase = createClient();
-      // Required Supabase setting: Auth → “Confirm email” OFF, so password signUp
-      // returns an active session immediately after the visitor chooses a password.
-      const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password });
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
       if (error) {
         const message = error.message.toLowerCase();
         if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
@@ -117,11 +123,13 @@ export default function Quiz() {
       }
 
       if (!data.session) {
-        setAccountError("Your account was created, but email confirmation is still on. Please contact support so we can finish sign-in.");
+        setAccountNotice("Check your email to confirm your account. After confirming, we’ll send you to your dashboard and save this score there.");
+        setAwaitingEmailConfirmation(true);
         return;
       }
 
       router.push("/dashboard");
+      router.refresh();
     } catch {
       setAccountError("We could not reach the sign-up service. Please try again.");
     } finally {
@@ -299,10 +307,10 @@ export default function Quiz() {
                 <Button
                   type="button"
                   onClick={createAccount}
-                  disabled={creatingAccount || password.length < 8}
+                  disabled={creatingAccount || awaitingEmailConfirmation || password.length < 8}
                   className="disabled:opacity-50"
                 >
-                  {creatingAccount ? "Creating account…" : "Create my account"}
+                  {creatingAccount ? "Creating account…" : awaitingEmailConfirmation ? "Check your email" : "Create my account"}
                 </Button>
                 <Button
                   type="button"
