@@ -144,8 +144,8 @@ test("bracket-fill room respects the selected ordinary bracket ceiling", async (
 test("bracket-fill room stops at the next IRMAA cliff when avoidance is enabled", async () => {
   const { bracketFillRoom, nextIrmaaCliff } = await import("../lib/engine/roth");
 
-  assert.equal(nextIrmaaCliff(105000, "single"), 106000);
-  assert.equal(bracketFillRoom({ status: "single", ages: [65], ordinaryIncome: 105000, socialSecurity: 0, targetBracketRate: 0.24, avoidIrmaa: true }), 1000);
+  assert.equal(nextIrmaaCliff(108000, "single"), 109000);
+  assert.equal(bracketFillRoom({ status: "single", ages: [65], ordinaryIncome: 108000, socialSecurity: 0, targetBracketRate: 0.24, avoidIrmaa: true }), 1000);
 });
 
 test("Roth conversion analysis fills low-income years without crossing IRMAA where possible", async () => {
@@ -154,7 +154,7 @@ test("Roth conversion analysis fills low-income years without crossing IRMAA whe
 
   assert.equal(analysis.framing, "education");
   assert.ok(analysis.totalConverted > 0);
-  assert.ok(analysis.years.every((year) => year.projectedMagi <= 106000));
+  assert.ok(analysis.years.every((year) => year.projectedMagi <= 109000));
 });
 
 test("tax-optimized drawdown uses Roth assets before exceeding managed tax-deferred room", () => {
@@ -164,4 +164,21 @@ test("tax-optimized drawdown uses Roth assets before exceeding managed tax-defer
   assert.ok((firstYear?.withdrawals.taxDeferred ?? 0) <= 53000);
   assert.ok((firstYear?.withdrawals.roth ?? 0) > 0);
   assert.ok(firstYear?.taxStrategy?.includes("IRMAA"));
+});
+
+
+test("2026 engine params are primary-source verified and contain no placeholders", async () => {
+  const fs = await import("node:fs/promises");
+  const params = await import("../lib/engine/params/2026");
+  const source = await fs.readFile(new URL("../lib/engine/params/2026.ts", import.meta.url), "utf8");
+
+  assert.equal(params.paramsVerified, true);
+  assert.equal(params.IRMAA_STANDARD_PART_B_PREMIUM_MONTHLY, 202.90);
+  assert.deepEqual(params.SOCIAL_SECURITY_BEND_POINTS.pia, { first: 1286, second: 7749 });
+  assert.equal(params.UNIFORM_LIFETIME_DIVISORS[72], 27.4);
+  assert.equal(params.UNIFORM_LIFETIME_DIVISORS[120], 2.0);
+  assert.equal(Object.keys(params.UNIFORM_LIFETIME_DIVISORS).length, 49);
+  assert.equal(params.IRMAA_BRACKETS.single[0]?.upTo, 109000);
+  assert.equal(params.IRMAA_BRACKETS.married[0]?.upTo, 218000);
+  assert.ok(!/VERIFY|placeholder|null/i.test(source));
 });
