@@ -18,7 +18,9 @@
     "@supabase/ssr": "^0.5.1",
     "stripe": "^16.8.0",
     "lucide-react": "^0.468.0",
-    "@anthropic-ai/sdk": "^0.105.0"
+    "@anthropic-ai/sdk": "^0.105.0",
+    "plaid": "^30.0.0",
+    "react-plaid-link": "^3.6.1"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
