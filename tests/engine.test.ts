@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { federalOrdinaryIncomeTax, rmdAmount, standardDeduction, taxableSocialSecurity } from "../lib/engine/tax";
-import { runProjection } from "../lib/engine/projection";
+import { projectDepletion, runProjection } from "../lib/engine/projection";
 import type { FinancialProfile } from "../lib/engine/types";
 
 const baseProfile: FinancialProfile = {
@@ -32,6 +32,30 @@ const baseProfile: FinancialProfile = {
   planning_horizon_age: 95,
   updated_at: null,
 };
+
+test("simple depletion projection never depletes when there is no gap", () => {
+  const projection = projectDepletion({ currentAge: 65, realSavings: 250000, monthlyGap: 0 });
+
+  assert.equal(projection.depletionAge, null);
+  assert.equal(projection.band.expected, null);
+  assert.ok(projection.realEndingBalance > 250000);
+});
+
+test("simple depletion projection depletes early with a large monthly gap", () => {
+  const projection = projectDepletion({ currentAge: 65, realSavings: 120000, monthlyGap: 6000, horizonAge: 95 });
+
+  assert.equal(projection.depletionAge, 66);
+  assert.equal(projection.band.expected, projection.depletionAge);
+  assert.ok((projection.band.good ?? 0) >= (projection.band.poor ?? 0));
+});
+
+test("simple depletion projection responds to inflation sensitivity", () => {
+  const lowInflation = projectDepletion({ currentAge: 65, realSavings: 600000, monthlyGap: 2500, monthlySocialSecurity: 2500, inflationRate: 0.02 });
+  const highInflation = projectDepletion({ currentAge: 65, realSavings: 600000, monthlyGap: 2500, monthlySocialSecurity: 2500, inflationRate: 0.06 });
+
+  assert.ok((highInflation.depletionAge ?? 0) < (lowInflation.depletionAge ?? 100));
+  assert.ok(highInflation.realEndingBalance < lowInflation.realEndingBalance);
+});
 
 test("tax helpers match hand-computed ordinary and Social Security cases", () => {
   assert.equal(standardDeduction("single", [66], 40000), 23000);

@@ -10,6 +10,9 @@ export const EXPECTED_RETURNS = {
 } as const;
 
 export const DEFAULT_ASSUMPTIONS = {
+  inflation: 0.03,
+  socialSecurityCola: SOCIAL_SECURITY_COLA,
+  depletionBandReturnSpread: 0.02,
   allocationAssumptions: {
     stock: { expectedReturn: EXPECTED_RETURNS.stock, stdev: 0.16 },
     bond: { expectedReturn: EXPECTED_RETURNS.bond, stdev: 0.06 },

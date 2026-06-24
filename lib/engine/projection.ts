@@ -1,7 +1,95 @@
-import { CURRENT_YEAR, EXPECTED_RETURNS, FULL_RETIREMENT_AGE, RMD_START_AGE, SOCIAL_SECURITY_COLA } from "./params/2026";
+import { CURRENT_YEAR, DEFAULT_ASSUMPTIONS, EXPECTED_RETURNS, FULL_RETIREMENT_AGE, SOCIAL_SECURITY_COLA } from "./params/2026";
 import { bracketFillRoom } from "./roth";
 import { filingStatusFromMaritalStatus, rmdAmount, totalIncomeTaxes } from "./tax";
-import type { FinancialProfile } from "./types";
+import { FINANCIAL_PROFILE_DEFAULTS, type FinancialProfile } from "./types";
+
+export type DepletionBand = {
+  good: number | null;
+  expected: number | null;
+  poor: number | null;
+};
+
+export type DepletionProjectionInput = {
+  currentAge: number;
+  realSavings: number;
+  monthlyGap: number;
+  horizonAge?: number;
+  stockPct?: number;
+  bondPct?: number;
+  cashPct?: number;
+  inflationRate?: number;
+  socialSecurityCola?: number;
+  monthlySocialSecurity?: number;
+};
+
+export type DepletionProjectionResult = {
+  depletionAge: number | null;
+  realEndingBalance: number;
+  band: DepletionBand;
+};
+
+function boundedPct(value: number | undefined, fallback: number) {
+  if (value === undefined || !Number.isFinite(value)) return fallback / 100;
+  return Math.max(0, value) / 100;
+}
+
+function depletionExpectedReturn(input: DepletionProjectionInput) {
+  const assumptions = DEFAULT_ASSUMPTIONS.allocationAssumptions;
+  const weights = {
+    stock: boundedPct(input.stockPct, 60),
+    bond: boundedPct(input.bondPct, 30),
+    cash: boundedPct(input.cashPct, 10),
+  };
+  const totalWeight = weights.stock + weights.bond + weights.cash || 1;
+  return (weights.stock * assumptions.stock.expectedReturn
+    + weights.bond * assumptions.bond.expectedReturn
+    + weights.cash * assumptions.cash.expectedReturn) / totalWeight;
+}
+
+function projectBalanceAtReturn(input: DepletionProjectionInput, nominalReturn: number) {
+  const horizonAge = input.horizonAge ?? FINANCIAL_PROFILE_DEFAULTS.planning_horizon_age;
+  const inflationRate = input.inflationRate ?? DEFAULT_ASSUMPTIONS.inflation;
+  const socialSecurityCola = input.socialSecurityCola ?? DEFAULT_ASSUMPTIONS.socialSecurityCola;
+  const realReturn = (1 + nominalReturn) / (1 + inflationRate) - 1;
+  const startAge = Math.floor(input.currentAge);
+  const startingSavings = Math.max(0, input.realSavings);
+  const startingAnnualGap = Math.max(0, input.monthlyGap) * 12;
+  const startingAnnualSocialSecurity = Math.max(0, input.monthlySocialSecurity ?? 0) * 12;
+  const startingAnnualSpending = startingAnnualGap + startingAnnualSocialSecurity;
+  let balance = startingSavings;
+  let depletionAge: number | null = null;
+
+  for (let age = startAge; age <= horizonAge; age++) {
+    const yearIndex = age - startAge;
+    const realSocialSecurity = startingAnnualSocialSecurity * ((1 + socialSecurityCola) / (1 + inflationRate)) ** yearIndex;
+    const realGap = Math.max(0, startingAnnualSpending - realSocialSecurity);
+
+    balance = Math.max(0, balance - realGap);
+    if (depletionAge === null && balance <= 0 && realGap > 0) {
+      depletionAge = age;
+      balance = 0;
+    }
+    balance *= 1 + realReturn;
+  }
+
+  return { depletionAge, realEndingBalance: balance };
+}
+
+export function projectDepletion(input: DepletionProjectionInput): DepletionProjectionResult {
+  const expected = depletionExpectedReturn(input);
+  const stdev = DEFAULT_ASSUMPTIONS.depletionBandReturnSpread;
+  const expectedPath = projectBalanceAtReturn(input, expected);
+
+  return {
+    depletionAge: expectedPath.depletionAge,
+    realEndingBalance: expectedPath.realEndingBalance,
+    band: {
+      good: projectBalanceAtReturn(input, expected + stdev).depletionAge,
+      expected: expectedPath.depletionAge,
+      poor: projectBalanceAtReturn(input, expected - stdev).depletionAge,
+    },
+  };
+}
 
 export type ProjectionYear = {
   year: number; age: number; income: number; spending: number; taxes: number;
