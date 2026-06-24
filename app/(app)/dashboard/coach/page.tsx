@@ -7,7 +7,7 @@ import { getSubscriptionAccess } from "@/lib/subscription";
 export default async function CoachPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/coach");
+  if (!user) redirect("/login?next=/dashboard/coach");
 
   const access = await getSubscriptionAccess(user.id);
   if (!access.active) {
