@@ -4,6 +4,7 @@ import { getSubscriptionAccess, hasPaidAccess } from "@/lib/subscription";
 import { COACH_MESSAGE_CAPS, type SubscriptionTier } from "@/lib/subscription-types";
 import { getAnthropicClient, anthropicModel, timeoutSignal } from "@/lib/ai/client";
 import { coachGuardrailResponse, SAFETY_SYSTEM } from "@/lib/ai/guardrails";
+import { answerHasOnlyToolSourcedNumbers, type CalculationTrace } from "@/lib/ai/coachNumbers";
 import { runProjection } from "@/lib/engine/projection";
 import { compareSocialSecurity } from "@/lib/engine/socialSecurity";
 import { analyzeRothConversion } from "@/lib/engine/roth";
@@ -17,7 +18,6 @@ const STANDARD_DISCLAIMER = "RetireGuard provides education only, not financial,
 const fallback = `The AI coach is unavailable right now. ${STANDARD_DISCLAIMER}`;
 
 type IncomingMessage = { role: "user" | "assistant"; content: string };
-type CalculationTrace = { tool: ToolName; inputs: unknown; outputs: unknown };
 type ToolName = "compute_safety_score" | "project_depletion" | "tax_for_income" | "irmaa_for_income" | "compare_ss_claiming" | "rmd_for_age" | "roth_conversion_impact";
 
 const PROFILE_FIELDS = ["birthdate", "marital_status", "spouse_birthdate", "state", "balance_taxable", "taxable_cost_basis", "balance_tax_deferred", "balance_roth", "stock_pct", "bond_pct", "cash_pct", "ss_benefit_fra", "ss_claim_age", "spouse_ss_benefit_fra", "spouse_ss_claim_age", "pension_amount", "pension_start_age", "pension_has_cola", "pension_survivor_pct", "spending_essential_monthly", "spending_discretionary_monthly", "inflation_assumption", "target_retirement_age", "planning_horizon_age"] as const;
@@ -58,40 +58,6 @@ function compactProjection(result: ReturnType<typeof runProjection>) {
 
 function coachJson(answer: string, calculations: CalculationTrace[] = [], init?: ResponseInit, usage?: { tier: SubscriptionTier; remaining: number | null; cap: number | null }) {
   return NextResponse.json({ answer, calculations, usage }, init);
-}
-
-function canonicalNumericToken(value: string) {
-  const trimmed = value.replace(/[$,%]/g, "").replace(/,/g, "").trim();
-  const numeric = Number(trimmed);
-  if (!Number.isFinite(numeric)) return null;
-  return String(Math.round(numeric * 100) / 100);
-}
-
-function collectToolNumbers(value: unknown, allowed = new Set<string>()) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    allowed.add(String(Math.round(value * 100) / 100));
-    return allowed;
-  }
-  if (Array.isArray(value)) {
-    value.forEach((item) => collectToolNumbers(item, allowed));
-    return allowed;
-  }
-  if (value && typeof value === "object") {
-    Object.values(value as Record<string, unknown>).forEach((item) => collectToolNumbers(item, allowed));
-  }
-  return allowed;
-}
-
-export function answerHasOnlyToolSourcedNumbers(answer: string, calculations: CalculationTrace[]) {
-  const allowed = new Set<string>();
-  calculations.forEach((calculation) => {
-    collectToolNumbers(calculation.outputs, allowed);
-  });
-  const mentioned = answer.match(/\$?\b\d[\d,]*(?:\.\d+)?\b%?/g) ?? [];
-  return mentioned.every((token) => {
-    const canonical = canonicalNumericToken(token);
-    return canonical === null || allowed.has(canonical);
-  });
 }
 
 function usageMeta(tier: SubscriptionTier, monthlyCount = 0) {
