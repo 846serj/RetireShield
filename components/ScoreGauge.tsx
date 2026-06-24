@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { bandVerdict, type ScoreBand } from "@/lib/verdicts";
+import { bandVerdict, type ScoreBand, type ScoreBandLabel } from "@/lib/verdicts";
 import { SubScoreBar, clampScore, scoreBandKey, type ScoreBandKey, type SubScoreBarProps } from "@/components/SubScoreBar";
 
 type SubScore = Pick<SubScoreBarProps, "label" | "value" | "caption" | "scoreKey">;
@@ -16,7 +16,7 @@ type ScoreGaugeProps = {
 };
 
 type ScoreBandMeta = {
-  label: string;
+  label: ScoreBandLabel;
   color: string;
   textClass: string;
 };
