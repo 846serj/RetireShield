@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { COACH_MESSAGE_CAPS, getSubscriptionAccess, hasPaidAccess, type SubscriptionTier } from "@/lib/subscription";
+import { getSubscriptionAccess, hasPaidAccess } from "@/lib/subscription";
+import { COACH_MESSAGE_CAPS, type SubscriptionTier } from "@/lib/subscription-types";
 import { getAnthropicClient, anthropicModel, timeoutSignal } from "@/lib/ai/client";
 import { coachGuardrailResponse, SAFETY_SYSTEM } from "@/lib/ai/guardrails";
 import { runProjection } from "@/lib/engine/projection";

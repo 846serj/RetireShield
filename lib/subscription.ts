@@ -1,20 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-
-export type SubscriptionTier = "free" | "plus" | "premium" | "concierge";
-
-export const COACH_MESSAGE_CAPS = {
-  plus: 25,
-  premium: null,
-  concierge: null,
-} as const;
-
-export type SubscriptionAccess = {
-  active: boolean;
-  tier: SubscriptionTier;
-  plan: string | null;
-  status: string | null;
-  currentPeriodEnd: string | null;
-};
+import type { SubscriptionAccess, SubscriptionTier } from "@/lib/subscription-types";
 
 function tierFromPlan(plan?: string | null): SubscriptionTier {
   const normalized = plan?.toLowerCase() ?? "";

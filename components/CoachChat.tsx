@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { SubscriptionTier } from "@/lib/subscription";
-import { COACH_MESSAGE_CAPS } from "@/lib/subscription";
+import { COACH_MESSAGE_CAPS, type SubscriptionTier } from "@/lib/subscription-types";
 
 type CalculationTrace = { tool: string; inputs: unknown; outputs: unknown };
 type ChatMessage = { role: "user" | "assistant"; content: string; calculations?: CalculationTrace[] };
