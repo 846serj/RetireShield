@@ -8,6 +8,8 @@ import CoachChat from "@/components/CoachChat";
 import { getMatchedAlerts } from "@/lib/alerts";
 import type { Answers } from "@/lib/scoring";
 import ScoreHydrator from "@/components/ScoreHydrator";
+import { ScoreGauge } from "@/components/ScoreGauge";
+import LockedTeaser from "@/components/LockedTeaser";
 import { stripe } from "@/lib/stripe";
 import { Button, Disclaimer, Eyebrow } from "@/components/ui";
 
@@ -18,6 +20,18 @@ const PRIORITY_STYLE: Record<string, string> = {
 type DashboardProps = {
   searchParams?: { session_id?: string; welcome?: string };
 };
+
+const SUB_SCORE_LABELS = {
+  income: "Guaranteed income",
+  withdrawal: "Spending sustainability",
+  inflation: "Inflation exposure",
+  market: "Market-drop cushion",
+} as const;
+
+function formatCheckedDate(value?: string) {
+  if (!value) return "Not checked yet";
+  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(value));
+}
 
 async function syncCheckoutSession(sessionId: string, userId: string) {
   if (!process.env.STRIPE_SECRET_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) return false;
@@ -73,10 +87,18 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   const alerts = paid && answers
     ? await getMatchedAlerts(supabase, { state: answers.state, age: answers.age, worry: answers.worry })
     : [];
+  const scoreSubScores = latest?.sub_scores
+    ? (Object.entries(SUB_SCORE_LABELS) as [keyof typeof SUB_SCORE_LABELS, string][]).map(([key, label]) => ({
+        label,
+        value: Number(latest.sub_scores[key] ?? 0),
+        scoreKey: key,
+      }))
+    : [];
+  const checkedDate = formatCheckedDate(latest?.created_at);
 
   return (
     <div className="rg-page-shell">
-    <div className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
       <ScoreHydrator hasScore={!!latest} />
       {searchParams?.welcome ? (
         <div className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
@@ -94,27 +116,80 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
         {paid ? <Button href="/api/portal" variant="secondary" className="text-base">Manage subscription</Button> : null}
       </div>
 
-      <section className="rg-card mb-6">
-        <h2 className="mb-2 text-xl font-bold">Retirement Safety Score</h2>
+      <section className="mb-8 grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:items-stretch">
         {latest ? (
-          <div className="text-6xl font-extrabold tracking-tight">
-            {latest.overall} <span className="text-lg font-semibold text-slate-500">{latest.band}</span>
-          </div>
+          <ScoreGauge
+            value={latest.overall}
+            band={latest.band}
+            subScores={scoreSubScores}
+            badge="First check-in"
+            subtitle="Your current retirement readiness snapshot"
+          />
         ) : (
-          <Link href="/quiz" className="text-brand underline">Take the Score quiz →</Link>
+          <div className="rg-card flex min-h-[28rem] flex-col items-center justify-center text-center">
+            <p className="rg-kicker">Safety Score</p>
+            <h2 className="mt-3 text-3xl font-extrabold">Take your first check-in</h2>
+            <p className="mt-3 max-w-md text-slate-700">Answer a short quiz to create your Retirement Safety Score and unlock personalized monitoring.</p>
+            <Button href="/quiz" className="mt-6">Take the Score quiz</Button>
+          </div>
         )}
+        <div className="rg-card-highlight flex flex-col justify-between">
+          <div>
+            <p className="rg-kicker">Monthly monitoring</p>
+            <h2 className="mt-2 text-3xl font-extrabold">A calm home base for your retirement plan.</h2>
+            <p className="mt-4 text-lg text-slate-700">
+              Last checked: <span className="font-bold text-ink">{checkedDate}</span>. We re-check monthly.
+            </p>
+            <p className="mt-3 text-slate-700">
+              Keep your score, action plan, alerts, and education-only coach in one place so you always know what to review next.
+            </p>
+          </div>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row lg:flex-col">
+            <Button href="/quiz">Retake the quiz</Button>
+            {!paid ? <Button href="/upgrade" variant="secondary">Unlock paid sections</Button> : null}
+          </div>
+        </div>
       </section>
 
       {!paid ? (
-        <section className="rg-card-highlight text-center">
-          <h2 className="text-xl font-bold mb-2">Unlock your action plan + alerts</h2>
-          <p className="text-slate-600 mb-4">
-            Get your personalized, prioritized plan and ongoing alerts matched to your state, age, and worries.
-          </p>
-          <Button href="/upgrade">
-            Start 3-day free trial
-          </Button>
-        </section>
+        <div className="space-y-6">
+          <LockedTeaser
+            eyebrow="Action plan"
+            title="Unlock your prioritized next steps"
+            description="Paid members see the personalized plan built from their score, answers, and RetireShield rules."
+          >
+            <div className="space-y-4">
+              {(plan.length > 0 ? plan.slice(0, 2) : [
+                { priority: "High", area: "Income", title: "Review income coverage", why: "See which gaps matter first.", steps: ["Compare guaranteed income with essentials.", "Prepare questions for a fiduciary review."] },
+                { priority: "Medium", area: "Scam safety", title: "Set a verification routine", why: "Lower fraud risk with repeatable checks.", steps: ["Document official contact methods.", "Pause before acting on urgent messages."] },
+              ]).map((p, i) => (
+                <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                  <span className={`text-xs font-bold px-2 py-1 rounded ${PRIORITY_STYLE[p.priority]}`}>{p.priority}</span>
+                  <h3 className="mt-3 text-lg font-bold">{p.title}</h3>
+                  <p className="mt-1 text-slate-600">{p.why}</p>
+                </div>
+              ))}
+            </div>
+          </LockedTeaser>
+          <LockedTeaser
+            eyebrow="Alerts + coach"
+            title="Unlock matched alerts and the AI coach"
+            description="Get alerts matched to your state, age, and worries, plus education-only help deciding what to review next."
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                <p className="rg-kicker text-brand">Benefit</p>
+                <h3 className="mt-2 font-bold">State-specific retirement alert</h3>
+                <p className="mt-1 text-sm text-slate-600">Matched alerts appear here when they fit your profile.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                <p className="rg-kicker text-emerald-700">AI coach</p>
+                <h3 className="mt-2 font-bold">Ask what to review next</h3>
+                <p className="mt-1 text-sm text-slate-600">Education-only guidance helps explain your dashboard.</p>
+              </div>
+            </div>
+          </LockedTeaser>
+        </div>
       ) : (
         <>
           <section className="mb-8 grid gap-4 md:grid-cols-3">
