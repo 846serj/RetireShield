@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { SubscriptionTier } from "@/lib/subscription";
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
+type CalculationTrace = { tool: string; inputs: unknown; outputs: unknown };
+type ChatMessage = { role: "user" | "assistant"; content: string; calculations?: CalculationTrace[] };
 const STARTERS = [
   "What does my Retirement Safety Score mean?",
   "What questions should I ask a fiduciary about Social Security timing?",
@@ -30,21 +31,9 @@ export default function CoachChat({ tier = "premium" }: { tier?: SubscriptionTie
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next.slice(-10) }),
       });
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "Coach unavailable");
-      }
-      if (!res.body) throw new Error("Coach unavailable");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let assistant = "";
-      setMessages([...next, { role: "assistant", content: "" }]);
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        assistant += decoder.decode(value, { stream: true });
-        setMessages([...next, { role: "assistant", content: assistant }]);
-      }
+      const payload = await res.json().catch(() => null) as { answer?: string; calculations?: CalculationTrace[] } | null;
+      if (!res.ok) throw new Error(payload?.answer || "Coach unavailable");
+      setMessages([...next, { role: "assistant", content: payload?.answer || "Coach unavailable", calculations: payload?.calculations ?? [] }]);
     } catch (error) {
       const message = error instanceof Error && error.message ? error.message : "The AI coach is unavailable right now. Please try again later. For personal decisions, talk with a licensed fiduciary.";
       setMessages([...next, { role: "assistant", content: message }]);
@@ -84,6 +73,19 @@ export default function CoachChat({ tier = "premium" }: { tier?: SubscriptionTie
           <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
             <div className={`inline-block max-w-[85%] whitespace-pre-wrap rounded-xl px-4 py-2 text-sm ${m.role === "user" ? "bg-brand text-white" : "bg-white text-slate-800 shadow-sm"}`}>
               {m.content || "…"}
+              {m.role === "assistant" && m.calculations && m.calculations.length > 0 ? (
+                <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2 text-left text-xs text-slate-600">
+                  <summary className="cursor-pointer font-bold text-slate-700">How this was calculated</summary>
+                  <ul className="mt-2 space-y-2">
+                    {m.calculations.map((calc, calcIndex) => (
+                      <li key={`${calc.tool}-${calcIndex}`}>
+                        <span className="font-bold">{calc.tool}</span>
+                        <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-white p-2">{JSON.stringify({ inputs: calc.inputs, outputs: calc.outputs }, null, 2)}</pre>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
             </div>
           </div>
         ))}
