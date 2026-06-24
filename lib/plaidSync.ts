@@ -1,5 +1,6 @@
 import { decrypt } from "@/lib/crypto";
 import { plaid } from "@/lib/plaid";
+import { isPlaidLoginRequired, withPlaidLogging } from "@/lib/plaidHelpers";
 import { updateProfileFromConnected } from "@/lib/connected/profileSync";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -58,7 +59,9 @@ function transactionRow(userId: string, transaction: PlaidTransaction) {
 
 export async function refreshBalances(item: PlaidItem, accessToken: string) {
   const service = createServiceClient();
-  const { data } = await plaid.accountsBalanceGet({ access_token: accessToken });
+  const { data } = await withPlaidLogging("accountsBalanceGet", { user_id: item.user_id, item_id: item.item_id }, () =>
+    plaid.accountsBalanceGet({ access_token: accessToken })
+  );
   const accounts = data.accounts.map((account: any) => accountRow(item.user_id, item.item_id, account));
   if (accounts.length > 0) {
     await service.from("financial_accounts").upsert(accounts, { onConflict: "account_id" });
@@ -71,7 +74,9 @@ export async function syncTransactions(item: PlaidItem, accessToken: string) {
   let hasMore = true;
 
   while (hasMore) {
-    const { data } = await plaid.transactionsSync({ access_token: accessToken, cursor });
+    const { data } = await withPlaidLogging("transactionsSync", { user_id: item.user_id, item_id: item.item_id }, () =>
+      plaid.transactionsSync({ access_token: accessToken, cursor })
+    );
     const upserts = [...data.added, ...data.modified].map((transaction: PlaidTransaction) => transactionRow(item.user_id, transaction));
 
     if (upserts.length > 0) {
@@ -93,7 +98,9 @@ export async function syncTransactions(item: PlaidItem, accessToken: string) {
 
 export async function syncHoldings(item: PlaidItem, accessToken: string) {
   const service = createServiceClient();
-  const { data } = await plaid.investmentsHoldingsGet({ access_token: accessToken });
+  const { data } = await withPlaidLogging("investmentsHoldingsGet", { user_id: item.user_id, item_id: item.item_id }, () =>
+    plaid.investmentsHoldingsGet({ access_token: accessToken })
+  );
 
   const accounts = data.accounts.map((account: any) => accountRow(item.user_id, item.item_id, account));
   if (accounts.length > 0) await service.from("financial_accounts").upsert(accounts, { onConflict: "account_id" });
@@ -129,9 +136,23 @@ export async function syncHoldings(item: PlaidItem, accessToken: string) {
 }
 
 export async function syncItem(item: PlaidItem) {
+  const service = createServiceClient();
   const accessToken = decrypt(item.access_token_encrypted);
-  await syncTransactions(item, accessToken);
-  await syncHoldings(item, accessToken);
-  await updateProfileFromConnected(item.user_id);
-  await refreshBalances(item, accessToken);
+
+  try {
+    await syncTransactions(item, accessToken);
+    await syncHoldings(item, accessToken);
+    await updateProfileFromConnected(item.user_id);
+    await refreshBalances(item, accessToken);
+    await service.from("plaid_items").update({ status: "active" }).eq("user_id", item.user_id).eq("item_id", item.item_id);
+  } catch (error) {
+    if (isPlaidLoginRequired(error)) {
+      await service
+        .from("plaid_items")
+        .update({ status: "login_required" })
+        .eq("user_id", item.user_id)
+        .eq("item_id", item.item_id);
+    }
+    throw error;
+  }
 }
