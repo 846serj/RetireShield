@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import { computeScores, type Answers } from "@/lib/scoring";
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendRetirementWatchEmail } from "@/lib/email";
+import { sendRetirementWatchEmail, sendTrustedContactFraudEmail } from "@/lib/email";
 import { getMatchedAlerts } from "@/lib/alerts";
 import { buildFinancialPicture, type SpendingAccount, type SpendingTransaction } from "@/lib/engine/spending";
 import { buildPortfolioAnalysis, type FinancialAccountRow, type HoldingRow, type SecurityRow } from "@/lib/engine/portfolio";
+import { detectFraudFlags } from "@/lib/engine/fraud";
 
 type LatestScoreRow = {
   id: string;
@@ -59,17 +60,19 @@ async function rescoreUser(supabase: ReturnType<typeof createServiceClient>, use
   const row = latest as LatestScoreRow;
   const answers = row.answers as Answers;
   const result = computeScores(answers);
-  const [transactionsResult, accountsResult, holdingsResult, securitiesResult, historyResult] = await Promise.all([
+  const [transactionsResult, accountsResult, holdingsResult, securitiesResult, historyResult, trustedContactsResult] = await Promise.all([
     supabase.from("transactions").select("*").eq("user_id", user.id),
     supabase.from("financial_accounts").select("*").eq("user_id", user.id),
     supabase.from("holdings").select("*").eq("user_id", user.id),
     supabase.from("securities").select("*"),
     supabase.from("scores").select("answers, created_at").eq("user_id", user.id).not("answers", "is", null).order("created_at", { ascending: true }),
+    supabase.from("trusted_contacts").select("name,email,consent_at").eq("user_id", user.id).not("consent_at", "is", null),
   ]);
   const hasConnectedAccounts = (accountsResult.data?.length ?? 0) > 0 || (transactionsResult.data?.length ?? 0) > 0;
   const connectedContext = hasConnectedAccounts && transactionsResult.data && accountsResult.data
     ? {
         transactions: transactionsResult.data as SpendingTransaction[],
+        accounts: accountsResult.data as SpendingAccount[],
         financialPicture: buildFinancialPicture(transactionsResult.data as SpendingTransaction[], accountsResult.data as SpendingAccount[]),
         portfolioAnalysis: buildPortfolioAnalysis((holdingsResult.data ?? []) as HoldingRow[], (securitiesResult.data ?? []) as SecurityRow[], accountsResult.data as FinancialAccountRow[]),
         scoreHistory: (historyResult.data ?? []) as { answers?: { savings?: number | string | null } | null; created_at?: string | null }[],
@@ -87,6 +90,17 @@ async function rescoreUser(supabase: ReturnType<typeof createServiceClient>, use
   });
 
   if (insertError) return { userId: user.id, inserted: false, error: insertError.message };
+
+  const highRiskFlags = detectFraudFlags((transactionsResult.data ?? []) as SpendingTransaction[], { accounts: (accountsResult.data ?? []) as SpendingAccount[] }).filter((flag) => flag.riskScore >= 80);
+  const trustedContacts = (trustedContactsResult.data ?? []) as { email?: string | null; consent_at?: string | null }[];
+  if (highRiskFlags.length > 0) {
+    await Promise.all(trustedContacts.filter((contact) => contact.email && contact.consent_at).map((contact) => sendTrustedContactFraudEmail(contact.email!, {
+      memberEmail: user.email,
+      flagCount: highRiskFlags.length,
+      topReason: highRiskFlags[0].reason,
+      topAdvice: highRiskFlags[0].advice,
+    })));
+  }
 
   if (user.email) {
     await sendRetirementWatchEmail(user.email, {

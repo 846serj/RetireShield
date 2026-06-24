@@ -18,6 +18,7 @@ import ConnectAccounts from "@/components/ConnectAccounts";
 import ScoreHistoryChart from "@/components/ScoreHistoryChart";
 import { stripe } from "@/lib/stripe";
 import { Button, Eyebrow } from "@/components/ui";
+import { buildFinancialPicture, type SpendingAccount, type SpendingTransaction } from "@/lib/engine/spending";
 
 
 type DashboardProps = {
@@ -89,6 +90,24 @@ async function syncCheckoutSession(sessionId: string, userId: string) {
   }
 }
 
+async function saveTrustedContact(formData: FormData) {
+  "use server";
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const consent = formData.get("consent") === "on";
+  if (!name || !email) return;
+  await supabase.from("trusted_contacts").upsert({
+    user_id: user.id,
+    name,
+    email,
+    consent_at: consent ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "user_id,email" });
+}
+
 export default async function Dashboard({ searchParams }: DashboardProps) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -115,8 +134,19 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
       await supabase.from("scores").update({ ai_plan: plan }).eq("id", latest.id);
     }
   }
+  const [{ data: transactions }, { data: accounts }, { data: trustedContacts }] = paid
+    ? await Promise.all([
+        supabase.from("transactions").select("*").eq("user_id", user.id),
+        supabase.from("financial_accounts").select("*").eq("user_id", user.id),
+        supabase.from("trusted_contacts").select("name,email,consent_at").eq("user_id", user.id).order("created_at", { ascending: false }),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }];
   const alerts = paid && answers
-    ? await getMatchedAlerts(supabase, { state: answers.state, age: answers.age, worry: answers.worry })
+    ? await getMatchedAlerts(supabase, { state: answers.state, age: answers.age, worry: answers.worry }, 12, {
+        transactions: (transactions ?? []) as SpendingTransaction[],
+        accounts: (accounts ?? []) as SpendingAccount[],
+        financialPicture: buildFinancialPicture((transactions ?? []) as SpendingTransaction[], (accounts ?? []) as SpendingAccount[]),
+      })
     : [];
   const scoreSubScores = latest?.sub_scores
     ? (Object.entries(SUB_SCORE_LABELS) as [keyof typeof SUB_SCORE_LABELS, string][]).map(([key, label]) => ({
@@ -283,6 +313,37 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
           <PlanList items={plan} />
 
           <div id="coach"><CoachChat tier={subscriptionAccess.tier} /></div>
+
+
+          <section className="rg-card mb-8" aria-labelledby="trusted-contacts-heading">
+            <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
+              <div>
+                <p className="rg-kicker">Scam Shield</p>
+                <h2 id="trusted-contacts-heading" className="mt-2 text-3xl font-extrabold">Trusted contact alerts</h2>
+                <p className="mt-3 text-slate-700">Add someone you trust. We email them only when connected-account monitoring sees a high-risk scam flag and you have given consent.</p>
+                <div className="mt-4 space-y-3">
+                  {(trustedContacts ?? []).length > 0 ? (trustedContacts ?? []).map((contact: any) => (
+                    <div key={contact.email} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="font-bold text-ink">{contact.name}</p>
+                      <p className="text-sm text-slate-600">{contact.email}</p>
+                      <p className={`mt-2 text-xs font-extrabold uppercase tracking-[0.14em] ${contact.consent_at ? "text-emerald-700" : "text-amber-700"}`}>{contact.consent_at ? "Consent enabled" : "Consent not enabled"}</p>
+                    </div>
+                  )) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">No trusted contact saved yet.</p>}
+                </div>
+              </div>
+              <form action={saveTrustedContact} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <label className="block text-sm font-bold text-slate-700" htmlFor="trusted-name">Name</label>
+                <input id="trusted-name" name="name" required className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder="Trusted contact name" />
+                <label className="mt-4 block text-sm font-bold text-slate-700" htmlFor="trusted-email">Email</label>
+                <input id="trusted-email" name="email" type="email" required className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3" placeholder="name@example.com" />
+                <label className="mt-4 flex gap-3 rounded-2xl bg-band p-4 text-sm font-semibold text-slate-700">
+                  <input name="consent" type="checkbox" className="mt-1" />
+                  I consent to RetireShield emailing this trusted contact if high-risk scam activity is detected.
+                </label>
+                <Button className="mt-5 w-full justify-center">Save trusted contact</Button>
+              </form>
+            </div>
+          </section>
 
           <AlertFeed alerts={alerts} />
         </>

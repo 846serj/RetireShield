@@ -23,3 +23,16 @@ services:
         value: 20
       - key: NEXT_PUBLIC_BASE_URL
         value: https://RetireShield.com
+
+  - type: cron
+    name: retireshield-daily-fraud-check
+    runtime: node
+    plan: free
+    schedule: "0 14 * * *"
+    buildCommand: npm ci && npm run build
+    startCommand: 'curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" $NEXT_PUBLIC_BASE_URL/api/cron/daily-fraud-check'
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_BASE_URL
+        value: https://RetireShield.com

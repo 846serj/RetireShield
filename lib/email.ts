@@ -193,3 +193,43 @@ export async function sendRetirementWatchEmail(email: string, update: Retirement
     },
   );
 }
+
+export type TrustedContactFraudNotice = {
+  memberEmail?: string | null;
+  flagCount: number;
+  topReason: string;
+  topAdvice: string;
+};
+
+export async function sendTrustedContactFraudEmail(email: string, notice: TrustedContactFraudNotice) {
+  const apiKey = process.env.ESP_API_KEY;
+  const publicationId = process.env.BEEHIIV_PUBLICATION_ID;
+  const automationId = process.env.BEEHIIV_TRUSTED_CONTACT_FRAUD_AUTOMATION_ID;
+
+  if (!apiKey || !automationId) {
+    console.log(`[ESP Trusted Contact stub] ${email}: ${notice.flagCount} high-risk fraud flag(s) for ${notice.memberEmail ?? "member"}; top: ${notice.topReason}; advice: ${notice.topAdvice}`);
+    return;
+  }
+
+  if (!publicationId) {
+    console.error("[ESP] BEEHIIV_PUBLICATION_ID is missing; skipping trusted-contact fraud email");
+    return;
+  }
+
+  await beehiivRequest(
+    `${BEEHIIV_API_BASE}/publications/${publicationId}/automations/${automationId}/journeys`,
+    apiKey,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        custom_fields: [
+          { name: "trusted_contact_member_email", value: notice.memberEmail ?? "" },
+          { name: "trusted_contact_flag_count", value: String(notice.flagCount) },
+          { name: "trusted_contact_top_reason", value: notice.topReason },
+          { name: "trusted_contact_top_advice", value: notice.topAdvice },
+        ],
+      }),
+    },
+  );
+}

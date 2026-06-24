@@ -3,7 +3,8 @@
 import { IRMAA_BRACKETS } from "@/lib/engine/params/2026";
 import type { Answers } from "@/lib/scoring";
 import { monitorRuleAlerts, type MonitorRulesInput } from "@/lib/connected/monitorRules";
-import type { SpendingTransaction } from "@/lib/engine/spending";
+import type { SpendingAccount, SpendingTransaction } from "@/lib/engine/spending";
+import { detectFraudFlags, type FraudFlag } from "@/lib/engine/fraud";
 
 export type AlertCategory = "benefit" | "inflation" | "scam" | "tax" | "medicare" | "ss";
 export type AlertStatus = "draft" | "approved" | "published" | "archived";
@@ -43,7 +44,7 @@ type SupabaseLike = { from: (t: string) => any };
 
 type AlertProfile = Pick<Answers, "age" | "worry" | "state"> & Partial<Answers>;
 
-type AlertMatchContext = MonitorRulesInput & { transactions?: SpendingTransaction[] };
+type AlertMatchContext = MonitorRulesInput & { transactions?: SpendingTransaction[]; accounts?: SpendingAccount[] };
 
 function normalizeCategory(category: string): AlertCategory | string {
   return CATEGORY_FALLBACK[category] ?? category;
@@ -139,6 +140,33 @@ function personalizedAlerts(profile: AlertProfile, context?: AlertMatchContext):
   return alerts;
 }
 
+function fraudAlertBase(flag: FraudFlag, now: string): Alert {
+  const amount = Math.round(Math.abs(Number(flag.transaction.amount ?? 0)));
+  const payee = (flag.transaction.merchant_name ?? flag.transaction.name ?? "the payee").trim();
+  const transactionId = flag.transaction.transaction_id ?? `${flag.transaction.account_id ?? "account"}-${flag.transaction.date ?? "date"}-${amount}`;
+  return {
+    id: `fraud-${transactionId}`,
+    title: `Potential scam risk: ${payee}`,
+    body: `${flag.reason}. Risk score: ${flag.riskScore}/100. Transaction amount: $${amount.toLocaleString()}.`,
+    category: "scam",
+    states: null,
+    min_age: null,
+    action_line: `Verify steps: ${flag.advice}`,
+    source_url: null,
+    published_at: now,
+    expires_at: null,
+    status: "published",
+    created_at: now,
+    personalized: true,
+  };
+}
+
+function fraudAlerts(context?: AlertMatchContext): Alert[] {
+  const flags = detectFraudFlags(context?.transactions ?? context?.recentTransactions ?? [], { accounts: context?.accounts, now: context?.now });
+  const now = (context?.now ?? new Date()).toISOString();
+  return flags.filter((flag) => flag.riskScore >= 80).map((flag) => fraudAlertBase(flag, now));
+}
+
 export async function getMatchedAlerts(
   supabase: SupabaseLike,
   profile: AlertProfile,
@@ -161,7 +189,8 @@ export async function getMatchedAlerts(
 
   const topCat = WORRY_CATEGORY[profile.worry] ?? "";
   const connectedAlerts = context ? monitorRuleAlerts({ ...context, recentTransactions: context.recentTransactions ?? context.transactions }) : [];
-  const combined = [...personalizedAlerts(profile, context), ...connectedAlerts, ...items];
+  const scamAlerts = fraudAlerts(context);
+  const combined = [...personalizedAlerts(profile, context), ...scamAlerts, ...connectedAlerts, ...items];
   combined.sort((a, b) => Number(b.personalized ?? false) - Number(a.personalized ?? false) || (b.category === topCat ? 1 : 0) - (a.category === topCat ? 1 : 0));
   return combined.slice(0, limit);
 }
