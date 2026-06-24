@@ -112,23 +112,23 @@ export function ScoreGauge({ value = 82, band, subScores = DEFAULT_SUB_SCORES, d
           )}
         </div>
 
-        <div className="relative mx-auto mt-5 max-w-[320px]">
-          <svg viewBox="0 0 200 128" className="h-auto w-full" role="img" aria-label={`Gauge showing ${score} out of 100`}>
-            <path d={arcPath(180, 252)} fill="none" stroke="#B23A3A" strokeLinecap="round" strokeWidth="18" />
-            <path d={arcPath(252, 288)} fill="none" stroke="#C77700" strokeLinecap="butt" strokeWidth="18" />
-            <path d={arcPath(288, 324)} fill="none" stroke="#4F9E6A" strokeLinecap="butt" strokeWidth="18" />
-            <path d={arcPath(324, 360)} fill="none" stroke="#2E7D5B" strokeLinecap="round" strokeWidth="18" />
-            <path d={arcPath(180, progressEndAngle)} fill="none" stroke={activeBand.color} strokeLinecap="round" strokeWidth="10" />
-            <line x1="100" y1="104" x2={needlePoint.x} y2={needlePoint.y} stroke="#1A2230" strokeLinecap="round" strokeWidth="4" />
-            <circle cx="100" cy="104" r="6" fill="#1A2230" />
+        <div className="mx-auto mt-6 max-w-[320px]">
+          <svg viewBox="0 0 200 118" className="h-auto w-full overflow-visible" role="img" aria-label={`Gauge showing ${score} out of 100`}>
+            <path d={arcPath(180, 252)} fill="none" stroke="#B23A3A" strokeLinecap="round" strokeWidth="16" />
+            <path d={arcPath(252, 288)} fill="none" stroke="#C77700" strokeLinecap="butt" strokeWidth="16" />
+            <path d={arcPath(288, 324)} fill="none" stroke="#4F9E6A" strokeLinecap="butt" strokeWidth="16" />
+            <path d={arcPath(324, 360)} fill="none" stroke="#2E7D5B" strokeLinecap="round" strokeWidth="16" />
+            <path d={arcPath(180, progressEndAngle)} fill="none" stroke={activeBand.color} strokeLinecap="round" strokeWidth="8" opacity="0.95" />
+            <line x1="100" y1="104" x2={needlePoint.x} y2={needlePoint.y} stroke="#1A2230" strokeLinecap="round" strokeWidth="3" />
+            <circle cx="100" cy="104" r="5" fill="#1A2230" />
           </svg>
-          <div className="absolute inset-x-0 bottom-0 text-center">
-            <div className="text-5xl font-extrabold tracking-tight text-ink">{displayScore}</div>
-            <div className={`text-base font-bold ${activeBand.textClass}`}>/ 100 · {activeBand.label}</div>
+          <div className="-mt-2 rounded-2xl bg-white/90 px-4 py-2 text-center shadow-sm ring-1 ring-slate-200/70">
+            <div className="text-5xl font-extrabold leading-none tracking-tight text-ink">{displayScore}</div>
+            <div className={`mt-1 text-base font-bold ${activeBand.textClass}`}>/ 100 · {activeBand.label}</div>
           </div>
         </div>
 
-        <p className="mx-auto mt-4 max-w-sm text-center text-base text-slate-700">{bandVerdict(activeBand.label)}</p>
+        <p className="mx-auto mt-5 max-w-sm text-center text-base text-slate-700">{bandVerdict(activeBand.label)}</p>
 
         {subScores.length > 0 ? (
           <div className="mt-7 space-y-4">
