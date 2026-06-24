@@ -22,8 +22,8 @@ const navLinks = [
 
 const footerColumns = [
   { title: "Product", links: [{ label: "Safety Score", href: "/features/safety-score" }, { label: "Monitoring", href: "/features/monitoring" }, { label: "AI Coach", href: "/features/ai-coach" }, { label: "Scam Shield", href: "/features/scam-shield" }] },
-  { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Contact", href: "mailto:hello@retireshield.com" }] },
-  { title: "Resources", links: [{ label: "Retirement Watch", href: "/resources" }, { label: "Guides", href: "/resources" }, { label: "Calculators", href: "/quiz" }] },
+  { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Careers", href: "mailto:hello@retireshield.com?subject=Careers%20at%20RetireShield" }, { label: "Partners", href: "mailto:hello@retireshield.com?subject=RetireShield%20partnerships" }, { label: "Contact", href: "mailto:hello@retireshield.com" }] },
+  { title: "Resources", links: [{ label: "Retirement Watch", href: "/resources" }, { label: "Guides", href: "/resources" }, { label: "Calculators", href: "/quiz" }, { label: "Help Center", href: "/resources" }] },
   { title: "Legal", links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Refund Policy", href: "/refund-policy" }, { label: "Disclosures", href: "/about#trust-heading" }] },
 ];
 

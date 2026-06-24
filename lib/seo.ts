@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getPublicBaseUrl } from "@/lib/siteUrl";
 
 export const siteName = "RetireShield";
 export const defaultOgImage = "/og/retireshield-og.svg";
@@ -13,11 +12,10 @@ export function pageMetadata({
   description: string;
   path?: string;
 }): Metadata {
-  const baseUrl = getPublicBaseUrl();
-  const url = new URL(path, baseUrl).toString();
+  const url = new URL(path, "https://retireshield.com").toString();
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical: url },
     openGraph: {
