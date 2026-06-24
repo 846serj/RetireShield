@@ -10,12 +10,11 @@ import type { Answers } from "@/lib/scoring";
 import ScoreHydrator from "@/components/ScoreHydrator";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import LockedTeaser from "@/components/LockedTeaser";
+import PlanList from "@/components/PlanList";
+import AlertFeed from "@/components/AlertFeed";
 import { stripe } from "@/lib/stripe";
 import { Button, Disclaimer, Eyebrow } from "@/components/ui";
 
-const PRIORITY_STYLE: Record<string, string> = {
-  High: "bg-red-100 text-bad", Medium: "bg-amber-100 text-warn", Low: "bg-slate-100 text-slate-600",
-};
 
 type DashboardProps = {
   searchParams?: { session_id?: string; welcome?: string };
@@ -159,13 +158,15 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
             description="Paid members see the personalized plan built from their score, answers, and RetireShield rules."
           >
             <div className="space-y-4">
-              {(plan.length > 0 ? plan.slice(0, 2) : [
-                { priority: "High", area: "Income", title: "Review income coverage", why: "See which gaps matter first.", steps: ["Compare guaranteed income with essentials.", "Prepare questions for a fiduciary review."] },
-                { priority: "Medium", area: "Scam safety", title: "Set a verification routine", why: "Lower fraud risk with repeatable checks.", steps: ["Document official contact methods.", "Pause before acting on urgent messages."] },
+              {(plan.length > 0 ? plan.slice(0, 1) : [
+                { priority: "High" as const, area: "Income", title: "Review income coverage", why: "See which gaps matter first.", steps: ["Compare guaranteed income with essentials.", "Prepare questions for a fiduciary review."] },
               ]).map((p, i) => (
                 <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
-                  <span className={`text-xs font-bold px-2 py-1 rounded ${PRIORITY_STYLE[p.priority]}`}>{p.priority}</span>
-                  <h3 className="mt-3 text-lg font-bold">{p.title}</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-bad">{p.priority} priority</span>
+                    <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-brand">{p.area}</span>
+                  </div>
+                  <h3 className="mt-3 font-serif text-xl font-semibold">{p.title}</h3>
                   <p className="mt-1 text-slate-600">{p.why}</p>
                 </div>
               ))}
@@ -176,17 +177,14 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
             title="Unlock matched alerts and the AI coach"
             description="Get alerts matched to your state, age, and worries, plus education-only help deciding what to review next."
           >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
-                <p className="rg-kicker text-brand">Benefit</p>
-                <h3 className="mt-2 font-bold">State-specific retirement alert</h3>
-                <p className="mt-1 text-sm text-slate-600">Matched alerts appear here when they fit your profile.</p>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+              <div className="flex items-center justify-between gap-3">
+                <p className="rounded-full bg-accent/10 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-accent">Benefit</p>
+                <p className="text-sm font-semibold text-slate-500">Jun 24, 2026</p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
-                <p className="rg-kicker text-emerald-700">AI coach</p>
-                <h3 className="mt-2 font-bold">Ask what to review next</h3>
-                <p className="mt-1 text-sm text-slate-600">Education-only guidance helps explain your dashboard.</p>
-              </div>
+              <h3 className="mt-3 font-serif text-xl font-semibold">Sample retirement alert</h3>
+              <p className="mt-1 text-sm text-slate-600">Matched alerts appear here when they fit your profile.</p>
+              <p className="mt-3 rounded-xl bg-white p-3 text-xs font-semibold text-slate-600">What to ask: Does this change anything I should review?</p>
             </div>
           </LockedTeaser>
         </div>
@@ -210,48 +208,11 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
             </a>
           </section>
 
-          {plan.length > 0 ? (
-            <section className="mb-8">
-              <h2 className="text-2xl font-bold mb-4">Your action plan</h2>
-              <div className="space-y-4">
-                {plan.map((p, i) => (
-                  <div key={i} className="rg-card">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className={`text-xs font-bold px-2 py-1 rounded ${PRIORITY_STYLE[p.priority]}`}>{p.priority}</span>
-                      <span className="text-xs uppercase tracking-wide text-slate-400">{p.area}</span>
-                    </div>
-                    <h3 className="text-lg font-bold">{p.title}</h3>
-                    <p className="text-slate-600 mt-1">{p.why}</p>
-                    <ul className="mt-3 space-y-1 list-disc list-inside text-slate-700">
-                      {p.steps.map((s, j) => <li key={j}>{s}</li>)}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : (
-            <section className="rg-card mb-8">
-              <h2 className="text-2xl font-bold">Create your personalized action plan</h2>
-              <p className="mt-2 text-slate-600">Take the quick Safety Score quiz so RetireShield can prioritize your first actions.</p>
-              <Button href="/quiz" className="mt-4">Take the quiz</Button>
-            </section>
-          )}
+          <PlanList items={plan} />
 
           <div id="coach"><CoachChat /></div>
 
-          <section className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Alerts for you</h2>
-            <div className="space-y-3">
-              {alerts.length === 0 && <p className="text-slate-500">No alerts match your profile yet — check back soon.</p>}
-              {alerts.map((al) => (
-                <div key={al.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="text-xs uppercase tracking-wide text-brand font-semibold">{al.category}</div>
-                  <h3 className="font-bold">{al.title}</h3>
-                  <p className="text-slate-600 text-sm mt-1">{al.body}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          <AlertFeed alerts={alerts} />
         </>
       )}
       <Disclaimer className="mt-8" />

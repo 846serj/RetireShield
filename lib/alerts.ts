@@ -2,7 +2,7 @@
 
 export type Alert = {
   id: string; title: string; body: string; category: string;
-  states: string[] | null; min_age: number | null; created_at: string;
+  states: string[] | null; min_age: number | null; created_at: string; what_to_ask?: string | null;
 };
 
 const WORRY_CATEGORY: Record<string, string> = {
