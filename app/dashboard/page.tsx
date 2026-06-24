@@ -29,6 +29,28 @@ const SUB_SCORE_LABELS = {
   market: "Market-drop cushion",
 } as const;
 
+const TOOL_CARDS = [
+  {
+    title: "Medicare + IRMAA check",
+    href: "/features/medicare-social-security",
+    eyebrow: "Coming to Premium",
+    description: "Estimate what income thresholds, Medicare premiums, and enrollment windows to review before you make tax or withdrawal decisions.",
+    ask: "Ask a fiduciary or tax professional: could this year's income create an IRMAA surprise?",
+  },
+  {
+    title: "Social Security timing guide",
+    href: "/features/medicare-social-security",
+    eyebrow: "Coming to Premium",
+    description: "Compare the education tradeoffs around claiming at 62, full retirement age, or 70 using your RetireShield profile.",
+    ask: "Ask a fiduciary: how do health, survivor benefits, and guaranteed income needs affect my claiming window?",
+  },
+] as const;
+
+function formatRenewDate(value?: string | null) {
+  if (!value) return "Not available yet";
+  return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(value));
+}
+
 function formatCheckedDate(value?: string) {
   if (!value) return "Not checked yet";
   return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(value));
@@ -154,6 +176,27 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
         </div>
       </section>
 
+      <section className="mb-8" aria-labelledby="premium-tools-heading">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="rg-kicker">Tools ⚙️ Premium</p>
+            <h2 id="premium-tools-heading" className="mt-2 text-3xl font-extrabold">Medicare/IRMAA + Social Security mini-tools</h2>
+            <p className="mt-3 max-w-3xl text-slate-700">Simple guided calculators are scoped for v2 and will reuse the RetireShield engine. For now, these cards show what Premium members will be able to review and what to ask a fiduciary.</p>
+          </div>
+          {!paid ? <Button href="/upgrade" variant="secondary">Start your free trial</Button> : null}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {TOOL_CARDS.map((tool) => (
+            <Link key={tool.title} href={tool.href} className="rg-card no-underline transition hover:-translate-y-0.5 hover:border-brand">
+              <p className="rg-kicker text-brand">{tool.eyebrow}</p>
+              <h3 className="mt-3 font-serif text-2xl font-semibold text-ink">{tool.title}</h3>
+              <p className="mt-3 text-slate-700">{tool.description}</p>
+              <p className="mt-4 rounded-2xl bg-band p-4 text-sm font-semibold text-slate-700">{tool.ask}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {!paid ? (
         <div className="space-y-6">
           <LockedTeaser
@@ -165,20 +208,22 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
           </LockedTeaser>
           <LockedTeaser
             eyebrow="Action plan"
-            title="Unlock your prioritized next steps"
-            description="Paid members see the personalized plan built from their score, answers, and RetireShield rules."
+            title="Unlock your full action plan"
+            description="See every step and check them off as you go. Start your free trial."
           >
             <div className="space-y-4">
-              {(plan.length > 0 ? plan.slice(0, 1) : [
+              {(plan.length > 0 ? plan : [
                 { priority: "High" as const, area: "Income", title: "Review income coverage", why: "See which gaps matter first.", steps: ["Compare guaranteed income with essentials.", "Prepare questions for a fiduciary review."] },
+                { priority: "Medium" as const, area: "Healthcare", title: "Preview Medicare questions", why: "Healthcare costs can change your retirement budget.", steps: ["List Medicare dates.", "Ask about IRMAA."] },
               ]).map((p, i) => (
-                <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left">
+                <div key={i} className={`rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left ${i > 0 ? "opacity-70 blur-[1px]" : ""}`}>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-bad">{p.priority} priority</span>
                     <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-brand">{p.area}</span>
                   </div>
                   <h3 className="mt-3 font-serif text-xl font-semibold">{p.title}</h3>
                   <p className="mt-1 text-slate-600">{p.why}</p>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-700">{p.steps.slice(0, 2).map((step) => <li key={step}>☐ {step}</li>)}</ul>
                 </div>
               ))}
             </div>
@@ -228,6 +273,18 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
           <AlertFeed alerts={alerts} />
         </>
       )}
+      <section className="rg-card mt-8" aria-labelledby="account-heading">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="rg-kicker">Account / subscription</p>
+            <h2 id="account-heading" className="mt-2 text-3xl font-extrabold">{paid ? `${subscriptionAccess.tier.charAt(0).toUpperCase()}${subscriptionAccess.tier.slice(1)} plan` : "Free plan"}</h2>
+            <p className="mt-2 text-slate-700">Renew date: <span className="font-bold text-ink">{paid ? formatRenewDate(subscriptionAccess.currentPeriodEnd) : "Upgrade to start a trial"}</span></p>
+          </div>
+          {paid ? <Button href="/api/portal" variant="secondary">Manage subscription</Button> : <Button href="/upgrade">Start your free trial</Button>}
+        </div>
+        <p className="mt-5 border-t border-slate-100 pt-4 text-sm text-slate-500">RetireShield is education-only and does not provide financial, tax, legal, or investment advice.</p>
+      </section>
+
       <Disclaimer className="mt-8" />
     </div>
     </div>

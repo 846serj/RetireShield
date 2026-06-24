@@ -7,6 +7,7 @@ export type SubscriptionAccess = {
   tier: SubscriptionTier;
   plan: string | null;
   status: string | null;
+  currentPeriodEnd: string | null;
 };
 
 function tierFromPlan(plan?: string | null): SubscriptionTier {
@@ -21,7 +22,7 @@ export async function getSubscriptionAccess(userId: string): Promise<Subscriptio
   const supabase = createClient();
   const { data } = await supabase
     .from("subscriptions")
-    .select("status, plan")
+    .select("status, plan, current_period_end")
     .eq("user_id", userId)
     .single();
   const active = !!data && ["trialing", "active"].includes(data.status);
@@ -30,6 +31,7 @@ export async function getSubscriptionAccess(userId: string): Promise<Subscriptio
     tier: active ? tierFromPlan(data.plan) : "free",
     plan: data?.plan ?? null,
     status: data?.status ?? null,
+    currentPeriodEnd: data?.current_period_end ?? null,
   };
 }
 

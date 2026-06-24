@@ -52,9 +52,10 @@ export default function PlanList({ items }: PlanListProps) {
               <ul className="mt-3 space-y-3">
                 {item.steps.map((step, stepIndex) => (
                   <li key={step} className="flex gap-3 text-slate-700">
-                    <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-brand/30 bg-white text-xs font-bold text-brand">
-                      {stepIndex + 1}
+                    <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border border-brand/30 bg-white text-xs font-bold text-brand" aria-hidden="true">
+                      ✓
                     </span>
+                    <span className="sr-only">Step {stepIndex + 1}: </span>
                     <span>{step}</span>
                   </li>
                 ))}
