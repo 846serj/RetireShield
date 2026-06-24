@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert";
-import { answerHasOnlyToolSourcedNumbers } from "../app/api/coach/route";
+import { answerHasOnlyToolSourcedNumbers } from "../lib/ai/coachNumbers";
 
 test("coach golden: accepts numeric answers that come from tool results", () => {
   const calculations = [
