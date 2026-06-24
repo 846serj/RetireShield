@@ -8,7 +8,13 @@ export type Answers = {
   status: "working" | "near" | "retired";
   guaranteedIncome: number; // monthly $ from SS + pension + annuity
   essentialExpenses: number; // monthly $ essentials
-  savingsBucket: "<50k" | "50-150k" | "150-500k" | "500k-1M" | "1M+";
+  savings: number; // exact retirement savings estimate collected by the quiz
+  savingsBucket?: "<50k" | "50-150k" | "150-500k" | "500k-1M" | "1M+"; // legacy saved scores
+  filingStatus?: "single" | "married_joint" | "married_separate" | "head_of_household" | "skip";
+  ssaBenefitEstimate?: number; // optional monthly Social Security estimate
+  claimedSocialSecurity?: "yes" | "no" | "skip";
+  spouseAge?: number;
+  spouseSsaBenefitEstimate?: number;
   stockPct: 0 | 25 | 50 | 75 | 100;
   emergencyFund: "0" | "1-3" | "3-6" | "6+";
   debt: "none" | "some" | "heavy";
@@ -19,9 +25,15 @@ export type Answers = {
 export type SubScores = { income: number; withdrawal: number; inflation: number; market: number };
 export type Result = { overall: number; band: ScoreBandLabel; sub: SubScores };
 
-const SAVINGS_MID: Record<Answers["savingsBucket"], number> = {
+type SavingsBucket = NonNullable<Answers["savingsBucket"]>;
+const SAVINGS_MID: Record<SavingsBucket, number> = {
   "<50k": 25000, "50-150k": 100000, "150-500k": 325000, "500k-1M": 750000, "1M+": 1500000,
 };
+
+function savingsEstimate(a: Answers): number {
+  if (Number.isFinite(a.savings) && a.savings >= 0) return a.savings;
+  return a.savingsBucket ? SAVINGS_MID[a.savingsBucket] : 0;
+}
 const EFUND_MONTHS: Record<Answers["emergencyFund"], number> = { "0": 0, "1-3": 2, "3-6": 4.5, "6+": 7 };
 const STATUS_MARKET_ADJUSTMENT: Record<Answers["status"], number> = { working: 10, near: 0, retired: -6 };
 const HIGH_COL_STATES = new Set(["HI", "CA", "NY", "MA", "NJ", "CT", "WA", "OR", "MD", "CO", "RI", "AK", "VT", "NH"]);
@@ -47,7 +59,7 @@ export function incomeStability(a: Answers): number {
 export function withdrawalSustainability(a: Answers): number {
   const gap = Math.max(0, a.essentialExpenses - a.guaranteedIncome);
   if (gap <= 0) return 100;
-  const safeMonthly = (SAVINGS_MID[a.savingsBucket] * 0.04) / 12;
+  const safeMonthly = (savingsEstimate(a) * 0.04) / 12;
   return clamp((safeMonthly / gap) * 100 * costOfLivingMultiplier(a.state));
 }
 

@@ -5,11 +5,11 @@ import { computeScores, type Answers } from "./scoring.ts";
 
 const secure: Answers = {
   age: 68, status: "retired", guaranteedIncome: 4000, essentialExpenses: 3000,
-  savingsBucket: "500k-1M", stockPct: 50, emergencyFund: "6+", debt: "none", worry: "inflation",
+  savings: 750000, stockPct: 50, emergencyFund: "6+", debt: "none", worry: "inflation",
 };
 const vulnerable: Answers = {
   age: 72, status: "retired", guaranteedIncome: 1200, essentialExpenses: 3500,
-  savingsBucket: "<50k", stockPct: 100, emergencyFund: "0", debt: "heavy", worry: "running_out",
+  savings: 25000, stockPct: 100, emergencyFund: "0", debt: "heavy", worry: "running_out",
 };
 
 test("secure profile scores high and is well-banded", () => {
@@ -36,7 +36,7 @@ test("scores are bounded 0-100", () => {
 test("status and state adjust score in expected directions", () => {
   const baseline: Answers = {
     age: 62, status: "near", guaranteedIncome: 1500, essentialExpenses: 3500,
-    savingsBucket: "150-500k", stockPct: 50, emergencyFund: "3-6", debt: "none", worry: "scams", state: "TX",
+    savings: 325000, stockPct: 50, emergencyFund: "3-6", debt: "none", worry: "scams", state: "TX",
   };
 
   const neutral = computeScores(baseline);
