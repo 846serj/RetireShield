@@ -65,11 +65,11 @@ export function FeatureDashboardVisual({ slug }: { slug: FeatureSlug }) {
 
 export function FeaturePage({ slug }: { slug: FeatureSlug }) {
   const feature = features[slug];
-  const benefitsHeading = "benefitsHeading" in feature ? feature.benefitsHeading : `What ${feature.eyebrow} helps you do`;
-  const visualHeading = "visualHeading" in feature ? feature.visualHeading : `A clear dashboard for ${feature.eyebrow.toLowerCase()}.`;
-  const visualBody = "visualBody" in feature ? feature.visualBody : `See the most important ${feature.eyebrow.toLowerCase()} signals in one concise dashboard view, with plain-English context and clear next steps.`;
-  const ctaHeading = "ctaHeading" in feature ? feature.ctaHeading : "Ready to make retirement feel safer?";
-  const ctaBody = "ctaBody" in feature ? feature.ctaBody : `Start with the free Safety Score or choose the ${feature.eyebrow} pillar you want to explore next.`;
+  const benefitsHeading = feature.benefitsHeading;
+  const visualHeading = feature.visualHeading;
+  const visualBody = feature.visualBody;
+  const ctaHeading = feature.ctaHeading;
+  const ctaBody = feature.ctaBody;
   return (
     <main>
       <section className="bg-surface py-16 sm:py-20 lg:py-24">
