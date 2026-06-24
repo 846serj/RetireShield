@@ -11,7 +11,7 @@ import { BadgeDollarSign, Banknote, BellRing, Bot, Calculator, HeartPulse, Landm
 import { ComparisonRow } from "@/components/ComparisonRow";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { StatTile } from "@/components/StatTile";
-import { Button, Container, Eyebrow } from "@/components/ui";
+import { Button, Container } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 
 async function getSessionEmail() {
@@ -295,8 +295,7 @@ export default async function Home() {
       <section className="overflow-hidden bg-gradient-to-br from-white via-surface to-band py-12 sm:py-16 lg:py-20">
         <Container className="grid items-center gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
           <div className="text-center lg:text-left">
-            <Eyebrow>BUILT FOR AMERICANS 55–80</Eyebrow>
-            <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-extrabold tracking-tight text-ink sm:text-5xl lg:text-6xl">
               Know your retirement is going to be okay.
             </h1>
             <p className="mt-6 text-xl leading-8 text-slate-700">
@@ -323,7 +322,7 @@ export default async function Home() {
 
       <section className="bg-band py-8 sm:py-10" aria-label="Retirement Safety Score proof points">
         <Container>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="flex flex-wrap items-stretch justify-center gap-3">
             {trustStats.map((stat) => (
               <StatTile key={stat.value} value={stat.value} />
             ))}
@@ -344,8 +343,7 @@ export default async function Home() {
       <section className="bg-white py-12 sm:py-16 lg:py-20">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>OLD WAY VS RETIRESHIELD WAY</Eyebrow>
-            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               Most retirement tools hand you a scary percentage. We hand you an answer.
             </h2>
           </div>
@@ -381,8 +379,7 @@ export default async function Home() {
       <section className="bg-gradient-to-b from-white via-band to-white py-12 sm:py-16 lg:py-20" aria-labelledby="safety-score-heading">
         <Container className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
           <div>
-            <Eyebrow>SECTION 7 — THE SAFETY SCORE, EXPLAINED</Eyebrow>
-            <h2 id="safety-score-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="safety-score-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               A single number you can actually understand.
             </h2>
             <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">
@@ -408,8 +405,7 @@ export default async function Home() {
       <section className="bg-white py-12 sm:py-16 lg:py-20" aria-labelledby="ai-coach-heading">
         <Container className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
           <div>
-            <Eyebrow>YOUR RETIREMENT, ON CALL</Eyebrow>
-            <h2 id="ai-coach-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="ai-coach-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               Ask anything. Get a straight answer, grounded in real numbers.
             </h2>
             <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">
@@ -467,8 +463,7 @@ export default async function Home() {
       <section className="bg-gradient-to-b from-white via-band to-white py-12 sm:py-16 lg:py-20" aria-labelledby="monitoring-heading">
         <Container className="grid items-center gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
           <div>
-            <Eyebrow>SECTION 9 — MONITORING / WE WATCH IT FOR YOU</Eyebrow>
-            <h2 id="monitoring-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="monitoring-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               The AI that watches your retirement so you don&apos;t have to.
             </h2>
             <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">
@@ -485,8 +480,7 @@ export default async function Home() {
       <section className="overflow-hidden bg-white py-12 sm:py-16 lg:py-20" aria-labelledby="qa-carousel-heading">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>SECTION 10 — IN-ACTION Q&amp;A</Eyebrow>
-            <h2 id="qa-carousel-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="qa-carousel-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               Real questions. Clear answers.
             </h2>
             <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">
@@ -510,8 +504,7 @@ export default async function Home() {
       <section className="bg-gradient-to-b from-white via-band to-white py-12 sm:py-16 lg:py-20" aria-labelledby="pricing-preview-heading">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>SECTION 11 — PRICING PREVIEW</Eyebrow>
-            <h2 id="pricing-preview-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="pricing-preview-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               Start free. Upgrade only if it helps.
             </h2>
           </div>
@@ -538,8 +531,7 @@ export default async function Home() {
       <section className="bg-white py-12 sm:py-16 lg:py-20" aria-labelledby="trust-safety-heading">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>SECTION 12 — TRUST &amp; SAFETY</Eyebrow>
-            <h2 id="trust-safety-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="trust-safety-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               Built to be trusted by people who&apos;ve earned the right to be careful.
             </h2>
           </div>
@@ -555,8 +547,7 @@ export default async function Home() {
       <section className="bg-band py-12 sm:py-16 lg:py-20" aria-labelledby="testimonials-heading">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>SECTION 13 — TESTIMONIALS</Eyebrow>
-            <h2 id="testimonials-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="testimonials-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               Retirees sleeping better.
             </h2>
             <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">
@@ -578,8 +569,7 @@ export default async function Home() {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-white" aria-hidden="true">
               <Sparkles className="h-8 w-8" strokeWidth={1.8} />
             </div>
-            <Eyebrow className="mt-6 text-white/80">SECTION 14 — FINAL CTA</Eyebrow>
-            <h2 id="final-cta-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+            <h2 id="final-cta-heading" className="mt-6 text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
               See where your retirement stands — free, in 2 minutes.
             </h2>
             <div className="mt-8">
@@ -595,8 +585,7 @@ export default async function Home() {
       <section id="how-it-works" className="bg-white py-12 sm:py-16 lg:py-20" aria-labelledby="how-it-works-heading">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>HOW IT WORKS</Eyebrow>
-            <h2 id="how-it-works-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="how-it-works-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               Peace of mind in three steps.
             </h2>
           </div>
@@ -618,8 +607,7 @@ export default async function Home() {
       <section className="bg-gradient-to-b from-band via-white to-white py-12 sm:py-16 lg:py-20" aria-labelledby="feature-grid-heading">
         <Container>
           <div className="mx-auto max-w-3xl text-center">
-            <Eyebrow>WHOLE-PICTURE RETIREMENT CHECK</Eyebrow>
-            <h2 id="feature-grid-heading" className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            <h2 id="feature-grid-heading" className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl lg:text-5xl">
               One score. Every retirement worry, in one place.
             </h2>
             <p className="mt-5 text-lg leading-8 text-slate-700 sm:text-xl">

@@ -5,9 +5,9 @@ type StatTileProps = {
 
 export function StatTile({ value, label }: StatTileProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/85 p-4 text-center shadow-sm">
-      <div className="text-xl font-extrabold text-ink sm:text-2xl">{value}</div>
-      {label ? <div className="mt-1 text-sm font-semibold text-slate-600">{label}</div> : null}
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-[18px] py-[14px] text-center shadow-sm">
+      <div className="whitespace-nowrap text-base font-extrabold leading-6 text-ink sm:text-lg">{value}</div>
+      {label ? <div className="mt-1 whitespace-nowrap text-sm font-semibold text-slate-600">{label}</div> : null}
     </div>
   );
 }
