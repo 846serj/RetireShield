@@ -7,6 +7,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 type HoldingWithBasis = HoldingRow & { cost_basis?: number | string | null };
 type ExistingProfile = Partial<FinancialProfile> | null;
 type QuizAnswers = Partial<Answers> | null;
+type ConnectedAnswers = Omit<Answers, "debt" | "worry"> & Partial<Pick<Answers, "debt" | "worry">>;
 
 const TAXABLE_SUBTYPES = new Set(["brokerage", "taxable"]);
 
@@ -49,6 +50,19 @@ function fallbackGuaranteedIncome(profile: ExistingProfile): number {
   return toNumber(profile?.ss_benefit_fra) + toNumber(profile?.pension_amount);
 }
 
+function ageFromQuiz(quizAnswers?: QuizAnswers): number | null {
+  const age = Number(quizAnswers?.age);
+  return Number.isFinite(age) && age >= 0 ? age : null;
+}
+
+function hasRequiredScoreInputs(answers: ConnectedAnswers | null): answers is Answers {
+  return !!answers && answers.debt !== undefined && answers.worry !== undefined;
+}
+
+function hasConnectedFinancialData(accounts: FinancialAccountRow[], holdings: HoldingWithBasis[], transactions: SpendingTransaction[]): boolean {
+  return accounts.length > 0 || holdings.length > 0 || transactions.length > 0;
+}
+
 function taxableCostBasis(holdings: HoldingWithBasis[], accounts: FinancialAccountRow[]): number | null {
   const accountById = new Map(accounts.map((account) => [account.account_id, account]));
   let found = false;
@@ -86,7 +100,7 @@ export function buildConnectedProfileUpdate(params: {
     stock_pct: roundPct(portfolio.equityPct),
     bond_pct: roundPct(portfolio.bondPct),
     cash_pct: roundPct(portfolio.cashPct),
-    ss_benefit_fra: toNumber(existingProfile?.ss_benefit_fra),
+    ss_benefit_fra: existingProfile?.ss_benefit_fra ?? null,
     ss_claim_age: existingProfile?.ss_claim_age ?? null,
     spouse_ss_benefit_fra: existingProfile?.spouse_ss_benefit_fra ?? null,
     spouse_ss_claim_age: existingProfile?.spouse_ss_claim_age ?? null,
@@ -109,9 +123,10 @@ export function buildConnectedAnswers(params: {
   portfolio: ReturnType<typeof buildPortfolioAnalysis>;
   quizAnswers?: QuizAnswers;
   now?: Date;
-}): Answers {
+}): ConnectedAnswers | null {
   const { profile, financialPicture, portfolio, quizAnswers, now = new Date() } = params;
-  const age = ageFromBirthdate(profile?.birthdate, now) ?? quizAnswers?.age ?? 65;
+  const age = ageFromBirthdate(profile?.birthdate, now) ?? ageFromQuiz(quizAnswers);
+  if (age === null) return null;
   const guaranteedIncome = financialPicture.guaranteedIncome > 0 ? financialPicture.guaranteedIncome : fallbackGuaranteedIncome(profile);
   return {
     age,
@@ -122,8 +137,8 @@ export function buildConnectedAnswers(params: {
     ssaBenefitEstimate: toNumber(profile?.ss_benefit_fra) || undefined,
     stockPct: snapStockPct(roundPct(portfolio.equityPct)),
     emergencyFund: emergencyFundBucket(financialPicture.cushionMonths),
-    debt: quizAnswers?.debt ?? "none",
-    worry: quizAnswers?.worry ?? "running_out",
+    debt: quizAnswers?.debt,
+    worry: quizAnswers?.worry,
     state: profile?.state ?? undefined,
   };
 }
@@ -150,10 +165,14 @@ export async function updateProfileFromConnectedWithClient(service: ReturnType<t
   await must(service.from("profiles").upsert(profile, { onConflict: "user_id" }).select("user_id").single());
 
   const answers = buildConnectedAnswers({ profile, financialPicture, portfolio, quizAnswers: (latestScore as { answers?: QuizAnswers } | null)?.answers ?? null });
+  if (!hasConnectedFinancialData(accounts as FinancialAccountRow[], holdings as HoldingWithBasis[], transactions as SpendingTransaction[]) || !hasRequiredScoreInputs(answers)) {
+    return { profile, answers, result: null, scored: false, reason: "incomplete_profile" as const };
+  }
+
   const result = computeScores(answers);
   await must(service.from("scores").insert({ user_id: userId, overall: result.overall, sub_scores: result.sub, band: result.band, answers, score_source: "connected" }).select("id").single());
 
-  return { profile, answers, result };
+  return { profile, answers, result, scored: true as const };
 }
 
 export async function updateProfileFromConnected(userId: string) {

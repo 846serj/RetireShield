@@ -8,6 +8,7 @@ import LockedTeaser from "@/components/LockedTeaser";
 import ScoreHydrator from "@/components/ScoreHydrator";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { Button, Eyebrow } from "@/components/ui";
+import { isProfileScoreable } from "@/lib/profileScoreable";
 import { formatCheckedDate, getLatestScore, requireUser, SUB_SCORE_LABELS, syncCheckoutSession } from "./_lib/dashboard";
 
 const PRIORITY_RANK = { High: 0, Medium: 1, Low: 2 } as const;
@@ -97,29 +98,33 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
   const paid = sessionAccess || subscriptionAccess.active;
   const answers = latest?.answers as Answers | undefined;
 
-  const [{ data: profile }, { data: previousScore }] = await Promise.all([
-    supabase.from("profiles").select("last_seen_at").eq("user_id", user.id).maybeSingle(),
+  const hasQuizScore = latest?.score_source === "quiz";
+  const connectedScored = ["connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""));
+  const [{ data: profile }, { data: activity }, { data: previousScore }] = await Promise.all([
+    supabase.from("profiles").select("user_id").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_activity").select("last_seen_at").eq("user_id", user.id).maybeSingle(),
     supabase.from("scores").select("id,overall,band,created_at,score_source").eq("user_id", user.id).neq("id", latest?.id ?? "").order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
-  const lastSeenAt = profile?.last_seen_at as string | null | undefined;
+  const scoreable = isProfileScoreable(profile, hasQuizScore, connectedScored);
+  const lastSeenAt = activity?.last_seen_at as string | null | undefined;
   const { data: scoreAtLastSeen } = lastSeenAt
     ? await supabase.from("scores").select("id,overall,band,created_at,score_source").eq("user_id", user.id).lte("created_at", lastSeenAt).order("created_at", { ascending: false }).limit(1).maybeSingle()
     : { data: null };
 
-  const alerts = answers ? await getMatchedAlerts(supabase, { state: answers.state, age: answers.age, worry: answers.worry }, 12) : [];
-  const plan = latest && answers ? buildActionPlan(answers, { overall: latest.overall, band: latest.band as never, sub: normalizeSubScores(latest.sub_scores) }) : [];
+  const alerts = scoreable && answers ? await getMatchedAlerts(supabase, { state: answers.state, age: answers.age, worry: answers.worry }, 12) : [];
+  const plan = scoreable && latest && answers ? buildActionPlan(answers, { overall: latest.overall, band: latest.band as never, sub: normalizeSubScores(latest.sub_scores) }) : [];
   const newAlertCount = countUnreadAlerts(alerts, lastSeenAt);
   const topAlerts = alerts.slice(0, 3);
   const nextAction = [...plan].sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority])[0];
   const scoreSubScores = latest?.sub_scores ? (Object.entries(SUB_SCORE_LABELS) as [keyof typeof SUB_SCORE_LABELS, string][]).map(([key, label]) => ({ label, value: Number(latest.sub_scores?.[key] ?? 0), scoreKey: key })) : [];
   const monthDelta = latest && previousScore ? Math.round(Number(latest.overall) - Number(previousScore.overall)) : null;
-  const hasConnectedScore = ["connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""));
+  const hasConnectedScore = connectedScored;
 
-  await supabase.from("profiles").upsert({ user_id: user.id, last_seen_at: new Date().toISOString() }, { onConflict: "user_id" });
+  await supabase.from("user_activity").upsert({ user_id: user.id, last_seen_at: new Date().toISOString() }, { onConflict: "user_id" });
 
   return (
     <div className="mx-auto max-w-6xl py-8 sm:py-10">
-      <ScoreHydrator hasScore={!!latest} />
+      <ScoreHydrator hasScore={scoreable && !!latest} />
       {searchParams?.welcome ? (
         <div className="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
           <p className="rg-kicker text-emerald-700">Trial started</p>
@@ -135,10 +140,10 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
       </div>
 
       <section className="mb-8 grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:items-stretch">
-        {latest ? <ScoreGauge value={latest.overall} band={latest.band as never} subScores={scoreSubScores} delta={formatDelta(monthDelta)} badge={sourceLabel(latest.score_source)} subtitle={`${sourceLabel(latest.score_source)} · Last checked ${formatCheckedDate(latest.created_at)}`} /> : (
+        {scoreable && latest ? <ScoreGauge value={latest.overall} band={latest.band as never} subScores={scoreSubScores} delta={formatDelta(monthDelta)} badge={sourceLabel(latest.score_source)} subtitle={`${sourceLabel(latest.score_source)} · Last checked ${formatCheckedDate(latest.created_at)}`} /> : (
           <div className="rg-card flex min-h-[28rem] flex-col items-center justify-center text-center">
             <p className="rg-kicker">Safety Score</p><h2 className="mt-3 text-3xl font-extrabold">Take your first check-in</h2>
-            <p className="mt-3 max-w-md text-slate-700">Answer a short quiz to create your Retirement Safety Score and unlock personalized monitoring.</p><Button href="/quiz" className="mt-6">Take the Score quiz</Button>
+            <p className="mt-3 max-w-md text-slate-700">Add a few details (or take the 2-minute quiz) to get your Safety Score.</p><Button href="/quiz" className="mt-6">Take the Score quiz</Button>
           </div>
         )}
 
@@ -153,14 +158,14 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
       <section className="rg-card mb-8 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="rg-kicker">Your next step</p>
-          <h2 className="mt-2 text-3xl font-extrabold">{nextAction?.title ?? (latest ? "Review your score details" : "Create your first Safety Score")}</h2>
-          <p className="mt-3 text-slate-700">{nextAction ? firstStep(nextAction) : latest ? "Open your score page for the full breakdown when you have a minute." : "Start with the quick quiz so RetireShield can personalize your dashboard."}</p>
+          <h2 className="mt-2 text-3xl font-extrabold">{nextAction?.title ?? (scoreable && latest ? "Review your score details" : "Create your first Safety Score")}</h2>
+          <p className="mt-3 text-slate-700">{nextAction ? firstStep(nextAction) : scoreable && latest ? "Open your score page for the full breakdown when you have a minute." : "Add a few details (or take the 2-minute quiz) to get your Safety Score."}</p>
         </div>
-        <Button href={nextAction ? actionHref(nextAction.area) : latest ? "/dashboard/score" : "/quiz"} className="shrink-0">{nextAction ? "Take this step" : latest ? "Review score" : "Start quiz"}</Button>
+        <Button href={nextAction ? actionHref(nextAction.area) : scoreable && latest ? "/dashboard/score" : "/quiz"} className="shrink-0">{nextAction ? "Take this step" : scoreable && latest ? "Review score" : "Start quiz"}</Button>
       </section>
 
       <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <QuickCard title="Score" href="/dashboard/score" status={latest ? `${latest.overall} ${latest.band} · ${formatDelta(monthDelta)} this month` : "No score yet — take the quiz"} />
+        <QuickCard title="Score" href="/dashboard/score" status={scoreable && latest ? `${latest.overall} ${latest.band} · ${formatDelta(monthDelta)} this month` : "Add details to get your score"} />
         <QuickCard title="Coach" href="/dashboard/coach" status={paid ? "Ready for focused retirement questions" : "Upgrade unlocks saved-score context"} />
         <QuickCard title="Monitoring" href="/dashboard/monitoring" status={topAlerts.length > 0 ? `${topAlerts.length} item${topAlerts.length === 1 ? "" : "s"} need review` : "All clear right now"} />
         <QuickCard title="Accounts" href="/dashboard/accounts" status={hasConnectedScore ? "Connected score is active" : "Connect accounts for automatic updates"} />

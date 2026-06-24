@@ -13,7 +13,7 @@ export type FinancialProfile = {
   stock_pct: number;
   bond_pct: number;
   cash_pct: number;
-  ss_benefit_fra: number;
+  ss_benefit_fra: number | null;
   ss_claim_age: number | null;
   spouse_ss_benefit_fra: number | null;
   spouse_ss_claim_age: number | null;

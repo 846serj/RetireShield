@@ -11,7 +11,7 @@ create table if not exists profiles (
   stock_pct numeric(5,2) default 0,
   bond_pct numeric(5,2) default 0,
   cash_pct numeric(5,2) default 0,
-  ss_benefit_fra numeric(14,2) default 0,
+  ss_benefit_fra numeric(14,2),
   ss_claim_age numeric(5,2),
   spouse_ss_benefit_fra numeric(14,2),
   spouse_ss_claim_age numeric(5,2),
@@ -24,7 +24,6 @@ create table if not exists profiles (
   inflation_assumption numeric(6,5) default 0.03,
   target_retirement_age numeric(5,2),
   planning_horizon_age numeric(5,2) default 95,
-  last_seen_at timestamptz,
   updated_at timestamptz default now(),
   constraint profiles_marital_status_check check (marital_status is null or marital_status in ('single', 'married', 'partnered', 'widowed', 'divorced')),
   constraint profiles_state_check check (state is null or length(state) = 2),
@@ -35,7 +34,6 @@ create table if not exists profiles (
 );
 
 create index if not exists profiles_updated_at_idx on profiles (updated_at desc);
-create index if not exists profiles_last_seen_at_idx on profiles (last_seen_at desc);
 
 create or replace function set_profiles_updated_at()
 returns trigger as $$

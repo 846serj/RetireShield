@@ -25,13 +25,13 @@ export default async function AuthenticatedAppLayout({ children }: { children: R
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [access, { data: profile }, { data: latest }] = await Promise.all([
+  const [access, { data: activity }, { data: latest }] = await Promise.all([
     getSubscriptionAccess(user.id),
-    supabase.from("profiles").select("last_seen_at").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_activity").select("last_seen_at").eq("user_id", user.id).maybeSingle(),
     supabase.from("scores").select("answers").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const answers = latest?.answers as Answers | undefined;
   const alerts = answers ? await getMatchedAlerts(supabase, { state: answers.state, age: answers.age, worry: answers.worry }, 12) : [];
-  const unreadAlertCount = countUnreadAlerts(alerts, profile?.last_seen_at as string | null | undefined);
+  const unreadAlertCount = countUnreadAlerts(alerts, activity?.last_seen_at as string | null | undefined);
   return <AppShell userEmail={user.email ?? "Account"} access={access} unreadAlertCount={unreadAlertCount}>{children}</AppShell>;
 }

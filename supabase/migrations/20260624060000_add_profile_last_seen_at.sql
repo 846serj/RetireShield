@@ -1,4 +1,1 @@
-alter table profiles
-  add column if not exists last_seen_at timestamptz;
-
-create index if not exists profiles_last_seen_at_idx on profiles (last_seen_at desc);
+-- last_seen_at moved to user_activity in 20260624070000_move_last_seen_to_user_activity.sql.

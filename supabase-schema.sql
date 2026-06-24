@@ -64,10 +64,10 @@ alter table content_items enable row level security;
 create policy "read content" on content_items for select using (true);
 
 -- Lightweight engagement tracking for APP-3 /dashboard.
-alter table if exists profiles add column if not exists last_seen_at timestamptz;
-do $$
-begin
-  if to_regclass('public.profiles') is not null then
-    create index if not exists profiles_last_seen_at_idx on profiles (last_seen_at desc);
-  end if;
-end $$;
+create table if not exists user_activity (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  last_seen_at timestamptz
+);
+create index if not exists user_activity_last_seen_at_idx on user_activity (last_seen_at desc);
+alter table user_activity enable row level security;
+create policy "own user activity" on user_activity for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

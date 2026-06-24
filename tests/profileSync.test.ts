@@ -60,6 +60,7 @@ test("connected picture and portfolio map to profile fields and connected Answer
   assert.equal(profile.state, "CA");
 
   const answers = buildConnectedAnswers({ profile, financialPicture: picture, portfolio, quizAnswers: { debt: "some", worry: "inflation" }, now: new Date("2026-06-24T00:00:00Z") });
+  assert.ok(answers);
   assert.deepEqual({
     age: answers.age,
     savings: answers.savings,
@@ -88,6 +89,29 @@ test("connected picture and portfolio map to profile fields and connected Answer
   assert.equal(scoreRow.answers.savings, 181000);
 });
 
+
+test("buildConnectedAnswers returns null instead of inventing an age", () => {
+  const picture = buildFinancialPicture(transactions, accounts);
+  const portfolio = buildPortfolioAnalysis(holdings, securities, accounts);
+  const answers = buildConnectedAnswers({ profile: { user_id: userId }, financialPicture: picture, portfolio });
+  assert.equal(answers, null);
+});
+
+test("buildConnectedAnswers leaves missing quiz debt and worry unset", () => {
+  const picture = buildFinancialPicture(transactions, accounts);
+  const portfolio = buildPortfolioAnalysis(holdings, securities, accounts);
+  const answers = buildConnectedAnswers({ profile: { user_id: userId, birthdate: "1961-06-01" }, financialPicture: picture, portfolio, now: new Date("2026-06-24T00:00:00Z") });
+  assert.ok(answers);
+  assert.equal(answers.debt, undefined);
+  assert.equal(answers.worry, undefined);
+});
+
+test("connected profile update preserves unknown Social Security as null", () => {
+  const picture = buildFinancialPicture(transactions, accounts);
+  const portfolio = buildPortfolioAnalysis(holdings, securities, accounts);
+  const profile = buildConnectedProfileUpdate({ userId, existingProfile: { user_id: userId }, financialPicture: picture, portfolio, holdings, accounts });
+  assert.equal(profile.ss_benefit_fra, null);
+});
 
 test("updateProfileFromConnectedWithClient upserts profile and inserts connected score", async () => {
   const writes: Record<string, unknown[]> = { profiles: [], scores: [] };
@@ -125,4 +149,42 @@ test("updateProfileFromConnectedWithClient upserts profile and inserts connected
   assert.equal(writes.profiles.length, 1);
   assert.equal(writes.scores.length, 1);
   assert.equal((writes.scores[0] as { score_source: string }).score_source, "connected");
+});
+
+
+test("updateProfileFromConnectedWithClient skips score insert when profile inputs are incomplete", async () => {
+  const writes: Record<string, unknown[]> = { profiles: [], scores: [] };
+  const rows: Record<string, unknown> = {
+    transactions,
+    financial_accounts: accounts,
+    holdings,
+    securities,
+    profiles: { user_id: userId, state: "CA", ss_benefit_fra: null, marital_status: "single" },
+    scores: null,
+  };
+
+  function resultFor(table: string) {
+    return { data: rows[table], error: null };
+  }
+
+  const fakeService = {
+    from(table: string) {
+      return {
+        select(columns?: string) { return table === "securities" && columns === "*" ? resultFor(table) : this; },
+        eq() { return table === "transactions" || table === "financial_accounts" || table === "holdings" ? resultFor(table) : this; },
+        order() { return this; },
+        limit() { return this; },
+        maybeSingle() { return resultFor(table); },
+        single() { return { data: { id: "score-id", user_id: userId }, error: null }; },
+        upsert(row: unknown) { writes[table].push(row); return this; },
+        insert(row: unknown) { writes[table].push(row); return this; },
+      };
+    },
+  };
+
+  const result = await updateProfileFromConnectedWithClient(fakeService as never, userId);
+  assert.equal(result.scored, false);
+  assert.equal(result.reason, "incomplete_profile");
+  assert.equal(writes.profiles.length, 1);
+  assert.equal(writes.scores.length, 0);
 });
