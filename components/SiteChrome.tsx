@@ -75,7 +75,7 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
         <div className="bg-brand-dark text-white">
           <div className="mx-auto flex max-w-container items-center justify-between gap-4 px-4 py-3 text-sm font-semibold sm:px-6 lg:px-8">
             <Link href="/quiz" className="text-white no-underline hover:text-white/90">
-              Free Retirement Safety Score — no account, no linking, about 2 minutes. <span className="underline underline-offset-4">Get yours →</span>
+              Create an account first or start with the free Retirement Safety Score — no bank linking. <span className="underline underline-offset-4">Get started →</span>
             </Link>
             <button
               type="button"
@@ -134,7 +134,8 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
             ) : (
               <>
                 <Link href="/login" className="font-bold text-ink no-underline hover:text-brand">Log in</Link>
-                <Button href="/quiz" className="min-h-12 px-5 py-2 text-base">Get my free Safety Score</Button>
+                <Button href="/signup" variant="secondary" className="min-h-12 px-4 py-2 text-base">Create account</Button>
+                <Button href="/quiz" className="min-h-12 px-5 py-2 text-base">Free Safety Score</Button>
               </>
             )}
           </div>
@@ -180,7 +181,8 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
               ) : (
                 <>
                   <Link href="/login" className="text-center font-bold text-ink no-underline" onClick={() => setDrawerOpen(false)}>Log in</Link>
-                  <Button href="/quiz" onClick={() => setDrawerOpen(false)} className="w-full text-base">Get my free Safety Score</Button>
+                  <Button href="/signup" variant="secondary" onClick={() => setDrawerOpen(false)} className="w-full text-base">Create account</Button>
+                  <Button href="/quiz" onClick={() => setDrawerOpen(false)} className="w-full text-base">Free Safety Score</Button>
                 </>
               )}
             </div>
