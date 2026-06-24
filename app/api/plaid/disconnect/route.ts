@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { decrypt } from "@/lib/crypto";
 import { plaid } from "@/lib/plaid";
+import { checkPlaidRateLimit, logPlaidError, withPlaidLogging } from "@/lib/plaidHelpers";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rateLimited = checkPlaidRateLimit(user.id);
+  if (rateLimited) return rateLimited;
 
   const { item_id } = await request.json();
   if (!item_id || typeof item_id !== "string") return NextResponse.json({ error: "item_id is required" }, { status: 400 });
@@ -16,7 +20,11 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await plaid.itemRemove({ access_token: decrypt(item.access_token_encrypted) });
+  try {
+    await withPlaidLogging("itemRemove", { user_id: user.id, item_id }, () => plaid.itemRemove({ access_token: decrypt(item.access_token_encrypted) }));
+  } catch (error) {
+    logPlaidError("itemRemove.non_blocking_failure", error, { user_id: user.id, item_id });
+  }
 
   const { data: accounts } = await service
     .from("financial_accounts")

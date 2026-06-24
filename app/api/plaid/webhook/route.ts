@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { plaid } from "@/lib/plaid";
+import { logPlaidError, withPlaidLogging } from "@/lib/plaidHelpers";
 import { syncItem } from "@/lib/plaidSync";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -83,7 +84,9 @@ async function getWebhookVerificationKey(keyId: string): Promise<PlaidWebhookVer
     return cachedKey;
   }
 
-  const { data } = await plaid.webhookVerificationKeyGet({ key_id: keyId });
+  const { data } = await withPlaidLogging("webhookVerificationKeyGet", { key_id: keyId }, () =>
+    plaid.webhookVerificationKeyGet({ key_id: keyId })
+  );
   const key = data.key as PlaidWebhookVerificationKey;
   verificationKeyCache.set(keyId, key);
   return key;
@@ -157,7 +160,7 @@ async function verifyPlaidWebhook(request: Request, rawBody: string): Promise<Pl
 export async function POST(request: Request) {
   const rawBody = await request.text();
   const verifiedWebhook = await verifyPlaidWebhook(request, rawBody).catch((error) => {
-    console.error("Plaid webhook verification failed:", error);
+    logPlaidError("webhook.verification_failure", error);
     return null;
   });
 
@@ -184,7 +187,7 @@ export async function POST(request: Request) {
     const service = createServiceClient();
     const { data: item } = await service.from("plaid_items").select("*").eq("item_id", itemId).maybeSingle();
     if (item) {
-      syncItem(item).catch((error) => console.error("Plaid webhook sync failed:", error));
+      syncItem(item).catch((error) => logPlaidError("webhook.sync_failure", error, { item_id: itemId }));
     }
   }
 
