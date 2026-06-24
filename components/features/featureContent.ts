@@ -53,23 +53,53 @@ export const features = {
   monitoring: {
     eyebrow: "Monitoring",
     title: "Keep watch as markets, inflation, and life change.",
-    subtitle: "Placeholder copy: ongoing retirement monitoring helps spot plan drift early, before small changes become stressful surprises.",
+    subtitle: "Markets move, prices rise, and life changes. RetireShield re-checks your plan every month and gives you a short, plain-English heads-up only when something actually needs your attention — so small changes never become stressful surprises.",
     cta: "Start monitoring my plan",
     href: "/upgrade",
     icon: BellRing,
     visualTitle: "Monthly watchlist",
     visualMetric: "3",
     visualLabel: "Items to review",
+    benefitsHeading: "What RetireShield watches for you",
+    visualHeading: "Your monthly check-in, at a glance",
+    visualBody: "Your latest score, what changed since last month, and the few items worth a look — all on one simple screen, written to be understood in a minute.",
+    ctaHeading: "Want RetireShield keeping watch for you?",
+    ctaBody: "Start with your free Safety Score, then turn on monthly monitoring whenever you're ready. No bank linking, cancel anytime.",
     benefits: [
-      [Radar, "Early alerts", "Placeholder copy for flagging changes in risk, spending, or market pressure."],
-      [LineChart, "Score history", "Placeholder copy for tracking whether your retirement safety is improving or slipping."],
-      [Eye, "Plain-English checkups", "Placeholder copy for monthly summaries without confusing jargon."],
-      [ShieldCheck, "Calmer decisions", "Placeholder copy for knowing what deserves attention and what can wait."],
+      [
+        Radar,
+        "Early alerts",
+        "We flag meaningful changes in your spending, income, or market exposure early — while you still have time to do something about them, not after.",
+      ],
+      [
+        LineChart,
+        "Score history",
+        "Watch your Safety Score over time, so you can see at a glance whether your retirement is getting stronger or needs attention.",
+      ],
+      [
+        Eye,
+        "Plain-English checkups",
+        "Each month you get a short summary in everyday language — what changed, what it means for you, and whether you need to do anything.",
+      ],
+      [
+        ShieldCheck,
+        "Calmer decisions",
+        "Most months the answer is 'you're fine.' We tell you what truly deserves attention and what can safely wait.",
+      ],
     ],
     faqs: [
-      ["What gets monitored?", "Placeholder answer: spending assumptions, income, market sensitivity, inflation, and other plan risk signals."],
-      ["How often are alerts sent?", "Placeholder answer: placeholder cadence copy for monthly checkups and important risk changes."],
-      ["Can I update my inputs?", "Placeholder answer: yes, placeholder copy for refreshing your plan when life changes."],
+      [
+        "What gets monitored?",
+        "Your spending assumptions, income, inflation, market sensitivity, and key dates like Medicare and tax thresholds — the signals that quietly affect whether your money lasts.",
+      ],
+      [
+        "How often are alerts sent?",
+        "We re-check your plan every month and send a short summary then. If something important changes in between, you'll hear from us — but we keep it to what matters, not noise.",
+      ],
+      [
+        "Can I update my inputs?",
+        "Yes. Whenever life changes — a move, a new expense, a change in income — refresh your answers and your score and plan update with you.",
+      ],
     ],
   },
   "ai-coach": {
