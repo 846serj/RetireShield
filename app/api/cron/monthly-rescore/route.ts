@@ -109,6 +109,7 @@ async function rescoreUser(supabase: ReturnType<typeof createServiceClient>, use
       band: result.band,
       alertCount: alerts.length,
       topAlertTitle: alerts[0]?.title ?? null,
+      alerts: alerts.slice(0, 3).map((alert) => ({ title: alert.title, action: alert.action_line })),
     });
   }
 

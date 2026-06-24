@@ -143,6 +143,12 @@ export default function Quiz() {
         return;
       }
 
+      void fetch("/api/newsletter/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail, utmSource: "quiz_signup" }),
+      }).catch((error) => console.error("newsletter signup sync failed", error));
+
       if (!data.session) {
         const existingUser = data.user?.identities?.length === 0;
         if (existingUser) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendToList } from "@/lib/email";
+import { addBeehiivSubscriber } from "@/lib/beehiiv";
 
 function isValidEmail(email: unknown): email is string {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     console.log("[lead captured — no DB configured]", JSON.stringify(row));
   }
 
-  await sendToList(normalizedEmail, "free");
+  await addBeehiivSubscriber(normalizedEmail, { utmSource: source ?? "direct", tier: "free" });
 
   return NextResponse.json({
     ok: true,

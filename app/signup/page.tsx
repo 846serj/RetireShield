@@ -73,6 +73,12 @@ export default function Signup() {
         return;
       }
 
+      void fetch("/api/newsletter/account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail, utmSource: "direct_signup" }),
+      }).catch((error) => console.error("newsletter signup sync failed", error));
+
       if (!data.session) {
         setAwaitingEmailConfirmation(true);
         setNotice("Check your email to confirm your account. After confirming, we’ll send you to your dashboard where you can take the Safety Score quiz.");
