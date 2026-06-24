@@ -23,8 +23,10 @@ create table if not exists scores (
   sub_scores jsonb,
   band text,
   answers jsonb,
+  score_source text default 'quiz',
   created_at timestamptz default now()
 );
+create index if not exists scores_user_created_idx on scores (user_id, created_at desc);
 
 create table if not exists subscriptions (
   user_id uuid primary key references auth.users (id) on delete cascade,

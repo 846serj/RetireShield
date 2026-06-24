@@ -30,7 +30,8 @@ export default function ScoreHistoryChart({ points }: ScoreHistoryChartProps) {
     : "";
   const first = points[0];
   const last = points[points.length - 1];
-  const delta = first && last ? last.score - first.score : 0;
+  const previous = points[points.length - 2];
+  const delta = previous && last ? last.score - previous.score : 0;
 
   return (
     <section className="rg-card mb-8">
@@ -42,7 +43,7 @@ export default function ScoreHistoryChart({ points }: ScoreHistoryChartProps) {
         </div>
         {hasChart ? (
           <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-right ring-1 ring-emerald-100">
-            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-emerald-700">Since {first.label}</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-emerald-700">This month</p>
             <p className="mt-1 text-2xl font-extrabold text-ink">{delta >= 0 ? "+" : ""}{delta}</p>
           </div>
         ) : null}

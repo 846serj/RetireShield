@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     sub_scores: result.sub,
     band: result.band,
     answers,
+    score_source: "quiz",
   });
   return NextResponse.json({ ok: true });
 }

@@ -148,3 +148,44 @@ export async function enrollInWinback(email: string) {
 export async function sendConfirmationEmail(email: string) {
   return upsertContact(email, "trialing");
 }
+
+export type RetirementWatchScoreUpdate = {
+  previousOverall?: number | null;
+  nextOverall: number;
+  band: string;
+};
+
+export async function sendRetirementWatchEmail(email: string, update: RetirementWatchScoreUpdate) {
+  const apiKey = process.env.ESP_API_KEY;
+  const publicationId = process.env.BEEHIIV_PUBLICATION_ID;
+  const automationId = process.env.BEEHIIV_RETIREMENT_WATCH_AUTOMATION_ID;
+  const delta = typeof update.previousOverall === "number" ? update.nextOverall - update.previousOverall : null;
+
+  if (!apiKey || !automationId) {
+    console.log(
+      `[ESP Retirement Watch stub] ${email}: score ${update.nextOverall} (${delta === null ? "new" : `${delta >= 0 ? "+" : ""}${delta}`}), ${update.band}`,
+    );
+    return;
+  }
+
+  if (!publicationId) {
+    console.error("[ESP] BEEHIIV_PUBLICATION_ID is missing; skipping Retirement Watch email");
+    return;
+  }
+
+  await beehiivRequest(
+    `${BEEHIIV_API_BASE}/publications/${publicationId}/automations/${automationId}/journeys`,
+    apiKey,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        custom_fields: [
+          { name: "retirement_watch_score", value: String(update.nextOverall) },
+          { name: "retirement_watch_delta", value: delta === null ? "" : `${delta >= 0 ? "+" : ""}${delta}` },
+          { name: "retirement_watch_band", value: update.band },
+        ],
+      }),
+    },
+  );
+}
