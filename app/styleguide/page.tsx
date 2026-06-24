@@ -1,3 +1,5 @@
+import { ScoreGauge } from "@/components/ScoreGauge";
+import { SubScoreBar } from "@/components/SubScoreBar";
 import { Button, Container, Disclaimer, Eyebrow, SectionBand } from "@/components/ui";
 
 const tokens = [
@@ -50,6 +52,25 @@ export default function StyleguidePage() {
           </Disclaimer>
         </Container>
       </SectionBand>
+
+      <Container className="mt-12">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-start">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <Eyebrow>Score components</Eyebrow>
+            <h2 className="mt-3 text-3xl">Animated safety score gauge and sub-score bars</h2>
+            <p className="mt-4 text-slate-700">
+              The gauge and bars use the Phase 1 score band tokens and keep the scoring display educational, plain-English, and non-advisory.
+            </p>
+            <div className="mt-7 space-y-5">
+              <SubScoreBar label="Guaranteed income" value={86} scoreKey="income" />
+              <SubScoreBar label="Spending sustainability" value={58} scoreKey="withdrawal" caption="Optional captions can replace the default education blurb." />
+              <SubScoreBar label="Inflation exposure" value={42} scoreKey="inflation" />
+              <SubScoreBar label="Market-drop cushion" value={28} scoreKey="market" />
+            </div>
+          </div>
+          <ScoreGauge value={82} band="Secure" delta="+6 this month" />
+        </div>
+      </Container>
 
       <Container className="mt-12">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
