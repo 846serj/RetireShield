@@ -14,6 +14,7 @@ export function FeatureMock({ slug }: { slug: FeatureSlug }) {
       <div className="py-8 text-center">
         <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-full border-[14px] border-brand/20 bg-band text-5xl font-extrabold text-brand">{feature.visualMetric}</div>
         <p className="mt-4 text-xl font-extrabold text-ink">{feature.visualLabel}</p>
+        {"visualNote" in feature ? <p className="mt-2 text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">{feature.visualNote}</p> : null}
       </div>
       <div className="grid gap-3">
         {feature.benefits.slice(0, 3).map(([_, title], index) => <div key={title} className="flex items-center gap-3 rounded-2xl bg-surface p-4"><span className="h-3 w-3 rounded-full bg-accent" /><span className="font-bold text-slate-700">{index + 1}. {title}</span></div>)}
