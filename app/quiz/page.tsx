@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { QUESTIONS } from "@/lib/questions";
@@ -187,7 +187,7 @@ export default function Quiz() {
           <span>Question {step + 1} of {QUESTIONS.length}</span>
           <span>{Math.round(((step + 1) / QUESTIONS.length) * 100)}%</span>
         </div>
-        <div className="mb-8 h-5 w-full overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+        <div className="mb-8 h-5 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="Quiz progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(((step + 1) / QUESTIONS.length) * 100)}>
           <div
             className="h-full rounded-full bg-brand transition-all duration-500 ease-out motion-reduce:transition-none"
             style={{ width: `${((step + 1) / QUESTIONS.length) * 100}%` }}
@@ -206,16 +206,20 @@ export default function Quiz() {
         )}
 
         {q.kind === "state" && (
-          <select
-            defaultValue={(answers[q.key] as string) ?? ""}
-            onChange={(e) => { if (e.target.value) { setAnswer(q.key, e.target.value); window.setTimeout(() => goToStep(step + 1), 120); } }}
-            className="rg-input min-h-16 text-xl"
-          >
+          <div>
+            <label htmlFor={`quiz-${q.key}`} className="mb-2 block text-base font-bold text-ink">Select your state</label>
+            <select
+              id={`quiz-${q.key}`}
+              defaultValue={(answers[q.key] as string) ?? ""}
+              onChange={(e) => { if (e.target.value) { setAnswer(q.key, e.target.value); window.setTimeout(() => goToStep(step + 1), 120); } }}
+              className="rg-input min-h-16 text-xl"
+            >
             <option value="" disabled>Select your state…</option>
-            {US_STATES.map((s) => (
-              <option key={s.code} value={s.code}>{s.name}</option>
-            ))}
-          </select>
+              {US_STATES.map((s) => (
+                <option key={s.code} value={s.code}>{s.name}</option>
+              ))}
+            </select>
+          </div>
         )}
 
         {q.kind === "choice" && (
@@ -263,11 +267,17 @@ export default function Quiz() {
             Enter your email and we&apos;ll show your four sub-scores and a personalized action plan. We&apos;ll also send you a short monthly check-in. No spam, unsubscribe anytime.
           </p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <input
-              type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@email.com"
-              className="rg-input flex-1"
-            />
+            <div className="flex-1 text-left">
+              <label htmlFor="results-email" className="sr-only">Email address for unlocking full results</label>
+              <input
+                id="results-email"
+                type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@email.com"
+                autoComplete="email"
+                className="rg-input"
+                aria-describedby={emailError ? "results-email-error" : undefined}
+              />
+            </div>
             <Button
               disabled={!email.trim().includes("@") || submitting}
               onClick={submitEmail}
@@ -276,7 +286,7 @@ export default function Quiz() {
               {submitting ? "…" : "Show my full results"}
             </Button>
           </div>
-          {emailError && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{emailError}</p>}
+          {emailError && <p id="results-email-error" className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-bad">{emailError}</p>}
           <p className="mt-3 text-xs text-slate-500">Your score stays visible either way. Creating an account is optional after you see your results.</p>
         </div>
       ) : (
@@ -388,12 +398,15 @@ function NumberStep({
   prefix, placeholder, initial, onNext,
 }: { prefix?: string; placeholder?: string; initial?: number; onNext: (v: number) => void }) {
   const [val, setVal] = useState(initial != null ? String(initial) : "");
+  const inputId = useId();
   const num = Number(val.replace(/[^0-9.]/g, ""));
   return (
     <div>
+      <label htmlFor={inputId} className="mb-2 block text-base font-bold text-ink">Enter your answer</label>
       <div className="flex min-h-20 items-center rounded-2xl border-2 border-slate-300 bg-white px-5 py-4 text-[1.75rem] focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
-        {prefix && <span className="mr-2 font-bold text-slate-400">{prefix}</span>}
+        {prefix && <span className="mr-2 font-bold text-slate-500" aria-hidden="true">{prefix}</span>}
         <input
+          id={inputId}
           type="text"
           inputMode="numeric"
           pattern="[0-9,]*"

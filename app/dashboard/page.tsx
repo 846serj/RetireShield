@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
@@ -20,6 +21,11 @@ import { Button, Disclaimer, Eyebrow } from "@/components/ui";
 
 type DashboardProps = {
   searchParams?: { session_id?: string; welcome?: string };
+};
+
+export const metadata: Metadata = {
+  title: "Retirement Dashboard",
+  description: "Review your Retirement Safety Score, monitoring status, action plan, matched alerts, and account subscription.",
 };
 
 const SUB_SCORE_LABELS = {
