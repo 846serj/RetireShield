@@ -377,7 +377,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
       ) : (
         <>
           <section className="mb-8 grid gap-4 md:grid-cols-3">
-            <Link href="/plan/setup" className="rg-card-highlight no-underline transition hover:-translate-y-0.5 hover:border-brand">
+            <Link href="/dashboard/tools/plan/setup" className="rg-card-highlight no-underline transition hover:-translate-y-0.5 hover:border-brand">
               <p className="rg-kicker">Planning lab</p>
               <h2 className="mt-2 text-xl font-extrabold">Build your retirement plan</h2>
               <p className="mt-2 text-sm text-slate-700">Run projections, Monte Carlo, Roth conversion, Social Security, and withdrawal guardrail tools.</p>
@@ -387,7 +387,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
               <h2 className="mt-2 text-xl font-extrabold">Update your Safety Score</h2>
               <p className="mt-2 text-sm text-slate-700">Refresh your profile so your plan and alerts stay personalized.</p>
             </Link>
-            <Link href="/coach" className="rg-card no-underline transition hover:-translate-y-0.5 hover:border-emerald-400">
+            <Link href="/dashboard/coach" className="rg-card no-underline transition hover:-translate-y-0.5 hover:border-emerald-400">
               <p className="rg-kicker text-emerald-700">AI coach</p>
               <h2 className="mt-2 text-xl font-extrabold">Ask what to do next</h2>
               <p className="mt-2 text-sm text-slate-700">Get plain-English help interpreting the tools and next steps.</p>

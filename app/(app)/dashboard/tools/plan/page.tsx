@@ -50,7 +50,7 @@ export default async function PlanPage() {
   if (!user) redirect("/login");
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
-  if (!profile) redirect("/plan/setup");
+  if (!profile) redirect("/dashboard/tools/plan/setup");
   const paid = await hasPaidAccess(user.id);
 
   const typedProfile = profile as FinancialProfile;
@@ -93,7 +93,7 @@ export default async function PlanPage() {
             <h2 className="text-2xl font-extrabold">Balance over time</h2>
             <p className="text-slate-600">Ending projected balance: {dollars(last?.endBalances.total ?? 0)}. Shaded band shows 10th–90th percentile Monte Carlo outcomes; dashed line is median.</p>
           </div>
-          <Link href="/plan/setup" className="font-bold text-brand underline">Edit profile</Link>
+          <Link href="/dashboard/tools/plan/setup" className="font-bold text-brand underline">Edit profile</Link>
         </div>
         <BalanceChart points={projection.years.map((row) => ({ age: row.age, total: row.endBalances.total }))} bands={monteCarlo.paths} />
       </section>
