@@ -14,6 +14,7 @@ import { ScoreGauge } from "@/components/ScoreGauge";
 import LockedTeaser from "@/components/LockedTeaser";
 import PlanList from "@/components/PlanList";
 import AlertFeed from "@/components/AlertFeed";
+import ConnectAccounts from "@/components/ConnectAccounts";
 import ScoreHistoryChart from "@/components/ScoreHistoryChart";
 import { stripe } from "@/lib/stripe";
 import { Button, Eyebrow } from "@/components/ui";
@@ -126,6 +127,11 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     : [];
   const checkedDate = formatCheckedDate(latest?.created_at);
   const scoreHistory = paid ? await getScoreHistory(supabase, user.id) : [];
+  const { data: connectedInstitutions } = await supabase
+    .from("plaid_items")
+    .select("item_id,institution_name,status,created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
   return (
     <div className="rg-page-shell">
@@ -181,6 +187,8 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
           </div>
         </div>
       </section>
+
+      <ConnectAccounts institutions={connectedInstitutions ?? []} />
 
       <section className="mb-8" aria-labelledby="premium-tools-heading">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
