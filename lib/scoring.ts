@@ -1,6 +1,8 @@
 // Retirement Safety Score — pure, testable scoring logic.
 // Education only, NOT advice. No account/brokerage linking. See RetireShield-v0-Build-Layout.md §5.
 
+import type { ScoreBandLabel } from "@/lib/verdicts";
+
 export type Answers = {
   age: number;
   status: "working" | "near" | "retired";
@@ -15,7 +17,7 @@ export type Answers = {
 };
 
 export type SubScores = { income: number; withdrawal: number; inflation: number; market: number };
-export type Result = { overall: number; band: string; sub: SubScores };
+export type Result = { overall: number; band: ScoreBandLabel; sub: SubScores };
 
 const SAVINGS_MID: Record<Answers["savingsBucket"], number> = {
   "<50k": 25000, "50-150k": 100000, "150-500k": 325000, "500k-1M": 750000, "1M+": 1500000,
@@ -97,7 +99,7 @@ export function computeScores(a: Answers): Result {
       sub.inflation * weights.inflation +
       sub.market * weights.market
   );
-  const band = overall >= 80 ? "Secure" : overall >= 60 ? "Mostly Secure" : overall >= 40 ? "At Risk" : "Vulnerable";
+  const band: ScoreBandLabel = overall >= 80 ? "Secure" : overall >= 60 ? "Mostly Secure" : overall >= 40 ? "At Risk" : "Vulnerable";
   return { overall, band, sub };
 }
 
