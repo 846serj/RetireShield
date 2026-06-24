@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSubscriptionAccess } from "@/lib/subscription";
 import { getMatchedAlerts, type Alert } from "@/lib/alerts";
 import { buildActionPlan } from "@/lib/actionPlan";
-import type { Answers } from "@/lib/scoring";
+import type { Answers, SubScores } from "@/lib/scoring";
 import LockedTeaser from "@/components/LockedTeaser";
 import ScoreHydrator from "@/components/ScoreHydrator";
 import { ScoreGauge } from "@/components/ScoreGauge";
@@ -18,7 +18,7 @@ type ScoreRow = {
   id: string;
   overall: number;
   band: string;
-  sub_scores?: Record<string, number> | null;
+  sub_scores?: Partial<SubScores> | null;
   answers?: Answers | null;
   created_at: string;
   score_source?: string | null;
@@ -46,6 +46,16 @@ function sinceLine(latest: ScoreRow | null, priorScore: ScoreRow | null, lastSee
   const delta = Math.round(Number(latest.overall ?? 0) - Number(priorScore.overall ?? 0));
   const alerts = `${newAlertCount} new ${newAlertCount === 1 ? "alert" : "alerts"}`;
   return `Since ${formatCheckedDate(lastSeenAt)}: your score went ${priorScore.overall} → ${latest.overall} (${formatDelta(delta)}), ${alerts}.`;
+}
+
+
+function normalizeSubScores(subScores?: Partial<SubScores> | null): SubScores {
+  return {
+    income: Number(subScores?.income ?? 0),
+    withdrawal: Number(subScores?.withdrawal ?? 0),
+    inflation: Number(subScores?.inflation ?? 0),
+    market: Number(subScores?.market ?? 0),
+  };
 }
 
 function countUnreadAlerts(alerts: Alert[], lastSeenAt?: string | null) {
@@ -97,7 +107,7 @@ export default async function Dashboard({ searchParams }: DashboardProps) {
     : { data: null };
 
   const alerts = answers ? await getMatchedAlerts(supabase, { state: answers.state, age: answers.age, worry: answers.worry }, 12) : [];
-  const plan = latest && answers ? buildActionPlan(answers, { overall: latest.overall, band: latest.band as never, sub: latest.sub_scores ?? {} }) : [];
+  const plan = latest && answers ? buildActionPlan(answers, { overall: latest.overall, band: latest.band as never, sub: normalizeSubScores(latest.sub_scores) }) : [];
   const newAlertCount = countUnreadAlerts(alerts, lastSeenAt);
   const topAlerts = alerts.slice(0, 3);
   const nextAction = [...plan].sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority])[0];
