@@ -1,5 +1,6 @@
 import { decrypt } from "@/lib/crypto";
 import { plaid } from "@/lib/plaid";
+import { updateProfileFromConnected } from "@/lib/connected/profileSync";
 import { createServiceClient } from "@/lib/supabase/server";
 
 type PlaidItem = {
@@ -131,5 +132,6 @@ export async function syncItem(item: PlaidItem) {
   const accessToken = decrypt(item.access_token_encrypted);
   await syncTransactions(item, accessToken);
   await syncHoldings(item, accessToken);
+  await updateProfileFromConnected(item.user_id);
   await refreshBalances(item, accessToken);
 }
