@@ -21,7 +21,9 @@ const SUB_LABEL: Record<keyof SubScores, string> = {
 
 export default function Quiz() {
   const [step, setStep] = useState(0);
+  const [introComplete, setIntroComplete] = useState(false);
   const [answers, setAnswers] = useState<State>({});
+  const [selectedChoice, setSelectedChoice] = useState<string | number | null>(null);
   const [email, setEmail] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -36,7 +38,7 @@ export default function Quiz() {
   const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false);
   const router = useRouter();
 
-  const done = step >= QUESTIONS.length;
+  const done = introComplete && step >= QUESTIONS.length;
   const result = useMemo(() => (done ? computeScores(answers as unknown as Answers) : null), [done, answers]);
   const acts = useMemo(
     () => (result ? actions(answers as unknown as Answers, result) : []),
@@ -45,6 +47,17 @@ export default function Quiz() {
 
   function setAnswer(key: string, value: string | number) {
     setAnswers((p) => ({ ...p, [key]: value }));
+  }
+
+  function goToStep(nextStep: number) {
+    setSelectedChoice(null);
+    setStep(nextStep);
+  }
+
+  function selectChoice(key: string, value: string | number) {
+    setSelectedChoice(value);
+    setAnswer(key, value);
+    window.setTimeout(() => goToStep(step + 1), 180);
   }
 
   async function submitEmail() {
@@ -137,6 +150,32 @@ export default function Quiz() {
     }
   }
 
+  // ---- Quiz intro ----
+  if (!introComplete) {
+    return (
+      <div className="rg-page-shell">
+        <div className="mx-auto max-w-3xl px-4 py-10 sm:py-16">
+          <div className="rg-card overflow-hidden">
+            <Eyebrow>Retirement Safety Score</Eyebrow>
+            <div className="mt-8 rounded-[2rem] bg-band p-5 sm:p-8">
+              <h1 className="font-serif text-[2rem] font-semibold leading-tight text-ink sm:text-5xl">Let&apos;s see where your retirement stands.</h1>
+              <p className="mt-5 text-xl font-semibold leading-8 text-slate-700">
+                9 simple questions. About 2 minutes. No account, and we never ask you to connect a bank or brokerage. There are no wrong answers — just answer as best you know.
+              </p>
+            </div>
+            <Button type="button" onClick={() => setIntroComplete(true)} className="mt-8 w-full sm:w-auto">
+              Start — question 1 of 9
+            </Button>
+            <p className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600">
+              🔒 No bank linking · ⏱ ~2 minutes · 🆓 Always free to see your score
+            </p>
+          </div>
+          <Disclaimer className="mt-6" />
+        </div>
+      </div>
+    );
+  }
+
   // ---- Quiz steps ----
   if (!done) {
     const q = QUESTIONS[step];
@@ -147,27 +186,31 @@ export default function Quiz() {
         <Eyebrow>Retirement Safety Score</Eyebrow>
         <div className="mb-3 mt-5 flex items-center justify-between gap-4 text-sm font-bold text-slate-500">
           <span>Question {step + 1} of {QUESTIONS.length}</span>
-          <span>{Math.round((step / QUESTIONS.length) * 100)}%</span>
+          <span>{Math.round(((step + 1) / QUESTIONS.length) * 100)}%</span>
         </div>
-        <div className="mb-8 h-3 w-full rounded-full bg-slate-200">
-          <div className="h-3 rounded-full bg-brand transition-all" style={{ width: `${(step / QUESTIONS.length) * 100}%` }} />
+        <div className="mb-8 h-5 w-full overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
+          <div
+            className="h-full rounded-full bg-brand transition-all duration-500 ease-out motion-reduce:transition-none"
+            style={{ width: `${((step + 1) / QUESTIONS.length) * 100}%` }}
+          />
         </div>
-        <h1 className="mb-8 text-3xl font-bold sm:text-4xl">{q.prompt}</h1>
+        <h1 className="font-serif text-[1.625rem] font-semibold leading-tight text-ink sm:text-3xl">{q.prompt}</h1>
+        {q.help && <p className="mb-8 mt-3 text-lg leading-7 text-slate-600">{q.help}</p>}
 
         {q.kind === "number" && (
           <NumberStep
             prefix={q.prefix}
             placeholder={q.placeholder}
             initial={answers[q.key] as number | undefined}
-            onNext={(v) => { setAnswer(q.key, v); setStep(step + 1); }}
+            onNext={(v) => { setAnswer(q.key, v); goToStep(step + 1); }}
           />
         )}
 
         {q.kind === "state" && (
           <select
             defaultValue={(answers[q.key] as string) ?? ""}
-            onChange={(e) => { if (e.target.value) { setAnswer(q.key, e.target.value); setStep(step + 1); } }}
-            className="rg-input"
+            onChange={(e) => { if (e.target.value) { setAnswer(q.key, e.target.value); window.setTimeout(() => goToStep(step + 1), 120); } }}
+            className="rg-input min-h-16 text-xl"
           >
             <option value="" disabled>Select your state…</option>
             {US_STATES.map((s) => (
@@ -181,8 +224,13 @@ export default function Quiz() {
             {q.choices.map((c) => (
               <button
                 key={String(c.value)}
-                onClick={() => { setAnswer(q.key, c.value); setStep(step + 1); }}
-                className="text-left rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 text-lg font-semibold text-ink transition hover:border-brand hover:bg-band"
+                onClick={() => selectChoice(q.key, c.value)}
+                aria-pressed={answers[q.key] === c.value}
+                className={`min-h-16 rounded-2xl border-2 px-5 py-4 text-left text-xl font-bold text-ink shadow-sm transition hover:border-brand hover:bg-band focus-visible:ring-brand/20 motion-reduce:transition-none ${
+                  selectedChoice === c.value || answers[q.key] === c.value
+                    ? "border-brand bg-band shadow-brand/10"
+                    : "border-slate-200 bg-white"
+                }`}
               >
                 {c.label}
               </button>
@@ -190,11 +238,12 @@ export default function Quiz() {
           </div>
         )}
 
-        {step > 0 && (
-          <button onClick={() => setStep(step - 1)} className="mt-8 font-bold text-slate-500 underline">
-            ← Back
-          </button>
-        )}
+        <button
+          onClick={() => (step > 0 ? goToStep(step - 1) : setIntroComplete(false))}
+          className="mt-8 font-bold text-slate-500 underline transition hover:text-brand motion-reduce:transition-none"
+        >
+          ← Back
+        </button>
       </div>
       <Disclaimer className="mt-6" />
       </div>
@@ -349,17 +398,22 @@ function NumberStep({
   const num = Number(val.replace(/[^0-9.]/g, ""));
   return (
     <div>
-      <div className="flex items-center rounded-xl border-2 border-slate-300 bg-white px-4 py-3 text-2xl focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
-        {prefix && <span className="text-slate-400 mr-1">{prefix}</span>}
+      <div className="flex min-h-20 items-center rounded-2xl border-2 border-slate-300 bg-white px-5 py-4 text-[1.75rem] focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
+        {prefix && <span className="mr-2 font-bold text-slate-400">{prefix}</span>}
         <input
-          inputMode="numeric" value={val} onChange={(e) => setVal(e.target.value)}
-          placeholder={placeholder} className="w-full outline-none"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9,]*"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-transparent font-bold outline-none placeholder:font-semibold placeholder:text-slate-300"
           onKeyDown={(e) => { if (e.key === "Enter" && num > 0) onNext(num); }}
         />
       </div>
       <button
         disabled={!(num > 0)} onClick={() => onNext(num)}
-        className="mt-6 rounded-xl bg-brand px-8 py-3 text-lg font-bold text-white transition hover:bg-brand-dark disabled:opacity-50"
+        className="mt-6 min-h-16 w-full rounded-xl bg-brand px-8 py-3 text-lg font-bold text-white transition hover:bg-brand-dark disabled:opacity-50 sm:w-auto motion-reduce:transition-none"
       >
         Continue
       </button>
