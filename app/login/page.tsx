@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Disclaimer, Eyebrow } from "@/components/ui";
+import { Button } from "@/components/ui";
 
 function LoginContent() {
   const router = useRouter();
@@ -92,70 +92,77 @@ function LoginContent() {
   }
 
   if (checkingSession) {
-    return <div className="rg-page-shell"><div className="mx-auto max-w-md px-4 py-16">Checking your session…</div></div>;
+    return <div className="rg-page-shell"><div className="mx-auto max-w-xl px-5 py-20 text-lg text-slate-700">Checking your session…</div></div>;
   }
 
   return (
-    <div className="rg-page-shell">
-    <div className="mx-auto max-w-md px-4 py-16">
-      <div className="rg-card">
-      <Eyebrow>Welcome back</Eyebrow>
-      <h1 className="mb-6 mt-3 text-4xl font-bold">Sign in to RetireShield</h1>
-      <div className="space-y-5">
-        <div>
-          <label htmlFor="login-email" className="block text-base font-bold text-ink">Email address</label>
-          <input
-            id="login-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@email.com"
-            autoComplete="email"
-            className="rg-input mt-2"
-          />
-        </div>
-        <div>
-          <label htmlFor="login-password" className="block text-base font-bold text-ink">Password</label>
-          <div className="mt-2 flex rounded-xl border-2 border-slate-300 bg-white focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
-            <input
-              id="login-password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              className="min-h-14 flex-1 rounded-l-xl px-4 text-lg outline-none"
-            />
-            <button type="button" onClick={() => setShowPassword((show) => !show)} className="rounded-r-xl px-4 text-base font-bold text-brand underline">
-              {showPassword ? "Hide" : "Show"}
-            </button>
+    <div className="rg-page-shell min-h-[calc(100vh-5rem)]">
+      <main className="mx-auto flex max-w-2xl flex-col px-5 py-14 sm:py-20">
+        <section className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-sm shadow-slate-200/80 sm:p-10">
+          <p className="rg-kicker">RetireShield account</p>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight sm:text-6xl">Save your Safety Score.</h1>
+          <p className="mt-5 text-xl leading-8 text-slate-700 sm:text-2xl sm:leading-9">
+            Create a free account to keep your score, get your action plan, and start your trial.
+          </p>
+
+          <div className="mt-8 space-y-5">
+            <div>
+              <label htmlFor="login-email" className="block text-base font-bold text-ink">Email address</label>
+              <input
+                id="login-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@email.com"
+                autoComplete="email"
+                className="rg-input mt-2"
+              />
+            </div>
+            <div>
+              <label htmlFor="login-password" className="block text-base font-bold text-ink">Password</label>
+              <div className="mt-2 flex rounded-xl border-2 border-slate-300 bg-white focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="min-h-14 flex-1 rounded-l-xl px-4 text-lg outline-none"
+                />
+                <button type="button" onClick={() => setShowPassword((show) => !show)} className="rounded-r-xl px-4 text-base font-bold text-brand underline">
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+            <Button
+              disabled={!email.trim().includes("@") || !password || sending}
+              onClick={signIn}
+              className="w-full disabled:opacity-50"
+            >
+              {sending ? "Saving your score…" : "Save my score"}
+            </Button>
+            {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{err}</p>}
+            {notice && <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-slate-700">{notice}</p>}
+            <div className="flex flex-col gap-3 text-base sm:flex-row sm:items-center sm:justify-between">
+              <button type="button" onClick={sendPasswordReset} disabled={resetting} className="text-left font-bold text-brand underline disabled:opacity-50">
+                {resetting ? "Sending reset…" : "Forgot password?"}
+              </button>
+              <Link href="/quiz" className="font-bold text-brand underline">New here? Take the score</Link>
+            </div>
           </div>
-        </div>
-        <Button
-          disabled={!email.trim().includes("@") || !password || sending}
-          onClick={signIn}
-          className="w-full disabled:opacity-50"
-        >
-          {sending ? "Signing in…" : "Sign in"}
-        </Button>
-        {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{err}</p>}
-        {notice && <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-slate-700">{notice}</p>}
-        <div className="flex flex-col gap-3 text-base sm:flex-row sm:items-center sm:justify-between">
-          <button type="button" onClick={sendPasswordReset} disabled={resetting} className="text-left font-bold text-brand underline disabled:opacity-50">
-            {resetting ? "Sending reset…" : "Forgot password?"}
-          </button>
-          <Link href="/quiz" className="font-bold text-brand underline">Create one</Link>
-        </div>
-      </div>
-      </div>
-      <Disclaimer className="mt-6" />
-    </div>
+
+          <div className="mt-8 rounded-2xl border border-brand/15 bg-band p-4 text-base font-semibold text-slate-700">
+            No bank linking. Your data is private and never sold.
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
 
 export default function Login() {
   return (
-    <Suspense fallback={<div className="rg-page-shell"><div className="mx-auto max-w-md px-4 py-16">Loading sign in…</div></div>}>
+    <Suspense fallback={<div className="rg-page-shell"><div className="mx-auto max-w-xl px-5 py-20 text-lg text-slate-700">Loading sign in…</div></div>}>
       <LoginContent />
     </Suspense>
   );
