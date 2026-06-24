@@ -97,7 +97,7 @@ function ageFromBirthdate(birthdate?: string | null) {
 }
 
 function initialDraft(profile: Partial<FinancialProfile> | null, quizAnswers: Answers | null): ProfileDraft {
-  const quizBalance = savingsBucketToBalance(quizAnswers?.savingsBucket);
+  const quizBalance = Number(quizAnswers?.savings ?? 0) || savingsBucketToBalance(quizAnswers?.savingsBucket);
   const stockPct = Number(quizAnswers?.stockPct ?? profile?.stock_pct ?? 60);
   return {
     ...profile,

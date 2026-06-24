@@ -159,11 +159,11 @@ export default function Quiz() {
             <div className="mt-8 rounded-[2rem] bg-band p-5 sm:p-8">
               <h1 className="font-serif text-[2rem] font-semibold leading-tight text-ink sm:text-5xl">Let&apos;s see where your retirement stands.</h1>
               <p className="mt-5 text-xl font-semibold leading-8 text-slate-700">
-                9 simple questions. About 2 minutes. No account, and we never ask you to connect a bank or brokerage. There are no wrong answers — just answer as best you know.
+                11 simple questions. About 2 minutes. No account, and we never ask you to connect a bank or brokerage. There are no wrong answers — just answer as best you know.
               </p>
             </div>
             <Button type="button" onClick={() => setIntroComplete(true)} className="mt-8 w-full sm:w-auto">
-              Start — question 1 of 9
+              Start — question 1 of 11
             </Button>
             <p className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600">
               🔒 No bank linking · ⏱ ~2 minutes · 🆓 Always free to see your score
@@ -202,6 +202,21 @@ export default function Quiz() {
             placeholder={q.placeholder}
             initial={answers[q.key] as number | undefined}
             onNext={(v) => { setAnswer(q.key, v); goToStep(step + 1); }}
+          />
+        )}
+
+        {q.kind === "savingsAmount" && (
+          <SavingsStep
+            initial={answers.savings as number | undefined}
+            onNext={(v) => { setAnswer("savings", v); goToStep(step + 1); }}
+          />
+        )}
+
+        {q.kind === "socialSecurityDetails" && (
+          <SocialSecurityStep
+            answers={answers}
+            isMarried={answers.filingStatus === "married_joint" || answers.filingStatus === "married_separate"}
+            onNext={(updates) => { setAnswers((p) => ({ ...p, ...updates })); goToStep(step + 1); }}
           />
         )}
 
@@ -390,6 +405,113 @@ export default function Quiz() {
       )}
       <Disclaimer className="mt-8" />
     </div>
+    </div>
+  );
+}
+
+const SAVINGS_RANGES = [
+  { label: "Under $50k", value: 25000 },
+  { label: "$50k – $150k", value: 100000 },
+  { label: "$150k – $500k", value: 325000 },
+  { label: "$500k – $1M", value: 750000 },
+  { label: "Over $1M", value: 1500000 },
+];
+
+function formatMoneyInput(value: number) {
+  return value ? value.toLocaleString("en-US") : "";
+}
+
+function SavingsStep({
+  initial, onNext,
+}: { initial?: number; onNext: (v: number) => void }) {
+  const [val, setVal] = useState(initial != null ? formatMoneyInput(initial) : "");
+  const inputId = useId();
+  const num = Number(val.replace(/[^0-9.]/g, ""));
+
+  return (
+    <div>
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        {SAVINGS_RANGES.map((range) => (
+          <button
+            key={range.label}
+            type="button"
+            onClick={() => setVal(formatMoneyInput(range.value))}
+            className={`rounded-2xl border-2 px-4 py-3 text-left text-lg font-bold transition hover:border-brand hover:bg-band motion-reduce:transition-none ${
+              num === range.value ? "border-brand bg-band" : "border-slate-200 bg-white"
+            }`}
+          >
+            {range.label}
+          </button>
+        ))}
+      </div>
+      <label htmlFor={inputId} className="mb-2 block text-base font-bold text-ink">Or enter a closer estimate</label>
+      <div className="flex min-h-20 items-center rounded-2xl border-2 border-slate-300 bg-white px-5 py-4 text-[1.75rem] focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
+        <span className="mr-2 font-bold text-slate-500" aria-hidden="true">$</span>
+        <input
+          id={inputId}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9,]*"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          placeholder="325,000"
+          className="w-full bg-transparent font-bold outline-none placeholder:font-semibold placeholder:text-slate-300"
+          onKeyDown={(e) => { if (e.key === "Enter" && num >= 0) onNext(num); }}
+        />
+      </div>
+      <button disabled={!(num >= 0)} onClick={() => onNext(num)} className="mt-6 min-h-16 w-full rounded-xl bg-brand px-8 py-3 text-lg font-bold text-white transition hover:bg-brand-dark disabled:opacity-50 sm:w-auto motion-reduce:transition-none">
+        Continue
+      </button>
+    </div>
+  );
+}
+
+function SocialSecurityStep({
+  answers, isMarried, onNext,
+}: { answers: State; isMarried: boolean; onNext: (updates: State) => void }) {
+  const [ssaBenefitEstimate, setSsaBenefitEstimate] = useState(formatMoneyInput(Number(answers.ssaBenefitEstimate ?? 0)));
+  const [claimedSocialSecurity, setClaimedSocialSecurity] = useState(String(answers.claimedSocialSecurity ?? "skip"));
+  const [spouseAge, setSpouseAge] = useState(answers.spouseAge != null ? String(answers.spouseAge) : "");
+  const [spouseSsaBenefitEstimate, setSpouseSsaBenefitEstimate] = useState(formatMoneyInput(Number(answers.spouseSsaBenefitEstimate ?? 0)));
+
+  function submit() {
+    const updates: State = { claimedSocialSecurity };
+    const benefit = Number(ssaBenefitEstimate.replace(/[^0-9.]/g, ""));
+    const spouseBenefit = Number(spouseSsaBenefitEstimate.replace(/[^0-9.]/g, ""));
+    const parsedSpouseAge = Number(spouseAge.replace(/[^0-9.]/g, ""));
+    if (benefit > 0) updates.ssaBenefitEstimate = benefit;
+    if (isMarried && parsedSpouseAge > 0) updates.spouseAge = parsedSpouseAge;
+    if (isMarried && spouseBenefit > 0) updates.spouseSsaBenefitEstimate = spouseBenefit;
+    onNext(updates);
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <label htmlFor="ssa-benefit" className="block text-base font-bold text-ink">Your estimated Social Security benefit ($/mo)</label>
+        <p className="mt-1 text-sm text-slate-600">Optional — use your latest SSA estimate or current check amount.</p>
+        <div className="mt-2 flex min-h-14 items-center rounded-xl border-2 border-slate-300 bg-white px-4 text-lg focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
+          <span className="mr-2 font-bold text-slate-500">$</span>
+          <input id="ssa-benefit" inputMode="numeric" value={ssaBenefitEstimate} onChange={(e) => setSsaBenefitEstimate(e.target.value)} placeholder="2,100" className="w-full bg-transparent font-bold outline-none" />
+        </div>
+      </div>
+      <fieldset>
+        <legend className="block text-base font-bold text-ink">Have you claimed Social Security yet?</legend>
+        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          {[{ value: "no", label: "Not yet" }, { value: "yes", label: "Yes" }, { value: "skip", label: "Skip" }].map((choice) => (
+            <button key={choice.value} type="button" onClick={() => setClaimedSocialSecurity(choice.value)} className={`rounded-xl border-2 px-4 py-3 font-bold ${claimedSocialSecurity === choice.value ? "border-brand bg-band" : "border-slate-200 bg-white"}`}>{choice.label}</button>
+          ))}
+        </div>
+      </fieldset>
+      {isMarried && (
+        <div className="grid gap-4 rounded-2xl border border-slate-200 bg-surface p-4 sm:grid-cols-2">
+          <div><label htmlFor="spouse-age" className="block text-base font-bold text-ink">Spouse age</label><input id="spouse-age" inputMode="numeric" value={spouseAge} onChange={(e) => setSpouseAge(e.target.value)} placeholder="65" className="rg-input mt-2" /></div>
+          <div><label htmlFor="spouse-ssa" className="block text-base font-bold text-ink">Spouse SSA benefit ($/mo)</label><input id="spouse-ssa" inputMode="numeric" value={spouseSsaBenefitEstimate} onChange={(e) => setSpouseSsaBenefitEstimate(e.target.value)} placeholder="1,800" className="rg-input mt-2" /></div>
+        </div>
+      )}
+      <button type="button" onClick={submit} className="min-h-16 w-full rounded-xl bg-brand px-8 py-3 text-lg font-bold text-white transition hover:bg-brand-dark sm:w-auto motion-reduce:transition-none">
+        Continue
+      </button>
     </div>
   );
 }
