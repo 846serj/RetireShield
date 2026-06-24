@@ -20,10 +20,16 @@ const navLinks = [
   { label: "About", href: "/about" },
 ];
 
+const footerSocialLinks = [
+  { label: "LinkedIn", href: "https://www.linkedin.com/company/retireshield" },
+  { label: "X", href: "https://x.com/retireshield" },
+  { label: "Facebook", href: "https://www.facebook.com/retireshield" },
+];
+
 const footerColumns = [
   { title: "Product", links: [{ label: "Safety Score", href: "/features/safety-score" }, { label: "Monitoring", href: "/features/monitoring" }, { label: "AI Coach", href: "/features/ai-coach" }, { label: "Scam Shield", href: "/features/scam-shield" }] },
   { title: "Company", links: [{ label: "About", href: "/about" }, { label: "Careers", href: "mailto:hello@retireshield.com?subject=Careers%20at%20RetireShield" }, { label: "Partners", href: "mailto:hello@retireshield.com?subject=RetireShield%20partnerships" }, { label: "Contact", href: "mailto:hello@retireshield.com" }] },
-  { title: "Resources", links: [{ label: "Retirement Watch", href: "/resources" }, { label: "Guides", href: "/resources" }, { label: "Calculators", href: "/quiz" }, { label: "Help Center", href: "/resources" }] },
+  { title: "Resources", links: [{ label: "Retirement Watch", href: "/resources" }, { label: "Guides", href: "/resources" }, { label: "Calculators", href: "/quiz" }, { label: "Help Center", href: "mailto:hello@retireshield.com?subject=RetireShield%20help" }] },
   { title: "Legal", links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Refund Policy", href: "/refund-policy" }, { label: "Disclosures", href: "/about#trust-heading" }] },
 ];
 
@@ -206,6 +212,13 @@ export function SiteFooter() {
               <input id="newsletter-email" type="email" placeholder="Email address" className="min-h-12 flex-1 rounded-xl border border-slate-300 px-4 text-base" />
               <Button type="submit" className="min-h-12 px-5 py-2 text-base">Subscribe</Button>
             </form>
+            <nav className="mt-6 flex gap-4" aria-label="Social links">
+              {footerSocialLinks.map((link) => (
+                <a key={link.label} href={link.href} className="text-sm font-extrabold text-slate-600 no-underline hover:text-brand" target="_blank" rel="noreferrer">
+                  {link.label}
+                </a>
+              ))}
+            </nav>
           </div>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {footerColumns.map((column) => (
