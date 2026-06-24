@@ -42,10 +42,15 @@ create table if not exists subscriptions (
 create table if not exists content_items (
   id uuid primary key default gen_random_uuid(),
   title text not null,
-  body text,
-  category text,               -- scam | benefit | inflation | costofliving
-  states text[] default '{}',  -- empty = national
-  min_age int default 0,
+  body text not null,
+  category text not null check (category in ('benefit','inflation','scam','tax','medicare','ss','costofliving','healthcare')),
+  states text[] null,
+  min_age int null,
+  action_line text not null,
+  source_url text null,
+  published_at timestamptz null,
+  expires_at timestamptz null,
+  status text not null default 'draft' check (status in ('draft','approved','published','archived')),
   created_at timestamptz default now()
 );
 

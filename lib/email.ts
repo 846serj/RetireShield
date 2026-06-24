@@ -153,6 +153,8 @@ export type RetirementWatchScoreUpdate = {
   previousOverall?: number | null;
   nextOverall: number;
   band: string;
+  alertCount?: number;
+  topAlertTitle?: string | null;
 };
 
 export async function sendRetirementWatchEmail(email: string, update: RetirementWatchScoreUpdate) {
@@ -163,7 +165,7 @@ export async function sendRetirementWatchEmail(email: string, update: Retirement
 
   if (!apiKey || !automationId) {
     console.log(
-      `[ESP Retirement Watch stub] ${email}: score ${update.nextOverall} (${delta === null ? "new" : `${delta >= 0 ? "+" : ""}${delta}`}), ${update.band}`,
+      `[ESP Retirement Watch stub] ${email}: score ${update.nextOverall} (${delta === null ? "new" : `${delta >= 0 ? "+" : ""}${delta}`}), ${update.band}, alerts ${update.alertCount ?? 0}${update.topAlertTitle ? `, top: ${update.topAlertTitle}` : ""}`,
     );
     return;
   }
@@ -184,6 +186,8 @@ export async function sendRetirementWatchEmail(email: string, update: Retirement
           { name: "retirement_watch_score", value: String(update.nextOverall) },
           { name: "retirement_watch_delta", value: delta === null ? "" : `${delta >= 0 ? "+" : ""}${delta}` },
           { name: "retirement_watch_band", value: update.band },
+          { name: "retirement_watch_alert_count", value: String(update.alertCount ?? 0) },
+          { name: "retirement_watch_top_alert", value: update.topAlertTitle ?? "" },
         ],
       }),
     },

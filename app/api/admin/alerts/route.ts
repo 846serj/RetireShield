@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { curateAlertsFromSource } from "@/lib/ai/alerts";
+import { datedTriggerAlerts, generateDraftAlertsFromNewsroom } from "@/lib/alertGenerator";
 
 function authorized(req: Request) {
   const user = process.env.ADMIN_BASIC_USER;
@@ -16,12 +17,15 @@ export async function POST(req: Request) {
   const body = await req.json();
   if (body.action === "approve") {
     const items = Array.isArray(body.items) ? body.items : [];
-    const rows = items.map((it: any) => ({ title: it.title, body: it.body, category: it.category, states: it.states ?? [], min_age: it.min_age ?? 0 }));
+    const rows = items.map((it: any) => ({ title: it.title, body: it.body, category: it.category, states: it.states ?? null, min_age: it.min_age ?? null, action_line: it.action_line, source_url: it.source_url ?? null, published_at: it.published_at ?? new Date().toISOString(), expires_at: it.expires_at ?? null, status: "approved" }));
     if (rows.length === 0) return NextResponse.json({ error: "No items" }, { status: 400 });
     const { data, error } = await createServiceClient().from("content_items").insert(rows).select("id,title");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ inserted: data });
   }
+  if (Array.isArray(body.newsroomItems)) {
+    return NextResponse.json({ items: [...datedTriggerAlerts(), ...generateDraftAlertsFromNewsroom(body.newsroomItems)] });
+  }
   const source = String(body.source ?? "");
-  return NextResponse.json({ items: await curateAlertsFromSource(source) });
+  return NextResponse.json({ items: [...datedTriggerAlerts(), ...(await curateAlertsFromSource(source))] });
 }

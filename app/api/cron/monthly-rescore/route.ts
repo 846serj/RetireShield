@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { computeScores, type Answers } from "@/lib/scoring";
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendRetirementWatchEmail } from "@/lib/email";
+import { getMatchedAlerts } from "@/lib/alerts";
 
 type LatestScoreRow = {
   id: string;
@@ -54,7 +55,8 @@ async function rescoreUser(supabase: ReturnType<typeof createServiceClient>, use
   if (!latest?.answers) return { userId: user.id, inserted: false, error: "No saved answers" };
 
   const row = latest as LatestScoreRow;
-  const result = computeScores(row.answers);
+  const answers = row.answers as Answers;
+  const result = computeScores(answers);
   const { error: insertError } = await supabase.from("scores").insert({
     user_id: user.id,
     overall: result.overall,
@@ -67,10 +69,13 @@ async function rescoreUser(supabase: ReturnType<typeof createServiceClient>, use
   if (insertError) return { userId: user.id, inserted: false, error: insertError.message };
 
   if (user.email) {
+    const alerts = await getMatchedAlerts(supabase, answers, 5);
     await sendRetirementWatchEmail(user.email, {
       previousOverall: row.overall,
       nextOverall: result.overall,
       band: result.band,
+      alertCount: alerts.length,
+      topAlertTitle: alerts[0]?.title ?? null,
     });
   }
 

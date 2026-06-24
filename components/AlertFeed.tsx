@@ -3,6 +3,9 @@ import type { Alert } from "@/lib/alerts";
 const CATEGORY_LABELS: Record<string, string> = {
   benefit: "Benefit",
   healthcare: "Healthcare",
+  medicare: "Medicare",
+  ss: "Social Security",
+  tax: "Tax",
   inflation: "Inflation",
   costofliving: "Cost of living",
   scam: "Scam watch",
@@ -17,11 +20,18 @@ function formatAlertDate(value: string) {
 }
 
 function getAskLine(alert: Alert) {
+  if (alert.action_line) return alert.action_line;
   if (alert.what_to_ask) return alert.what_to_ask;
 
   switch (alert.category) {
     case "benefit":
       return "What to ask: Does this change any benefit or eligibility deadline I should review?";
+    case "medicare":
+      return "What to ask: Could this affect my Medicare, premiums, prescriptions, or out-of-pocket costs?";
+    case "ss":
+      return "What to ask: Could this affect my Social Security claiming, COLA, or household income plan?";
+    case "tax":
+      return "What to ask: Could this affect my taxes, RMDs, withholding, or Medicare premium thresholds?";
     case "healthcare":
       return "What to ask: Could this affect my Medicare, premiums, prescriptions, or out-of-pocket costs?";
     case "inflation":
@@ -60,7 +70,7 @@ export default function AlertFeed({ alerts }: AlertFeedProps) {
                 <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-accent">
                   {CATEGORY_LABELS[alert.category] ?? alert.category}
                 </span>
-                <time className="text-sm font-semibold text-slate-500" dateTime={alert.created_at}>{formatAlertDate(alert.created_at)}</time>
+                <time className="text-sm font-semibold text-slate-500" dateTime={alert.published_at ?? alert.created_at}>{formatAlertDate(alert.published_at ?? alert.created_at)}</time>
               </div>
               <h3 className="mt-4 font-serif text-2xl font-semibold text-ink">{alert.title}</h3>
               <p className="mt-2 text-slate-700">{alert.body}</p>
