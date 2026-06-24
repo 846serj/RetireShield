@@ -134,6 +134,7 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
             ) : (
               <>
                 <Link href="/login" className="font-bold text-ink no-underline hover:text-brand">Log in</Link>
+                <Link href="/signup" className="font-bold text-ink no-underline hover:text-brand">Create account</Link>
                 <Button href="/quiz" className="min-h-12 px-5 py-2 text-base">Get my free Safety Score</Button>
               </>
             )}
@@ -180,6 +181,7 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
               ) : (
                 <>
                   <Link href="/login" className="text-center font-bold text-ink no-underline" onClick={() => setDrawerOpen(false)}>Log in</Link>
+                  <Link href="/signup" className="text-center font-bold text-ink no-underline" onClick={() => setDrawerOpen(false)}>Create account</Link>
                   <Button href="/quiz" onClick={() => setDrawerOpen(false)} className="w-full text-base">Get my free Safety Score</Button>
                 </>
               )}
