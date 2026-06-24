@@ -59,6 +59,40 @@ function coachJson(answer: string, calculations: CalculationTrace[] = [], init?:
   return NextResponse.json({ answer, calculations, usage }, init);
 }
 
+function canonicalNumericToken(value: string) {
+  const trimmed = value.replace(/[$,%]/g, "").replace(/,/g, "").trim();
+  const numeric = Number(trimmed);
+  if (!Number.isFinite(numeric)) return null;
+  return String(Math.round(numeric * 100) / 100);
+}
+
+function collectToolNumbers(value: unknown, allowed = new Set<string>()) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    allowed.add(String(Math.round(value * 100) / 100));
+    return allowed;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectToolNumbers(item, allowed));
+    return allowed;
+  }
+  if (value && typeof value === "object") {
+    Object.values(value as Record<string, unknown>).forEach((item) => collectToolNumbers(item, allowed));
+  }
+  return allowed;
+}
+
+export function answerHasOnlyToolSourcedNumbers(answer: string, calculations: CalculationTrace[]) {
+  const allowed = new Set<string>();
+  calculations.forEach((calculation) => {
+    collectToolNumbers(calculation.outputs, allowed);
+  });
+  const mentioned = answer.match(/\$?\b\d[\d,]*(?:\.\d+)?\b%?/g) ?? [];
+  return mentioned.every((token) => {
+    const canonical = canonicalNumericToken(token);
+    return canonical === null || allowed.has(canonical);
+  });
+}
+
 function usageMeta(tier: SubscriptionTier, monthlyCount = 0) {
   const cap = tier === "plus" ? COACH_MESSAGE_CAPS.plus : null;
   return { tier, cap, remaining: cap === null ? null : Math.max(0, cap - monthlyCount) };
@@ -169,7 +203,10 @@ export async function POST(req: Request) {
     if ((response?.content ?? []).some((block: any) => block.type === "tool_use")) response = await client.messages.create({ model: anthropicModel, max_tokens: 1000, temperature: 0.2, system, messages }, { signal: timeoutSignal(25_000) });
 
     const rawText = (response?.content ?? []).filter((block: any) => block.type === "text").map((block: any) => block.text).join("\n").trim() || fallback;
-    const answer = rawText.includes(STANDARD_DISCLAIMER) ? rawText : `${rawText}\n\n${STANDARD_DISCLAIMER}`;
+    const answerWithDisclaimer = rawText.includes(STANDARD_DISCLAIMER) ? rawText : `${rawText}\n\n${STANDARD_DISCLAIMER}`;
+    const answer = answerHasOnlyToolSourcedNumbers(answerWithDisclaimer, calculations)
+      ? answerWithDisclaimer
+      : `I can only share numeric figures that came from RetireGuard tools. Please ask me to run the specific calculation again.\n\n${STANDARD_DISCLAIMER}`;
     if (logId) await supabase.from("coach_usage").update({ tool_calls: calculations.length, prompt_chars: incoming.reduce((sum, m) => sum + m.content.length, 0) }).eq("id", logId);
     return coachJson(answer, calculations, undefined, usageMeta(access.tier, access.tier === "plus" ? ((monthlyCountForResponse ?? 0) + 1) : 0));
   } catch (error) {

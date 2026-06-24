@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --loader ./tests/ts-loader.mjs --test tests/*.test.ts",
+    "test": "node --loader ./tests/ts-loader.mjs --test tests/*.test.ts lib/*.test.ts",
     "stripe:setup": "node scripts/setup-stripe.js"
   },
   "dependencies": {
