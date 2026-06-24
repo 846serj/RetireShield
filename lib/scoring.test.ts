@@ -33,21 +33,47 @@ test("scores are bounded 0-100", () => {
   }
 });
 
-test("status and state adjust score in expected directions", () => {
+test("state adjusts projection-based withdrawal score in expected directions", () => {
   const baseline: Answers = {
     age: 62, status: "near", guaranteedIncome: 1500, essentialExpenses: 3500,
     savings: 325000, stockPct: 50, emergencyFund: "3-6", debt: "none", worry: "scams", state: "TX",
   };
 
   const neutral = computeScores(baseline);
-  const workingLowCost = computeScores({ ...baseline, status: "working", state: "MS" });
-  const retiredHighCost = computeScores({ ...baseline, status: "retired", state: "CA" });
+  const lowCost = computeScores({ ...baseline, state: "MS" });
+  const highCost = computeScores({ ...baseline, state: "CA" });
 
-  assert.ok(workingLowCost.sub.market > neutral.sub.market, "working status should improve market buffer");
-  assert.ok(workingLowCost.sub.withdrawal > neutral.sub.withdrawal, "low-COL state should improve withdrawal score");
-  assert.ok(workingLowCost.overall > neutral.overall, "working low-COL profile should improve overall score");
+  assert.ok(lowCost.sub.withdrawal > neutral.sub.withdrawal, "low-COL state should improve withdrawal score");
+  assert.ok(lowCost.overall > neutral.overall, "low-COL profile should improve overall score");
 
-  assert.ok(retiredHighCost.sub.market < neutral.sub.market, "retired status should reduce market buffer");
-  assert.ok(retiredHighCost.sub.withdrawal < neutral.sub.withdrawal, "high-COL state should reduce withdrawal score");
-  assert.ok(retiredHighCost.overall < neutral.overall, "retired high-COL profile should reduce overall score");
+  assert.ok(highCost.sub.withdrawal < neutral.sub.withdrawal, "high-COL state should reduce withdrawal score");
+  assert.ok(highCost.overall < neutral.overall, "high-COL profile should reduce overall score");
+});
+
+test("inflation and income sub-scores can diverge for high-coverage users", () => {
+  const fixedPension: Answers = {
+    age: 68, status: "retired", guaranteedIncome: 5000, essentialExpenses: 3000,
+    savings: 500000, stockPct: 25, emergencyFund: "6+", debt: "none", worry: "inflation",
+  };
+  const colaBacked: Answers = { ...fixedPension, ssaBenefitEstimate: 5000 };
+
+  const fixed = computeScores(fixedPension);
+  const cola = computeScores(colaBacked);
+
+  assert.equal(fixed.sub.income, 100, "high guaranteed-income coverage should max income stability");
+  assert.ok(fixed.sub.inflation < fixed.sub.income, `fixed-income inflation score should diverge: ${fixed.sub.inflation}`);
+  assert.ok(cola.sub.inflation > fixed.sub.inflation, "COLA-backed income should improve inflation resilience without changing income score");
+  assert.equal(cola.sub.income, fixed.sub.income, "income score should remain coverage-only");
+});
+
+test("withdrawal score uses real savings instead of legacy bucket midpoint", () => {
+  const baseline: Answers = {
+    age: 65, status: "retired", guaranteedIncome: 2000, essentialExpenses: 5000,
+    savings: 10000, savingsBucket: "1M+", stockPct: 50, emergencyFund: "3-6", debt: "none", worry: "running_out",
+  };
+  const lowSavings = computeScores(baseline);
+  const highSavings = computeScores({ ...baseline, savings: 1500000, savingsBucket: "<50k" });
+
+  assert.ok(lowSavings.sub.withdrawal < 15, `low real savings should score low, got ${lowSavings.sub.withdrawal}`);
+  assert.ok(highSavings.sub.withdrawal > lowSavings.sub.withdrawal + 50, "higher real savings should drive projection sustainability");
 });
