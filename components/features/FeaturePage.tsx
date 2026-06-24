@@ -22,6 +22,46 @@ export function FeatureMock({ slug }: { slug: FeatureSlug }) {
   );
 }
 
+export function FeatureDashboardVisual({ slug }: { slug: FeatureSlug }) {
+  const feature = features[slug];
+  const topBenefits = feature.benefits.slice(0, 3);
+
+  return (
+    <div className="rounded-[2rem] border border-slate-200 bg-ink p-6 text-white shadow-2xl shadow-brand/10">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-white/55">Dashboard snapshot</p>
+          <p className="mt-1 text-2xl font-extrabold">Next-step view</p>
+        </div>
+        <span className="rounded-full bg-accent/20 px-3 py-1 text-sm font-extrabold text-accent">Live plan</span>
+      </div>
+      <div className="mt-6 grid gap-4 sm:grid-cols-[0.85fr_1fr]">
+        <div className="rounded-3xl bg-white/10 p-5">
+          <p className="text-sm font-bold text-white/70">Focus area</p>
+          <p className="mt-3 text-3xl font-extrabold text-accent">{feature.visualMetric}</p>
+          <p className="mt-2 font-bold text-white/85">{feature.visualLabel}</p>
+          <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
+            <div className="h-full w-4/5 rounded-full bg-accent" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          {topBenefits.map(([_, title], index) => (
+            <div key={title} className="rounded-2xl bg-white p-4 text-ink">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-extrabold">{title}</span>
+                <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-extrabold text-brand">Step {index + 1}</span>
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-brand" style={{ width: `${85 - index * 18}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FeaturePage({ slug }: { slug: FeatureSlug }) {
   const feature = features[slug];
   const benefitsHeading = "benefitsHeading" in feature ? feature.benefitsHeading : "Placeholder benefits for this pillar";
@@ -37,9 +77,9 @@ export function FeaturePage({ slug }: { slug: FeatureSlug }) {
           <FeatureMock slug={slug} />
         </Container>
       </section>
-      <section className="py-14 sm:py-18 lg:py-20"><Container><div className="max-w-2xl"><Eyebrow>Benefits</Eyebrow><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{benefitsHeading}</h2></div><div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">{feature.benefits.map(([Icon, title, description]) => <article key={title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand"><Icon className="h-6 w-6" /></div><h3 className="mt-5 text-xl font-extrabold text-ink">{title}</h3><p className="mt-3 leading-7 text-slate-700">{description}</p></article>)}</div></Container></section>
-      <SectionBand><Container className="grid items-center gap-8 lg:grid-cols-[0.85fr_1fr]"><FeatureMock slug={slug} /><div><Eyebrow>Visual mock</Eyebrow><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{visualHeading}</h2><p className="mt-5 text-lg leading-8 text-slate-700">{visualBody}</p></div></Container></SectionBand>
-      <section className="py-14 sm:py-18 lg:py-20"><Container><div className="max-w-2xl"><Eyebrow>FAQ</Eyebrow><h2 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">Common questions</h2></div><div className="mt-8 grid gap-4 lg:grid-cols-3">{feature.faqs.map(([question, answer]) => <details key={question} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><summary className="cursor-pointer text-lg font-extrabold text-ink">{question}</summary><p className="mt-4 leading-7 text-slate-700">{answer}</p></details>)}</div></Container></section>
+      <section className="py-14 sm:py-18 lg:py-20"><Container><div className="max-w-2xl"><h2 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{benefitsHeading}</h2></div><div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">{feature.benefits.map(([Icon, title, description]) => <article key={title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand"><Icon className="h-6 w-6" /></div><h3 className="mt-5 text-xl font-extrabold text-ink">{title}</h3><p className="mt-3 leading-7 text-slate-700">{description}</p></article>)}</div></Container></section>
+      <SectionBand><Container className="grid items-center gap-8 lg:grid-cols-[0.85fr_1fr]"><FeatureDashboardVisual slug={slug} /><div><h2 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{visualHeading}</h2><p className="mt-5 text-lg leading-8 text-slate-700">{visualBody}</p></div></Container></SectionBand>
+      <section className="py-14 sm:py-18 lg:py-20"><Container><div className="max-w-2xl"><h2 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">Common questions</h2></div><div className="mt-8 grid gap-4 lg:grid-cols-3">{feature.faqs.map(([question, answer]) => <details key={question} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><summary className="cursor-pointer text-lg font-extrabold text-ink">{question}</summary><p className="mt-4 leading-7 text-slate-700">{answer}</p></details>)}</div></Container></section>
       <SectionBand className="bg-brand text-white"><Container className="text-center"><h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{ctaHeading}</h2><p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-white/85">{ctaBody}</p><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Button href={feature.href} variant="secondary">{feature.cta}</Button><Button href="/features" variant="ghost" className="text-white hover:bg-white/10 hover:text-white">Compare pillars</Button></div></Container></SectionBand>
     </main>
   );
