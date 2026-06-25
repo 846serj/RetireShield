@@ -3,6 +3,7 @@ import AskClient from "./AskClient";
 import { computeSafeToSpend } from "@/lib/engine/affordability";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { createClient } from "@/lib/supabase/server";
+import { isProfileScoreable } from "@/lib/profileCompleteness";
 
 export const metadata: Metadata = { title: "Ask before you spend", description: "Check whether a purchase fits your retirement plan before you spend." };
 
@@ -15,6 +16,8 @@ export default async function AskPage() {
     supabase.from("decisions").select("id, verdict, created_at, input").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(5),
     supabase.from("plaid_items").select("id").eq("user_id", user!.id).limit(1),
   ]);
-  const safe = profile ? computeSafeToSpend(profile as FinancialProfile) : { annualDiscretionarySpend: null, needsProfile: true };
-  return <AskClient initialSafeMonthly={safe.annualDiscretionarySpend ? Math.round(safe.annualDiscretionarySpend / 12) : null} horizonAge={profile?.planning_horizon_age ?? null} connected={Boolean(connections?.length) || ["connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""))} recent={(recent ?? []) as never} />;
+  const hasDataScore = ["quiz", "connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""));
+  const scoreable = isProfileScoreable(profile, hasDataScore);
+  const safe = profile && scoreable ? computeSafeToSpend(profile as FinancialProfile) : { annualDiscretionarySpend: null, needsProfile: true };
+  return <AskClient initialSafeMonthly={safe.annualDiscretionarySpend ? Math.round(safe.annualDiscretionarySpend / 12) : null} horizonAge={scoreable ? profile?.planning_horizon_age ?? null : null} connected={Boolean(connections?.length) || ["connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""))} profileComplete={scoreable} recent={(recent ?? []) as never} />;
 }

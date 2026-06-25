@@ -21,7 +21,7 @@ function money(value?: number | null) {
   return Number.isFinite(Number(value)) ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number(value)) : "—";
 }
 
-export default function AskClient({ initialSafeMonthly, horizonAge, connected, recent }: { initialSafeMonthly?: number | null; horizonAge?: number | null; connected: boolean; recent: { id: string; verdict: string; created_at: string; input?: { amount?: number; timing?: string } | null }[] }) {
+export default function AskClient({ initialSafeMonthly, horizonAge, connected, profileComplete, recent }: { initialSafeMonthly?: number | null; horizonAge?: number | null; connected: boolean; profileComplete: boolean; recent: { id: string; verdict: string; created_at: string; input?: { amount?: number; timing?: string } | null }[] }) {
   const [template, setTemplate] = useState<Template>("purchase");
   const [amount, setAmount] = useState("");
   const [timing, setTiming] = useState<"oneoff" | "recurring">("oneoff");
@@ -50,10 +50,13 @@ export default function AskClient({ initialSafeMonthly, horizonAge, connected, r
   return (
     <div className="mx-auto max-w-6xl py-6 sm:py-10">
       <section className="mb-6 rounded-3xl border border-brand/20 bg-band p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {profileComplete ? <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xl font-extrabold text-ink">Safe to spend this year: {money(initialSafeMonthly)}/mo · money lasts to age {horizonAge ?? "—"}</p>
           <div className="flex flex-wrap items-center gap-3"><span className="text-sm font-bold text-slate-600">{connected ? "Based on your connected accounts" : "Based on your saved profile"}</span><button form="ask-form" className="rounded-xl border-2 border-brand bg-white px-4 py-2 font-extrabold text-brand">Recheck</button></div>
-        </div>
+        </div> : <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xl font-extrabold text-ink">Complete your details to see safe-to-spend guidance.</p>
+          <Link href="/dashboard/tools/plan/setup" className="rounded-xl border-2 border-brand bg-white px-4 py-2 text-center font-extrabold text-brand">Add profile details</Link>
+        </div>}
       </section>
 
       <div className="mb-8 max-w-3xl"><p className="rg-kicker">Ask before you spend</p><h1 className="mt-3 text-5xl sm:text-7xl">What are you thinking about?</h1><p className="mt-4 text-xl text-slate-700">Pick a template, add the amount, and get a plain-English retirement decision card.</p></div>

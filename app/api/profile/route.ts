@@ -62,8 +62,12 @@ function normalizeProfile(input: Record<string, unknown>, userId: string, includ
     const hasValue = field in input;
     if (!hasValue && !includeMissingAsNull) continue;
     const value = hasValue ? input[field] : null;
-    if (value === "" || value === undefined) {
-      row[field] = null;
+    if (value === "" || value === undefined || value === null) {
+      row[field] = field === "inflation_assumption"
+        ? FINANCIAL_PROFILE_DEFAULTS.inflation_assumption
+        : field === "planning_horizon_age"
+          ? FINANCIAL_PROFILE_DEFAULTS.planning_horizon_age
+          : null;
     } else if (NUMERIC_FIELDS.has(field)) {
       const numeric = Number(value);
       row[field] = Number.isFinite(numeric) ? numeric : null;
