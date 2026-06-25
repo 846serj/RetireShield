@@ -15,7 +15,7 @@ export type MonteCarloResult = {
   paths: MonteCarloBalancePoint[];
 };
 
-type MonteCarloOptions = {
+export type MonteCarloOptions = {
   seed?: number | string;
 };
 
@@ -66,7 +66,7 @@ function allocationStats(profile: FinancialProfile) {
   return { expectedReturn, stdev };
 }
 
-function percentile(values: number[], pct: number) {
+export function percentile(values: number[], pct: number) {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const index = (sorted.length - 1) * pct;
@@ -74,6 +74,58 @@ function percentile(values: number[], pct: number) {
   const upper = Math.ceil(index);
   if (lower === upper) return sorted[lower];
   return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+}
+
+export type MonteCarloOutcome = {
+  essentialsUncoveredAge: number | null;
+  depletionAge: number | null;
+};
+
+export type SimulateOutcomesResult = {
+  runs: number;
+  essentialsUncoveredAges: (number | null)[];
+  depletionAges: (number | null)[];
+  outcomes: MonteCarloOutcome[];
+  percentileEssentialsUncoveredAge: (pct: number) => number | null;
+  percentileDepletionAge: (pct: number) => number | null;
+};
+
+function percentileNullableAge(values: (number | null)[], pct: number, horizonAge: number) {
+  if (values.length === 0) return null;
+  const sentinel = horizonAge + 1;
+  const value = percentile(values.map((age) => age ?? sentinel), pct);
+  return value >= horizonAge ? null : Math.round(value);
+}
+
+export function simulateOutcomes(profile: FinancialProfile, options: MonteCarloOptions & { runs?: number } = {}): SimulateOutcomesResult {
+  const safeRuns = Math.max(1, Math.floor(options.runs ?? 500));
+  const baseline = runProjection(profile);
+  const horizonLength = baseline.years.length;
+  const horizonAge = baseline.years.at(-1)?.age ?? profile.planning_horizon_age;
+  const { expectedReturn, stdev } = allocationStats(profile);
+  const random = seededRandom(options.seed);
+  const essentialsUncoveredAges: (number | null)[] = [];
+  const depletionAges: (number | null)[] = [];
+  const outcomes: MonteCarloOutcome[] = [];
+
+  for (let run = 0; run < safeRuns; run++) {
+    const annualReturns = Array.from({ length: horizonLength }, () => expectedReturn + stdev * normalRandom(random));
+    const projection = runProjection(profile, { annualReturns });
+    const essentialsUncoveredAge = projection.years.find((year) => year.income < year.spending && year.endBalances.total <= 1)?.age ?? null;
+    const outcome = { essentialsUncoveredAge, depletionAge: projection.depletionAge };
+    essentialsUncoveredAges.push(outcome.essentialsUncoveredAge);
+    depletionAges.push(outcome.depletionAge);
+    outcomes.push(outcome);
+  }
+
+  return {
+    runs: safeRuns,
+    essentialsUncoveredAges,
+    depletionAges,
+    outcomes,
+    percentileEssentialsUncoveredAge: (pct: number) => percentileNullableAge(essentialsUncoveredAges, pct, horizonAge),
+    percentileDepletionAge: (pct: number) => percentileNullableAge(depletionAges, pct, horizonAge),
+  };
 }
 
 export function runMonteCarlo(profile: FinancialProfile, runs = 1000, options: MonteCarloOptions = {}): MonteCarloResult {

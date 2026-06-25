@@ -1,11 +1,16 @@
 import { computeScores, type Answers, type Result as ScoreResult } from "@/lib/scoring";
-import { CURRENT_YEAR, DEFAULT_ASSUMPTIONS, IRMAA_BRACKETS } from "./params/2026";
-import { runMonteCarlo } from "./montecarlo";
+import { CURRENT_YEAR, IRMAA_BRACKETS } from "./params/2026";
+import { runMonteCarlo, simulateOutcomes } from "./montecarlo";
 import { runProjection } from "./projection";
 import { filingStatusFromMaritalStatus, totalIncomeTaxes } from "./tax";
 import type { FinancialProfile } from "./types";
 
 export const VERDICT_PERCENTILE = 0.40;
+export const POOR_PERCENTILE = 0.25;
+const AFFORDABILITY_RUNS = 500;
+const SAFE_MAX_RUNS = 200;
+const SAFE_MAX_ITERATIONS = 12;
+const AFFORDABILITY_SEED = "affordability-sequence-risk";
 
 type FundingSource = "taxable" | "tax_deferred" | "roth" | "cash" | "auto";
 export type AffordabilityInput = { kind: "spend"; timing: "oneoff" | "recurring"; amount: number; fundingSource?: FundingSource; startAge?: number };
@@ -23,7 +28,7 @@ export type DecisionResult = {
   needsProfile?: boolean;
 };
 
-type Path = { name: "BASE" | "POOR"; annualReturns: number[] };
+type PercentileOutcome = { essentialsUncoveredAge: number | null; depletionAge: number | null };
 
 const bandRank: Record<string, number> = { Vulnerable: 0, "At Risk": 1, "Mostly Secure": 2, Secure: 3 };
 const known = (v: number | null | undefined) => Number.isFinite(Number(v)) ? Number(v) : 0;
@@ -34,26 +39,32 @@ function isScoreable(profile: FinancialProfile) {
   return currentAge(profile) > 0 && profile.spending_essential_monthly !== null && totalPortfolio(profile) > 0;
 }
 
-function returnFor(profile: FinancialProfile, sigma: number) {
-  const stock = known(profile.stock_pct) / 100;
-  const bond = known(profile.bond_pct) / 100;
-  const cash = known(profile.cash_pct) / 100;
-  const a = DEFAULT_ASSUMPTIONS.allocationAssumptions;
-  return stock * (a.stock.expectedReturn + sigma * a.stock.stdev) + bond * (a.bond.expectedReturn + sigma * a.bond.stdev) + cash * (a.cash.expectedReturn + sigma * a.cash.stdev);
+function essentialsProfile(profile: FinancialProfile) {
+  return { ...profile, spending_discretionary_monthly: 0 } as FinancialProfile;
 }
 
-function paths(profile: FinancialProfile, horizon: number): Path[] {
-  const years = Math.max(1, horizon - currentAge(profile) + 1);
-  return [
-    { name: "BASE", annualReturns: Array(years).fill(returnFor(profile, -0.25)) },
-    { name: "POOR", annualReturns: Array(years).fill(returnFor(profile, -0.675)) },
-  ];
+function mcOutcomes(profile: FinancialProfile, runs: number, seedSuffix: string) {
+  const essentials = simulateOutcomes(essentialsProfile(profile), { runs, seed: `${AFFORDABILITY_SEED}-${seedSuffix}-essentials` });
+  const full = simulateOutcomes(profile, { runs, seed: `${AFFORDABILITY_SEED}-${seedSuffix}-full` });
+  const at = (pct: number): PercentileOutcome => ({
+    essentialsUncoveredAge: essentials.percentileEssentialsUncoveredAge(pct),
+    depletionAge: full.percentileDepletionAge(pct),
+  });
+  return { essentials, full, base: at(VERDICT_PERCENTILE), poor: at(POOR_PERCENTILE) };
 }
 
-function firstEssentialsUncovered(profile: FinancialProfile, annualReturns: number[]) {
-  const projected = runProjection({ ...profile, spending_discretionary_monthly: 0 }, { annualReturns });
-  const age = projected.years.find((y) => y.income < y.spending && y.endBalances.total <= 1)?.age ?? null;
-  return { age, depletionAge: projected.depletionAge };
+function coveredThroughHorizon(age: number | null, horizon: number) {
+  return age === null || age >= horizon;
+}
+
+function lastsThroughHorizon(age: number | null, horizon: number) {
+  return age === null || age >= horizon;
+}
+
+function guaranteedCoversEssentialsForLife(profile: FinancialProfile, horizon: number) {
+  const deterministic = runProjection(essentialsProfile(profile), { annualReturns: Array(Math.max(1, horizon - currentAge(profile) + 1)).fill(0) });
+  const uncoveredAge = deterministic.years.find((year) => year.income < year.spending)?.age ?? null;
+  return coveredThroughHorizon(uncoveredAge, horizon);
 }
 
 function resolveFunding(input: AffordabilityInput, profile: FinancialProfile): Exclude<FundingSource, "auto"> {
@@ -94,39 +105,39 @@ function ripple(input: AffordabilityInput, profile: FinancialProfile, source: st
   return { fundingSource: source, extraOrdinaryTax: after.total - base.total, irmaaIncrease: after.irmaa - base.irmaa, distanceToNextIrmaaCliff, cheaperAlternative: taxableAvailable ? "taxable" : null, estimatedSavingsUsingTaxable: taxableAvailable ? Math.max(0, after.total - base.total) : 0 };
 }
 
-function evaluate(input: AffordabilityInput, profile: FinancialProfile, includeSafeMax: boolean): DecisionResult {
+function evaluate(input: AffordabilityInput, profile: FinancialProfile, includeSafeMax: boolean, runs = AFFORDABILITY_RUNS): DecisionResult {
   if (!isScoreable(profile)) return { verdict: "CAUTION", headline: "Add a few profile details first.", trigger: "Not enough profile data to run the affordability engine.", essentials: { coveredForLife: false }, moneyLasts: { baselineAge: null, afterAge: null }, score: { before: null, after: null, band: null }, alternatives: ["Add account types, balances, age, and essential expenses."], trace: {}, needsProfile: true };
   const horizon = profile.planning_horizon_age ?? 95;
   const { profile: afterProfile, source } = applyDecision(profile, input);
   const beforeScore = scoreFromProfile(profile);
   const afterScore = scoreFromProfile(afterProfile);
-  const pathResults = Object.fromEntries(paths(profile, horizon).map((path) => {
-    const before = firstEssentialsUncovered(profile, path.annualReturns);
-    const after = firstEssentialsUncovered(afterProfile, path.annualReturns);
-    return [path.name, { before, after }];
-  })) as any;
-  const baseAfter = pathResults.BASE.after;
-  const poorAfter = pathResults.POOR.after;
-  const essentialsCovered = baseAfter.age === null || baseAfter.age >= horizon;
-  const baselineAge = pathResults.BASE.before.depletionAge;
+  const baselineMc = mcOutcomes(profile, runs, "decision");
+  const afterMc = mcOutcomes(afterProfile, runs, "decision");
+  const baseAfter = afterMc.base;
+  const poorAfter = afterMc.poor;
+  const essentialsCovered = coveredThroughHorizon(baseAfter.essentialsUncoveredAge, horizon);
+  const baselineAge = baselineMc.base.depletionAge;
   const afterAge = baseAfter.depletionAge;
-  const poorMiss = poorAfter.age !== null && poorAfter.age < horizon;
-  const bandDrop = bandRank[afterScore.band] < bandRank[beforeScore.band];
+  const guaranteedFloor = guaranteedCoversEssentialsForLife(afterProfile, horizon);
+  const portfolioLasts = lastsThroughHorizon(afterAge, horizon) || guaranteedFloor;
+  const poorMiss = !coveredThroughHorizon(poorAfter.essentialsUncoveredAge, horizon) || !lastsThroughHorizon(poorAfter.depletionAge, horizon);
+  const bandDrop = (bandRank[afterScore.band ?? ""] ?? -1) < (bandRank[beforeScore.band ?? ""] ?? -1);
   const runwayLoss = (baselineAge ?? horizon) - (afterAge ?? horizon) >= 3;
   const taxRipple = ripple(input, profile, source);
   const taxCaution = Boolean(taxRipple && Number(taxRipple.irmaaIncrease ?? 0) > 0);
-  let verdict: DecisionResult["verdict"] = essentialsCovered ? (poorMiss || bandDrop || runwayLoss || taxCaution ? "CAUTION" : "YES") : "NO";
+  let verdict: DecisionResult["verdict"] = essentialsCovered && portfolioLasts ? (poorMiss || bandDrop || runwayLoss || taxCaution ? "CAUTION" : "YES") : "NO";
   const alternatives = [source !== "taxable" && known(profile.balance_taxable) >= input.amount ? "Use taxable funds instead." : "", input.timing === "oneoff" ? "Spread the purchase over multiple tax years." : "Reduce the recurring commitment.", "Delay until a future plan review.", verdict !== "YES" ? "Reduce the amount to the safe maximum." : ""].filter(Boolean);
-  const trigger = poorMiss ? `Yes — but in a 2008-style market this shortens your runway to age ${poorAfter.age}` : "This holds even in a poor market path.";
-  return { verdict, headline: verdict === "YES" ? "This looks affordable." : verdict === "NO" ? "This does not look affordable." : "This may be affordable, with tradeoffs.", trigger, essentials: { coveredForLife: essentialsCovered, uncoveredAge: baseAfter.age ?? undefined }, moneyLasts: { baselineAge, afterAge }, score: { before: beforeScore.overall, after: afterScore.overall, band: afterScore.band }, ripple: taxRipple, safeMax: includeSafeMax ? safeMax(input, profile) : undefined, alternatives, trace: { horizon, fundingSource: source, pathResults, verdictPercentile: VERDICT_PERCENTILE, monteCarloBaseSuccess: runMonteCarlo(profile, 120, { seed: "affordability-base" }).probabilityOfSuccess } };
+  const poorRunwayAge = poorAfter.essentialsUncoveredAge ?? poorAfter.depletionAge;
+  const trigger = poorMiss && poorRunwayAge !== null ? `Yes — but in a poor market this shortens your runway to age ${poorRunwayAge}` : "This holds even in a poor market path.";
+  return { verdict, headline: verdict === "YES" ? "This looks affordable." : verdict === "NO" ? "This does not look affordable." : "This may be affordable, with tradeoffs.", trigger, essentials: { coveredForLife: essentialsCovered, uncoveredAge: baseAfter.essentialsUncoveredAge ?? undefined }, moneyLasts: { baselineAge, afterAge }, score: { before: beforeScore.overall, after: afterScore.overall, band: afterScore.band }, ripple: taxRipple, safeMax: includeSafeMax ? safeMax(input, profile) : undefined, alternatives, trace: { horizon, fundingSource: source, pathResults: { BASE: { before: baselineMc.base, after: afterMc.base }, POOR: { before: baselineMc.poor, after: afterMc.poor } }, verdictPercentile: VERDICT_PERCENTILE, poorPercentile: POOR_PERCENTILE, runs, monteCarloBaseSuccess: runMonteCarlo(profile, 120, { seed: "affordability-base" }).probabilityOfSuccess } };
 }
 
 function safeMax(input: AffordabilityInput, profile: FinancialProfile) {
   let low = 0;
   let high = input.timing === "recurring" ? Math.max(input.amount * 2, known(profile.spending_discretionary_monthly) * 24, 120000) : Math.max(input.amount * 2, totalPortfolio(profile));
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < SAFE_MAX_ITERATIONS; i++) {
     const mid = (low + high) / 2;
-    const verdict = evaluate({ ...input, amount: mid }, profile, false).verdict;
+    const verdict = evaluate({ ...input, amount: mid }, profile, false, SAFE_MAX_RUNS).verdict;
     if (verdict === "YES") low = mid; else high = mid;
   }
   return Math.round(low);
@@ -139,12 +150,9 @@ export function analyzeAffordability(input: AffordabilityInput, profile: Financi
 export function computeSafeToSpend(profile: FinancialProfile) {
   if (!isScoreable(profile)) return { needsProfile: true, annualDiscretionarySpend: null };
   let low = 0, high = Math.max(120000, totalPortfolio(profile) / 5);
-  const horizon = profile.planning_horizon_age ?? 95;
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < SAFE_MAX_ITERATIONS; i++) {
     const mid = (low + high) / 2;
-    const p = { ...profile, spending_discretionary_monthly: mid / 12 } as FinancialProfile;
-    const poor = paths(profile, horizon).find((x) => x.name === "POOR")!;
-    const ok = firstEssentialsUncovered(p, poor.annualReturns).age === null;
+    const ok = evaluate({ kind: "spend", timing: "recurring", amount: mid }, { ...profile, spending_discretionary_monthly: 0 } as FinancialProfile, false, SAFE_MAX_RUNS).verdict === "YES";
     if (ok) low = mid; else high = mid;
   }
   return { needsProfile: false, annualDiscretionarySpend: Math.round(low) };
