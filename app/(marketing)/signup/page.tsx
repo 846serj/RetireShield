@@ -81,7 +81,7 @@ export default function Signup() {
 
       if (!data.session) {
         setAwaitingEmailConfirmation(true);
-        setNotice("Check your email to confirm your account. After confirming, we’ll send you to your dashboard where you can take the Safety Score quiz.");
+        setNotice("Check your email to confirm your account — then we'll take you to your account.");
         return;
       }
 
@@ -103,9 +103,9 @@ export default function Signup() {
       <main className="mx-auto grid max-w-6xl gap-8 px-5 py-14 sm:py-20 lg:grid-cols-[1fr_0.8fr] lg:items-start">
         <section className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-sm shadow-slate-200/80 sm:p-10">
           <p className="rg-kicker">Create your free account</p>
-          <h1 className="mt-4 text-5xl font-semibold tracking-tight sm:text-6xl">Start with a secure dashboard.</h1>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight sm:text-6xl">Create your free account</h1>
           <p className="mt-5 text-xl leading-8 text-slate-700 sm:text-2xl sm:leading-9">
-            Create an account now, then take the Retirement Safety Score quiz from your dashboard when you’re ready.
+            Create an account to use RetireShield — ask “Can I afford it?” and save your answers.
           </p>
 
           <div className="mt-8 space-y-5">
@@ -146,10 +146,16 @@ export default function Signup() {
               {creating ? "Creating account…" : awaitingEmailConfirmation ? "Check your email" : "Create free account"}
             </Button>
             {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{err}</p>}
-            {notice && <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-slate-700">{notice} <Link href="/login" className="font-bold text-brand underline">Log in instead</Link>.</p>}
+            {notice && (
+              <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-slate-700">
+                {notice}
+                {!awaitingEmailConfirmation && (
+                  <> <Link href="/login" className="font-bold text-brand underline">Log in instead</Link>.</>
+                )}
+              </p>
+            )}
             <div className="flex flex-col gap-3 text-base sm:flex-row sm:items-center sm:justify-between">
-              <Link href="/login" className="font-bold text-brand underline">Already have an account?</Link>
-              <Link href="/quiz" className="font-bold text-brand underline">Prefer to take the quiz first?</Link>
+              <Link href="/login" className="font-bold text-brand underline">Already have an account? Log in</Link>
             </div>
           </div>
         </section>
@@ -157,9 +163,9 @@ export default function Signup() {
         <aside className="rounded-[2rem] border border-brand/15 bg-band p-6 sm:p-8">
           <p className="rg-kicker">What happens next</p>
           <ol className="mt-5 space-y-5 text-lg font-semibold leading-8 text-slate-700">
-            <li><span className="font-extrabold text-ink">1.</span> Create your free RetireShield account.</li>
-            <li><span className="font-extrabold text-ink">2.</span> Open your dashboard and take the two-minute Safety Score quiz.</li>
-            <li><span className="font-extrabold text-ink">3.</span> Save your score, action plan, alerts, and monitoring preferences in one place.</li>
+            <li><span className="font-extrabold text-ink">1.</span> Create your free account.</li>
+            <li><span className="font-extrabold text-ink">2.</span> Ask any money question, or set your numbers.</li>
+            <li><span className="font-extrabold text-ink">3.</span> Save your answers and come back anytime.</li>
           </ol>
           <div className="mt-8 rounded-2xl border border-white/80 bg-white p-5 text-base font-semibold leading-7 text-slate-700">
             No credit card. Clear guidance you can review at your own pace.
