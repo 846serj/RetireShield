@@ -3,6 +3,7 @@ import { analyzeAffordability, computeSafeToSpend, type AffordabilityInput, type
 import type { FinancialProfile } from "@/lib/engine/types";
 import { createClient } from "@/lib/supabase/server";
 import { getSubscriptionAccess } from "@/lib/subscription";
+import { isProfileScoreable } from "@/lib/profileCompleteness";
 
 function publicResult(result: DecisionResult) {
   return {
@@ -33,10 +34,11 @@ export async function POST(req: Request) {
 
   const [{ data: profileRow }, { data: scoreRow }, access] = await Promise.all([
     supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-    supabase.from("scores").select("overall, band, sub_scores, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("scores").select("overall, band, sub_scores, created_at, score_source").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     getSubscriptionAccess(user.id),
   ]);
-  if (!profileRow) return NextResponse.json({ needsProfile: true }, { status: 400 });
+  const hasDataScore = ["quiz", "connected", "monthly_rescore"].includes(String(scoreRow?.score_source ?? ""));
+  if (!profileRow || !isProfileScoreable(profileRow, hasDataScore)) return NextResponse.json({ needsProfile: true }, { status: 400 });
 
   const input: AffordabilityInput = { kind: "spend", timing: body.timing as "oneoff" | "recurring", amount: Number(body.amount), fundingSource: body.fundingSource, startAge: body.startAge };
   const result = analyzeAffordability(input, profileRow as FinancialProfile);
