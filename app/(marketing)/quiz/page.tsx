@@ -97,7 +97,7 @@ export default function Quiz() {
       } catch {
         /* ignore */
       }
-      setEmailNotice("Your results are unlocked. You can review them here, or optionally create a free account below to save your score and turn on monitoring.");
+      setEmailNotice("Your results are unlocked. You can review them here, or create a free account below to save your score and ask your first question.");
       setRevealed(true);
     } catch {
       setEmailError("We could not reach the server. Please try again.");
@@ -152,16 +152,25 @@ export default function Quiz() {
       if (!data.session) {
         const existingUser = data.user?.identities?.length === 0;
         if (existingUser) {
-          setAccountNotice("That email is already registered. Log in instead to continue to your dashboard.");
+          setAccountNotice("That email is already registered. Log in instead to continue to Ask.");
           return;
         }
 
-        setAccountNotice("Check your email to confirm your account. After confirming, we’ll send you to your dashboard and save this score there.");
+        setAccountNotice("Check your email to confirm your account. After confirming, we’ll send you to your Ask page and save this score there.");
         setAwaitingEmailConfirmation(true);
         return;
       }
 
-      router.push("/dashboard");
+      try {
+        await fetch("/api/score-save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers, result }),
+        });
+      } catch {
+        /* ScoreHydrator can retry from localStorage after navigation. */
+      }
+      router.push("/ask?firstQuestion=1");
       router.refresh();
     } catch {
       setAccountError("We could not reach the sign-up service. Please try again.");
@@ -180,11 +189,11 @@ export default function Quiz() {
             <div className="mt-8 rounded-[2rem] bg-band p-5 sm:p-8">
               <h1 className="font-serif text-[2rem] font-semibold leading-tight text-ink sm:text-5xl">Let&apos;s see where your retirement stands.</h1>
               <p className="mt-5 text-xl font-semibold leading-8 text-slate-700">
-                11 simple questions. About 2 minutes. There are no wrong answers — just answer as best you know.
+                12 simple questions. About 2 minutes. There are no wrong answers — just answer as best you know.
               </p>
             </div>
             <Button type="button" onClick={() => setIntroComplete(true)} className="mt-8 w-full sm:w-auto">
-              Start — question 1 of 11
+              Start — question 1 of 12
             </Button>
             <p className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600">
               ⏱ ~2 minutes · 🆓 Always free to see your score
@@ -259,20 +268,23 @@ export default function Quiz() {
 
         {q.kind === "choice" && (
           <div className="grid gap-3">
-            {q.choices.map((c) => (
+            {q.choices.map((c) => {
+              const currentValue = answers[q.key] ?? q.defaultValue;
+              const isSelected = selectedChoice === c.value || currentValue === c.value;
+              return (
               <button
                 key={String(c.value)}
                 onClick={() => selectChoice(q.key, c.value)}
-                aria-pressed={answers[q.key] === c.value}
+                aria-pressed={isSelected}
                 className={`min-h-16 rounded-2xl border-2 px-5 py-4 text-left text-xl font-bold text-ink shadow-sm transition hover:border-brand hover:bg-band focus-visible:ring-brand/20 motion-reduce:transition-none ${
-                  selectedChoice === c.value || answers[q.key] === c.value
+                  isSelected
                     ? "border-brand bg-band shadow-brand/10"
                     : "border-slate-200 bg-white"
                 }`}
               >
                 {c.label}
               </button>
-            ))}
+            );})}
           </div>
         )}
 
@@ -352,7 +364,7 @@ export default function Quiz() {
           {!accountDismissed && (
             <div className="rg-card-highlight">
               <h3 className="text-2xl font-bold">Create your free account</h3>
-              <p className="mt-2 text-lg text-slate-700">Save your score and turn on monthly monitoring — pick a password.</p>
+              <p className="mt-2 text-lg text-slate-700">Save your score and go ask your first question — pick a password.</p>
               <div className="mt-5 grid gap-4">
                 <div>
                   <label htmlFor="account-email" className="block text-base font-bold text-ink">Email address</label>
@@ -416,8 +428,8 @@ export default function Quiz() {
             <p className="mx-auto mt-3 max-w-2xl text-slate-200">
               Markets move, prices rise, rules change. We&apos;ll re-check your plan every month and tell you the moment something matters — Medicare thresholds, Social Security timing, scams in your state.
             </p>
-            <Button href="/signup" className="mt-5">
-              Start my free trial
+            <Button href="/ask?firstQuestion=1" className="mt-5">
+              Ask your first question
             </Button>
           </div>
         </div>

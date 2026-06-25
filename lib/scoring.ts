@@ -22,6 +22,7 @@ export type Answers = {
   debt: "none" | "some" | "heavy";
   worry: "running_out" | "inflation" | "market" | "scams" | "healthcare";
   state?: string; // 2-letter code
+  planning_horizon_age?: 85 | 90 | 95 | 100 | number;
 };
 
 export type SubScores = { income: number; withdrawal: number; inflation: number; market: number };
@@ -32,6 +33,9 @@ const HIGH_COL_STATES = new Set(["HI", "CA", "NY", "MA", "NJ", "CT", "WA", "OR",
 const LOW_COL_STATES = new Set(["MS", "AL", "AR", "OK", "KS", "MO", "TN", "KY", "WV", "IN", "IA", "OH", "ND", "SD", "NE"]);
 
 const PLANNING_HORIZON_AGE = 95;
+function planningHorizonAge(a: Answers): number {
+  return Number.isFinite(a.planning_horizon_age) ? Math.max(Math.floor(a.age), Number(a.planning_horizon_age)) : PLANNING_HORIZON_AGE;
+}
 type ScoreWeights = Record<keyof SubScores, number>;
 const WEIGHT_BASE: ScoreWeights = { income: 0.3, withdrawal: 0.32, inflation: 0.18, market: 0.2 };
 
@@ -50,7 +54,7 @@ function realSavings(a: Answers): number {
 }
 
 function yearsToHorizon(a: Answers): number {
-  return Math.max(0, PLANNING_HORIZON_AGE - Math.floor(a.age));
+  return Math.max(0, planningHorizonAge(a) - Math.floor(a.age));
 }
 
 // Guaranteed income as a share of essentials, capped at 100%.
@@ -68,7 +72,7 @@ export function withdrawalSustainability(a: Answers): number {
     currentAge: a.age,
     realSavings: realSavings(a),
     monthlyGap: gap,
-    horizonAge: PLANNING_HORIZON_AGE,
+    horizonAge: planningHorizonAge(a),
     stockPct: a.stockPct,
     bondPct: 100 - a.stockPct,
     cashPct: 0,

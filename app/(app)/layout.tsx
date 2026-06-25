@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import AppShell from "@/components/app/AppShell";
+import ScoreHydrator from "@/components/ScoreHydrator";
 import { getMatchedAlerts } from "@/lib/alerts";
 import type { Answers } from "@/lib/scoring";
 import { getSubscriptionAccess } from "@/lib/subscription";
@@ -33,5 +34,5 @@ export default async function AuthenticatedAppLayout({ children }: { children: R
   const answers = latest?.answers as Answers | undefined;
   const alerts = answers ? await getMatchedAlerts(supabase, { state: answers.state, age: answers.age, worry: answers.worry }, 12) : [];
   const unreadAlertCount = countUnreadAlerts(alerts, activity?.last_seen_at as string | null | undefined);
-  return <AppShell userEmail={user.email ?? "Account"} access={access} unreadAlertCount={unreadAlertCount}>{children}</AppShell>;
+  return <AppShell userEmail={user.email ?? "Account"} access={access} unreadAlertCount={unreadAlertCount}><ScoreHydrator hasScore={Boolean(latest?.answers)} />{children}</AppShell>;
 }

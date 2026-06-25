@@ -21,7 +21,7 @@ function money(value?: number | null) {
   return Number.isFinite(Number(value)) ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number(value)) : "—";
 }
 
-export default function AskClient({ initialSafeMonthly, horizonAge, connected, profileComplete, recent }: { initialSafeMonthly?: number | null; horizonAge?: number | null; connected: boolean; profileComplete: boolean; recent: { id: string; verdict: string; created_at: string; input?: { amount?: number; timing?: string } | null }[] }) {
+export default function AskClient({ initialPrompt, initialSafeMonthly, horizonAge, connected, profileComplete, recent }: { initialPrompt?: string; initialSafeMonthly?: number | null; horizonAge?: number | null; connected: boolean; profileComplete: boolean; recent: { id: string; verdict: string; created_at: string; input?: { amount?: number; timing?: string } | null }[] }) {
   const [template, setTemplate] = useState<Template>("purchase");
   const [amount, setAmount] = useState("");
   const [timing, setTiming] = useState<"oneoff" | "recurring">("oneoff");
@@ -59,7 +59,7 @@ export default function AskClient({ initialSafeMonthly, horizonAge, connected, p
         </div>}
       </section>
 
-      <div className="mb-8 max-w-3xl"><p className="rg-kicker">Ask before you spend</p><h1 className="mt-3 text-5xl sm:text-7xl">What are you thinking about?</h1><p className="mt-4 text-xl text-slate-700">Pick a template, add the amount, and get a plain-English retirement decision card.</p></div>
+      <div className="mb-8 max-w-3xl"><p className="rg-kicker">Ask before you spend</p><h1 className="mt-3 text-5xl sm:text-7xl">{initialPrompt ?? "What are you thinking about?"}</h1><p className="mt-4 text-xl text-slate-700">Pick a template, add the amount, and get a plain-English retirement decision card.</p></div>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <form id="ask-form" onSubmit={submit} className="rg-card space-y-5">

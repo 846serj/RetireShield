@@ -7,7 +7,7 @@ import { isProfileScoreable } from "@/lib/profileCompleteness";
 
 export const metadata: Metadata = { title: "Ask before you spend", description: "Check whether a purchase fits your retirement plan before you spend." };
 
-export default async function AskPage() {
+export default async function AskPage({ searchParams }: { searchParams?: { firstQuestion?: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const [{ data: profile }, { data: latest }, { data: recent }, { data: connections }] = await Promise.all([
@@ -19,5 +19,5 @@ export default async function AskPage() {
   const hasDataScore = ["quiz", "connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""));
   const scoreable = isProfileScoreable(profile, hasDataScore);
   const safe = profile && scoreable ? computeSafeToSpend(profile as FinancialProfile) : { annualDiscretionarySpend: null, needsProfile: true };
-  return <AskClient initialSafeMonthly={safe.annualDiscretionarySpend ? Math.round(safe.annualDiscretionarySpend / 12) : null} horizonAge={scoreable ? profile?.planning_horizon_age ?? null : null} connected={Boolean(connections?.length) || ["connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""))} profileComplete={scoreable} recent={(recent ?? []) as never} />;
+  return <AskClient initialPrompt={searchParams?.firstQuestion ? "Ask your first question" : undefined} initialSafeMonthly={safe.annualDiscretionarySpend ? Math.round(safe.annualDiscretionarySpend / 12) : null} horizonAge={scoreable ? profile?.planning_horizon_age ?? null : null} connected={Boolean(connections?.length) || ["connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""))} profileComplete={scoreable} recent={(recent ?? []) as never} />;
 }

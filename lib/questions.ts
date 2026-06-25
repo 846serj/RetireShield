@@ -3,7 +3,7 @@
 export type Choice = { value: string | number; label: string };
 export type Question =
   | { key: string; kind: "number"; prompt: string; placeholder?: string; min?: number; max?: number; prefix?: string; help?: string }
-  | { key: string; kind: "choice"; prompt: string; choices: Choice[]; help?: string }
+  | { key: string; kind: "choice"; prompt: string; choices: Choice[]; help?: string; defaultValue?: string | number }
   | { key: string; kind: "savingsAmount"; prompt: string; help?: string }
   | { key: string; kind: "socialSecurityDetails"; prompt: string; help?: string }
   | { key: string; kind: "state"; prompt: string; help?: string };
@@ -61,6 +61,19 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "socialSecurityDetails", kind: "socialSecurityDetails", prompt: "Optional: add Social Security details?", help: "These help future Social Security and spouse scenarios. Skip anything you do not know; today's score will not change.",
+  },
+  {
+    key: "planning_horizon_age",
+    kind: "choice",
+    prompt: "To about what age should we make sure your money lasts?",
+    help: "A rough number is fine — most plans use 95.",
+    defaultValue: 95,
+    choices: [
+      { value: 85, label: "About 85" },
+      { value: 90, label: "About 90" },
+      { value: 95, label: "About 95" },
+      { value: 100, label: "About 100" },
+    ],
   },
   { key: "state", kind: "state", prompt: "Which state do you live in?", help: "Your state helps us account for broad cost-of-living differences." },
   {
