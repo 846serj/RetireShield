@@ -40,7 +40,7 @@ function SidebarNav({ onNavigate, unreadAlertCount = 0 }: { onNavigate?: () => v
   return (
     <nav className="mt-8 grid gap-2" aria-label="App navigation">
       {navItems.map((item) => {
-        const active = item.href === "/dashboard" ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         const showUnreadBadge = item.href === "/dashboard/monitoring" && unreadAlertCount > 0;
         return (
           <Link
