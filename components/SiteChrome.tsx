@@ -33,22 +33,21 @@ const footerColumns = [
   { title: "Legal", links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Refund Policy", href: "/refund-policy" }, { label: "Disclosures", href: "/about#trust-heading" }] },
 ];
 
-function Logo() {
+function Logo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" className="flex shrink-0 items-center gap-3 text-ink no-underline hover:text-brand-dark" aria-label="RetireShield home">
-      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-dark text-white shadow-sm" aria-hidden="true">
-        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Link href="/" className={`flex shrink-0 items-center ${compact ? "gap-2.5" : "gap-3"} text-ink no-underline hover:text-brand-dark`} aria-label="RetireShield home">
+      <span className={`flex items-center justify-center bg-brand-dark text-white shadow-sm ${compact ? "h-[34px] w-[34px] rounded-xl" : "h-11 w-11 rounded-2xl"}`} aria-hidden="true">
+        <svg viewBox="0 0 24 24" className={compact ? "h-5 w-5" : "h-7 w-7"} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 3 5 6v5c0 4.5 2.9 8.5 7 10 4.1-1.5 7-5.5 7-10V6l-7-3Z" />
           <path d="m9 12 2 2 4-5" />
         </svg>
       </span>
-      <span className="text-xl font-extrabold tracking-tight">RetireShield</span>
+      <span className={`${compact ? "text-lg" : "text-xl"} font-extrabold tracking-tight`}>RetireShield</span>
     </Link>
   );
 }
 
 export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
-  const [announcementVisible, setAnnouncementVisible] = useState(true);
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const featuresRef = useRef<HTMLDivElement>(null);
@@ -77,31 +76,11 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
 
   return (
     <>
-      {announcementVisible && (
-        <div className="bg-brand-dark text-white">
-          <div className="mx-auto flex max-w-container items-center justify-between gap-4 px-4 py-3 text-sm font-semibold sm:px-6 lg:px-8">
-            <Link href="/quiz" className="text-white no-underline hover:text-white/90">
-              Create an account first or start with the free Retirement Safety Score. <span className="underline underline-offset-4">Get started →</span>
-            </Link>
-            <button
-              type="button"
-              className="rounded-lg p-1 text-white/90 transition hover:bg-white/10 hover:text-white"
-              onClick={() => setAnnouncementVisible(false)}
-              aria-label="Dismiss announcement"
-            >
-              <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="m5 5 10 10M15 5 5 15" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-container items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <Logo />
+        <div className="mx-auto flex min-h-16 max-w-container items-center justify-between gap-4 px-4 py-2 sm:px-6 lg:px-8">
+          <Logo compact />
 
-          <nav className="hidden flex-1 items-center justify-center gap-6 text-base font-semibold min-[1120px]:flex xl:gap-7" aria-label="Main navigation">
+          <nav className="hidden flex-1 items-center justify-center gap-6 text-[15px] font-semibold min-[1120px]:flex xl:gap-7" aria-label="Main navigation">
             <Link href="/#how-it-works" className="whitespace-nowrap text-ink no-underline hover:text-brand">How it works</Link>
             <div className="relative" ref={featuresRef}>
               <button
@@ -128,10 +107,10 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
             <Link href="/about" className="whitespace-nowrap text-ink no-underline hover:text-brand">About</Link>
           </nav>
 
-          <div className="hidden shrink-0 items-center gap-6 min-[1120px]:flex xl:gap-7">
+          <div className="hidden shrink-0 items-center gap-4 min-[1120px]:flex">
             {userEmail ? (
               <>
-                <Button href="/dashboard" className="min-h-12 px-5 py-2 text-base">Dashboard</Button>
+                <Button href="/dashboard" className="min-h-11 px-5 py-2.5 text-[15px]">Dashboard</Button>
                 <span className="max-w-48 truncate text-sm font-semibold text-slate-600" title={userEmail}>{userEmail}</span>
                 <form action="/auth/sign-out" method="post">
                   <button type="submit" className="whitespace-nowrap font-bold text-ink no-underline hover:text-brand">Sign out</button>
@@ -139,9 +118,9 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
               </>
             ) : (
               <>
-                <Link href="/login" className="whitespace-nowrap font-bold text-ink no-underline hover:text-brand">Log in</Link>
-                <Button href="/signup" variant="secondary" className="min-h-14 whitespace-nowrap px-5 py-2 text-base">Create account</Button>
-                <Button href="/quiz" className="min-h-14 whitespace-nowrap px-5 py-2 text-base">Free Safety Score</Button>
+                <Link href="/login" className="flex min-h-11 items-center whitespace-nowrap px-1 text-[15px] font-bold text-ink no-underline hover:text-brand">Log in</Link>
+                <span className="h-6 w-px bg-slate-300" aria-hidden="true" />
+                <Button href="/quiz" className="min-h-11 whitespace-nowrap px-5 py-2.5 text-[15px]">Free Safety Score</Button>
               </>
             )}
           </div>
@@ -187,7 +166,6 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
               ) : (
                 <>
                   <Link href="/login" className="text-center font-bold text-ink no-underline" onClick={() => setDrawerOpen(false)}>Log in</Link>
-                  <Button href="/signup" variant="secondary" onClick={() => setDrawerOpen(false)} className="w-full text-base">Create account</Button>
                   <Button href="/quiz" onClick={() => setDrawerOpen(false)} className="w-full text-base">Free Safety Score</Button>
                 </>
               )}
