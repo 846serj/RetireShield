@@ -7,7 +7,7 @@ import type { SubscriptionAccess } from "@/lib/subscription-types";
 import { Button } from "@/components/ui";
 
 const navItems = [
-  { label: "Home", href: "/dashboard" },
+  { label: "Home", href: "/ask" },
   { label: "Safety Score", href: "/dashboard/score" },
   { label: "Retirement Watch", href: "/dashboard/monitoring" },
   { label: "AI Coach", href: "/dashboard/coach" },
@@ -18,7 +18,7 @@ const navItems = [
 
 function LogoLink({ onClick }: { onClick?: () => void }) {
   return (
-    <Link href="/dashboard" onClick={onClick} className="flex min-h-12 items-center gap-3 text-ink no-underline hover:text-brand-dark" aria-label="RetireShield dashboard">
+    <Link href="/ask" onClick={onClick} className="flex min-h-12 items-center gap-3 text-ink no-underline hover:text-brand-dark" aria-label="RetireShield dashboard">
       <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-dark text-white shadow-sm" aria-hidden="true">
         <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 3 5 6v5c0 4.5 2.9 8.5 7 10 4.1-1.5 7-5.5 7-10V6l-7-3Z" />

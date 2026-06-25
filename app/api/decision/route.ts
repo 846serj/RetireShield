@@ -11,7 +11,8 @@ function publicResult(result: DecisionResult) {
     trigger: result.trigger,
     safeMax: result.safeMax,
     essentials: result.essentials,
-    moneyLasts: { afterAge: result.moneyLasts.afterAge },
+    moneyLasts: result.moneyLasts,
+    score: result.score,
     needsProfile: result.needsProfile,
   };
 }
