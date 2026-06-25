@@ -1,7 +1,8 @@
 export const CURRENT_YEAR = 2026;
 export const paramsVerified = true;
 export const FULL_RETIREMENT_AGE = 67;
-// SSA, "2026 Social Security Changes" COLA fact sheet, released Oct. 24, 2025: 2026 COLA is 2.8%.
+// SSA press release, Oct. 24, 2025: 2026 Social Security COLA is 2.8%.
+// https://www.ssa.gov/news/en/press/releases/2025-10-24.html
 export const SOCIAL_SECURITY_COLA = 0.028;
 export const RMD_START_AGE = 73;
 
@@ -27,35 +28,39 @@ export const DEFAULT_ASSUMPTIONS = {
   },
 } as const;
 
+// IRS IR-2025-103 / Rev. Proc. 2025-32, tax year 2026 marginal rates.
+// https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill
 export const ORDINARY_BRACKETS = {
   single: [
-    { upTo: 11925, rate: 0.10 },
-    { upTo: 48475, rate: 0.12 },
-    { upTo: 103350, rate: 0.22 },
-    { upTo: 197300, rate: 0.24 },
-    { upTo: 250525, rate: 0.32 },
-    { upTo: 626350, rate: 0.35 },
+    { upTo: 12400, rate: 0.10 },
+    { upTo: 50400, rate: 0.12 },
+    { upTo: 105700, rate: 0.22 },
+    { upTo: 201775, rate: 0.24 },
+    { upTo: 256225, rate: 0.32 },
+    { upTo: 640600, rate: 0.35 },
     { upTo: Infinity, rate: 0.37 },
   ],
   married: [
-    { upTo: 23850, rate: 0.10 },
-    { upTo: 96950, rate: 0.12 },
-    { upTo: 206700, rate: 0.22 },
-    { upTo: 394600, rate: 0.24 },
-    { upTo: 501050, rate: 0.32 },
-    { upTo: 751600, rate: 0.35 },
+    { upTo: 24800, rate: 0.10 },
+    { upTo: 100800, rate: 0.12 },
+    { upTo: 211400, rate: 0.22 },
+    { upTo: 403550, rate: 0.24 },
+    { upTo: 512450, rate: 0.32 },
+    { upTo: 768700, rate: 0.35 },
     { upTo: Infinity, rate: 0.37 },
   ],
 } as const;
 
+// IRS Rev. Proc. 2025-32, sec. 3.14, tax year 2026 standard deductions.
 export const STANDARD_DEDUCTION = {
-  single: 15000,
-  married: 30000,
+  single: 16100,
+  married: 32200,
 } as const;
 
+// IRS Rev. Proc. 2025-32, sec. 3.14(3), aged-or-blind additional standard deduction.
 export const ADDITIONAL_STANDARD_DEDUCTION_65 = {
-  single: 2000,
-  marriedPerSpouse: 1600,
+  single: 2050,
+  marriedPerSpouse: 1650,
 } as const;
 
 export const OBBBA_SENIOR_BONUS_DEDUCTION = {
@@ -71,27 +76,30 @@ export const SOCIAL_SECURITY_TAX_THRESHOLDS = {
 } as const;
 
 // SSA Office of the Chief Actuary, Benefit Formula Bend Points table, updated for 2026:
-// PIA formula bend points are $1,286 and $7,749 for workers first eligible in 2026.
+// PIA bend points are $1,286 and $7,749; family-benefit bend points are $1,643, $2,371, and $3,093.
+// https://www.ssa.gov/oact/cola/bendpoints.html
 export const SOCIAL_SECURITY_BEND_POINTS = {
   pia: { first: 1286, second: 7749 },
   maximumFamilyBenefit: { first: 1643, second: 2371, third: 3093 },
 } as const;
 
+// IRS Rev. Proc. 2025-32, tax year 2026 qualified dividends / net capital gain thresholds.
 export const LTCG_BRACKETS = {
   single: [
-    { upTo: 48350, rate: 0 },
-    { upTo: 533400, rate: 0.15 },
+    { upTo: 49450, rate: 0 },
+    { upTo: 545500, rate: 0.15 },
     { upTo: Infinity, rate: 0.20 },
   ],
   married: [
-    { upTo: 96700, rate: 0 },
-    { upTo: 600050, rate: 0.15 },
+    { upTo: 98900, rate: 0 },
+    { upTo: 613700, rate: 0.15 },
     { upTo: Infinity, rate: 0.20 },
   ],
 } as const;
 
-// IRS Publication 590-B (2025), Appendix B, Table III (Uniform Lifetime), posted Jan. 2026;
+// IRS Publication 590-B (2025), Appendix B, Table III (Uniform Lifetime);
 // IRS states these denominators are used for 2026 RMDs based on age at birthday in 2026.
+// https://www.irs.gov/publications/p590b#en_US_2025_publink100090310
 export const UNIFORM_LIFETIME_DIVISORS: Record<number, number> = {
   72: 27.4, 73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9, 78: 22.0, 79: 21.1, 80: 20.2,
   81: 19.4, 82: 18.5, 83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4, 88: 13.7,
@@ -101,8 +109,10 @@ export const UNIFORM_LIFETIME_DIVISORS: Record<number, number> = {
   113: 3.1, 114: 3.0, 115: 2.9, 116: 2.8, 117: 2.7, 118: 2.5, 119: 2.3, 120: 2.0,
 };
 
-// CMS 2026 Medicare Parts A & B premiums/deductibles final notice (CMS-8089-N/CMS-8090-N/CMS-8091-N),
-// published Nov. 2025: standard Part B premium $202.90/month; 2026 full Part B IRMAA tiers below.
+// CMS 2026 Medicare Parts A & B Premiums and Deductibles fact sheet, Nov. 14, 2025:
+// standard Part B premium $202.90/month; full Part B IRMAA monthly adjustments $0.00,
+// $81.20, $202.90, $324.60, $446.30, and $487.00.
+// https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-deductibles
 export const IRMAA_STANDARD_PART_B_PREMIUM_MONTHLY = 202.90;
 
 export const IRMAA_BRACKETS = {
