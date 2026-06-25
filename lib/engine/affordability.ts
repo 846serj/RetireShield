@@ -13,7 +13,7 @@ const SAFE_MAX_ITERATIONS = 12;
 const AFFORDABILITY_SEED = "affordability-sequence-risk";
 
 type FundingSource = "taxable" | "tax_deferred" | "roth" | "cash" | "auto";
-export type AffordabilityInput = { kind: "spend"; timing: "oneoff" | "recurring"; amount: number; fundingSource?: FundingSource; startAge?: number };
+export type AffordabilityInput = { kind: "spend"; timing: "oneoff" | "recurring"; amount: number; fundingSource?: FundingSource; startAge?: number; label?: string };
 export type DecisionResult = {
   verdict: "YES" | "NO" | "CAUTION";
   headline: string;
@@ -32,6 +32,12 @@ type PercentileOutcome = { essentialsUncoveredAge: number | null; depletionAge: 
 
 const bandRank: Record<string, number> = { Vulnerable: 0, "At Risk": 1, "Mostly Secure": 2, Secure: 3 };
 const known = (v: number | null | undefined) => Number.isFinite(Number(v)) ? Number(v) : 0;
+const dollars = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Math.round(value));
+
+function decisionLabel(label?: string) {
+  const clean = label?.trim().replace(/^[Aa]n?\s+/, "");
+  return clean ? clean.toLowerCase() : "purchase";
+}
 const currentAge = (profile: FinancialProfile) => profile.birthdate ? CURRENT_YEAR - Number(profile.birthdate.slice(0, 4)) : 0;
 const totalPortfolio = (profile: FinancialProfile) => known(profile.balance_taxable) + known(profile.balance_tax_deferred) + known(profile.balance_roth);
 
@@ -190,9 +196,12 @@ function evaluate(input: AffordabilityInput, profile: FinancialProfile, includeS
   const taxCaution = Boolean(taxRipple && Number(taxRipple.irmaaIncrease ?? 0) > 0);
   let verdict: DecisionResult["verdict"] = essentialsCovered && portfolioLasts ? (poorMiss || bandDrop || runwayLoss || taxCaution ? "CAUTION" : "YES") : "NO";
   const alternatives = [source !== "taxable" && known(profile.balance_taxable) >= input.amount ? "Use taxable funds instead." : "", input.timing === "oneoff" ? "Spread the purchase over multiple tax years." : "Reduce the recurring commitment.", "Delay until a future plan review.", verdict !== "YES" ? "Reduce the amount to the safe maximum." : ""].filter(Boolean);
+  const computedSafeMax = includeSafeMax ? safeMax(input, profile, quizAnswers) : undefined;
   const poorRunwayAge = poorAfter.essentialsUncoveredAge ?? poorAfter.depletionAge;
-  const trigger = poorMiss && poorRunwayAge !== null ? `Yes — but in a poor market this shortens your runway to age ${poorRunwayAge}` : "This holds even in a poor market path.";
-  return { verdict, headline: verdict === "YES" ? "This looks affordable." : verdict === "NO" ? "This does not look affordable." : "This may be affordable, with tradeoffs.", trigger, essentials: { coveredForLife: essentialsCovered, uncoveredAge: baseAfter.essentialsUncoveredAge ?? undefined }, moneyLasts: { baselineAge, afterAge }, score: { before: beforeScore?.overall ?? null, after: afterScore?.overall ?? null, band: afterScore?.band ?? null }, ripple: taxRipple, safeMax: includeSafeMax ? safeMax(input, profile, quizAnswers) : undefined, alternatives, trace: { horizon, fundingSource: source, pathResults: { BASE: { before: baselineMc.base, after: afterMc.base }, POOR: { before: baselineMc.poor, after: afterMc.poor } }, verdictPercentile: VERDICT_PERCENTILE, poorPercentile: POOR_PERCENTILE, runs, monteCarloBaseSuccess: runMonteCarlo(profile, 120, { seed: "affordability-base" }).probabilityOfSuccess } };
+  const yesHeadroom = verdict === "YES" && Number.isFinite(Number(computedSafeMax)) ? `, and you’d still be fine spending up to ${dollars(Number(computedSafeMax))} here` : "";
+  const trigger = poorMiss && poorRunwayAge !== null ? `Yes — but in a poor market this shortens your runway to age ${poorRunwayAge}` : `This holds even in a poor market path${yesHeadroom}.`;
+  const headline = verdict === "YES" ? `Yes — you can afford the ${dollars(input.amount)} ${decisionLabel(input.label)}` : verdict === "NO" ? `No — the ${dollars(input.amount)} ${decisionLabel(input.label)} does not look affordable` : `Caution — the ${dollars(input.amount)} ${decisionLabel(input.label)} has tradeoffs`;
+  return { verdict, headline, trigger, essentials: { coveredForLife: essentialsCovered, uncoveredAge: baseAfter.essentialsUncoveredAge ?? undefined }, moneyLasts: { baselineAge, afterAge }, score: { before: beforeScore?.overall ?? null, after: afterScore?.overall ?? null, band: afterScore?.band ?? null }, ripple: taxRipple, safeMax: computedSafeMax, alternatives, trace: { horizon, fundingSource: source, pathResults: { BASE: { before: baselineMc.base, after: afterMc.base }, POOR: { before: baselineMc.poor, after: afterMc.poor } }, verdictPercentile: VERDICT_PERCENTILE, poorPercentile: POOR_PERCENTILE, runs, monteCarloBaseSuccess: runMonteCarlo(profile, 120, { seed: "affordability-base" }).probabilityOfSuccess } };
 }
 
 function safeMax(input: AffordabilityInput, profile: FinancialProfile, quizAnswers?: Answers | null) {

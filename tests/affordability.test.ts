@@ -51,9 +51,11 @@ const profile = (patch: Partial<FinancialProfile> = {}): FinancialProfile => ({
   ...patch,
 });
 
-test("affordable one-off returns yes", () => {
-  const result = analyzeAffordability({ kind: "spend", timing: "oneoff", amount: 10000, fundingSource: "taxable" }, profile());
+test("affordable one-off returns personalized yes headline and headroom", () => {
+  const result = analyzeAffordability({ kind: "spend", timing: "oneoff", amount: 10000, fundingSource: "taxable", label: "kitchen remodel" }, profile());
   assert.equal(result.verdict, "YES");
+  assert.equal(result.headline, "Yes — you can afford the $10,000 kitchen remodel");
+  assert.match(result.trigger, /still be fine spending up to \$[0-9,]+ here/);
   assert.equal(result.essentials.coveredForLife, true);
 });
 

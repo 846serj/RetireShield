@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   const hasDataScore = ["quiz", "connected", "monthly_rescore"].includes(String(scoreRow?.score_source ?? ""));
   if (!profileRow || !isProfileScoreable(profileRow, hasDataScore)) return NextResponse.json({ needsProfile: true }, { status: 400 });
 
-  const input: AffordabilityInput = { kind: "spend", timing: body.timing as "oneoff" | "recurring", amount: Number(body.amount), fundingSource: body.fundingSource, startAge: body.startAge };
+  const input: AffordabilityInput = { kind: "spend", timing: body.timing as "oneoff" | "recurring", amount: Number(body.amount), fundingSource: body.fundingSource, startAge: body.startAge, label: typeof body.label === "string" ? body.label : undefined };
   const result = analyzeAffordability(input, profileRow as FinancialProfile, (scoreRow?.answers as Answers | null) ?? null);
   const safeToSpend = computeSafeToSpend(profileRow as FinancialProfile);
   const isPlusDepth = ["plus", "premium", "concierge"].includes(access.tier);

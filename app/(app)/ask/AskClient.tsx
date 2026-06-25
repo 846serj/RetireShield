@@ -32,13 +32,15 @@ export default function AskClient({ initialPrompt, initialSafeMonthly, horizonAg
   const [error, setError] = useState<string | null>(null);
 
   const effectiveTiming = useMemo(() => template === "car" && carMode === "financed" ? "recurring" : timing, [template, carMode, timing]);
+  const selectedTemplate = templates.find((item) => item.id === template);
+  const templateLabel = selectedTemplate?.label.replace(/^A\s+/i, "").replace(/^Help family\/a gift$/i, "family gift").toLowerCase() ?? "purchase";
   const showTiming = ["gift", "trip", "else"].includes(template);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setLoading(true); setError(null); setResult(null);
     try {
-      const response = await fetch("/api/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "spend", amount: Number(amount), timing: effectiveTiming, fundingSource }) });
+      const response = await fetch("/api/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "spend", amount: Number(amount), timing: effectiveTiming, fundingSource, label: templateLabel }) });
       const json = await response.json();
       if (!response.ok && !json.needsProfile) throw new Error(json.error || "We couldn't check this right now.");
       setResult(json);
@@ -59,7 +61,7 @@ export default function AskClient({ initialPrompt, initialSafeMonthly, horizonAg
         </div>}
       </section>
 
-      <div className="mb-8 max-w-3xl"><p className="rg-kicker">Ask before you spend</p><h1 className="mt-3 text-5xl sm:text-7xl">{initialPrompt ?? "What are you thinking about?"}</h1><p className="mt-4 text-xl text-slate-700">Pick a template, add the amount, and get a plain-English retirement decision card.</p></div>
+      <div className="mb-8 max-w-3xl"><p className="rg-kicker">Ask before you spend</p><h1 className="mt-3 text-5xl sm:text-7xl">{initialPrompt ?? "What are you thinking about?"}</h1><p className="mt-4 text-xl text-slate-700">Pick a template, add the amount, choose one-off or recurring, set the funding source, and get a plain-English retirement decision card.</p></div>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <form id="ask-form" onSubmit={submit} className="rg-card space-y-5">
