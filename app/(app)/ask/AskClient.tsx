@@ -55,9 +55,25 @@ export default function AskClient({ initialPrompt, initialSafeMonthly, horizonAg
         {profileComplete ? <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xl font-extrabold text-ink">Safe to spend this year: {money(initialSafeMonthly)}/mo · money lasts to age {horizonAge ?? "—"}</p>
           <div className="flex flex-wrap items-center gap-3"><span className="text-sm font-bold text-slate-600">{connected ? "Based on your connected accounts" : "Based on your saved profile"}</span><button form="ask-form" className="rounded-xl border-2 border-brand bg-white px-4 py-2 font-extrabold text-brand">Recheck</button></div>
-        </div> : <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xl font-extrabold text-ink">Complete your details to see safe-to-spend guidance.</p>
-          <Link href="/dashboard/tools/plan/setup" className="rounded-xl border-2 border-brand bg-white px-4 py-2 text-center font-extrabold text-brand">Add profile details</Link>
+        </div> : <div className="space-y-4">
+          <div>
+            <p className="text-xl font-extrabold text-ink">Want a sharper answer? Set your numbers when you are ready.</p>
+            <p className="mt-1 text-base font-semibold text-slate-700">You can still ask a question now. We will offer the quiz or account connection, not force it.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <a href="#ask-form" className="flex min-h-32 flex-col justify-center rounded-2xl border-2 border-brand bg-white p-5 text-ink no-underline shadow-sm transition hover:bg-band">
+              <span className="text-2xl font-extrabold">Ask a question</span>
+              <span className="mt-2 font-semibold text-slate-700">Try a purchase, gift, trip, car, or repair decision now.</span>
+            </a>
+            <div className="flex min-h-32 flex-col justify-center rounded-2xl border-2 border-brand bg-white p-5 shadow-sm">
+              <p className="text-2xl font-extrabold text-ink">Set your numbers</p>
+              <p className="mt-2 font-semibold text-slate-700">Take the 2-minute quiz or connect your accounts for personalized guidance.</p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Link href="/quiz" className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-brand px-4 py-2 text-center font-extrabold text-white no-underline">Take the quiz</Link>
+                <Link href="/dashboard/accounts" className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border-2 border-brand px-4 py-2 text-center font-extrabold text-brand no-underline">Connect accounts</Link>
+              </div>
+            </div>
+          </div>
         </div>}
       </section>
 
