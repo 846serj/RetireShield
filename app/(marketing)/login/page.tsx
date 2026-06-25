@@ -99,10 +99,10 @@ function LoginContent() {
     <div className="rg-page-shell min-h-[calc(100vh-5rem)]">
       <main className="mx-auto flex max-w-2xl flex-col px-5 py-14 sm:py-20">
         <section className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-sm shadow-slate-200/80 sm:p-10">
-          <p className="rg-kicker">RetireShield account</p>
-          <h1 className="mt-4 text-5xl font-semibold tracking-tight sm:text-6xl">Save your Safety Score.</h1>
+          <p className="rg-kicker">Welcome back</p>
+          <h1 className="mt-4 text-5xl font-semibold tracking-tight sm:text-6xl">Log in to your account</h1>
           <p className="mt-5 text-xl leading-8 text-slate-700 sm:text-2xl sm:leading-9">
-            Create a free account to keep your score, get your action plan, and start your trial.
+            Enter your email and password to get back to your account.
           </p>
 
           <div className="mt-8 space-y-5">
@@ -139,7 +139,7 @@ function LoginContent() {
               onClick={signIn}
               className="w-full disabled:opacity-50"
             >
-              {sending ? "Saving your score…" : "Save my score"}
+              {sending ? "Logging in…" : "Log in"}
             </Button>
             {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{err}</p>}
             {notice && <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-slate-700">{notice}</p>}
@@ -147,7 +147,7 @@ function LoginContent() {
               <button type="button" onClick={sendPasswordReset} disabled={resetting} className="text-left font-bold text-brand underline disabled:opacity-50">
                 {resetting ? "Sending reset…" : "Forgot password?"}
               </button>
-              <Link href="/quiz" className="font-bold text-brand underline">New here? Take the score</Link>
+              <Link href="/signup" className="font-bold text-brand underline">New here? Create an account</Link>
             </div>
           </div>
 
