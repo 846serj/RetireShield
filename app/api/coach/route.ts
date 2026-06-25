@@ -8,6 +8,7 @@ import { answerHasOnlyToolSourcedNumbers, type CalculationTrace } from "@/lib/ai
 import { runProjection } from "@/lib/engine/projection";
 import { compareSocialSecurity } from "@/lib/engine/socialSecurity";
 import { analyzeRothConversion } from "@/lib/engine/roth";
+import { analyzeAffordability } from "@/lib/engine/affordability";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { isProfileScoreable } from "@/lib/profileCompleteness";
 import { filingStatusFromMaritalStatus, irmaaSurcharge, rmdAmount, totalIncomeTaxes, type FilingStatus } from "@/lib/engine/tax";
@@ -18,7 +19,7 @@ const MAX_TOOL_LOOPS = 6;
 const fallback = "The AI coach is unavailable right now. Please try again in a moment.";
 
 type IncomingMessage = { role: "user" | "assistant"; content: string };
-type ToolName = "compute_safety_score" | "project_depletion" | "tax_for_income" | "irmaa_for_income" | "compare_ss_claiming" | "rmd_for_age" | "roth_conversion_impact";
+type ToolName = "compute_safety_score" | "project_depletion" | "tax_for_income" | "irmaa_for_income" | "compare_ss_claiming" | "rmd_for_age" | "roth_conversion_impact" | "analyze_affordability";
 
 const PROFILE_FIELDS = ["birthdate", "marital_status", "spouse_birthdate", "state", "balance_taxable", "taxable_cost_basis", "balance_tax_deferred", "balance_roth", "stock_pct", "bond_pct", "cash_pct", "ss_benefit_fra", "ss_claim_age", "spouse_ss_benefit_fra", "spouse_ss_claim_age", "pension_amount", "pension_start_age", "pension_has_cola", "pension_survivor_pct", "spending_essential_monthly", "spending_discretionary_monthly", "inflation_assumption", "target_retirement_age", "planning_horizon_age"] as const;
 const NUMERIC_FIELDS = new Set<string>(PROFILE_FIELDS.filter((field) => !["birthdate", "marital_status", "spouse_birthdate", "state", "pension_has_cola"].includes(field)));
@@ -82,6 +83,7 @@ const tools = [
   { name: "compare_ss_claiming", description: "Compare Social Security claiming ages using the saved profile or what-if overrides.", input_schema: { type: "object", properties: { overrides: { type: "object", additionalProperties: true }, monteCarloRuns: { type: "number", minimum: 50, maximum: 500 } }, additionalProperties: false } },
   { name: "rmd_for_age", description: "Calculate an estimated RMD from age and prior-year-end tax-deferred balance.", input_schema: { type: "object", properties: { age: { type: "number" }, priorYearEndTaxDeferredBalance: { type: "number" } }, required: ["age", "priorYearEndTaxDeferredBalance"], additionalProperties: false } },
   { name: "roth_conversion_impact", description: "Analyze a Roth conversion illustration using saved profile or what-if overrides.", input_schema: { type: "object", properties: { overrides: { type: "object", additionalProperties: true }, targetBracketRate: { type: "number", minimum: 0.1, maximum: 0.37 } }, additionalProperties: false } },
+  { name: "analyze_affordability", description: "Answer can-I-afford-it questions with the deterministic affordability engine. Use this before answering whether a specific one-off or recurring spend is affordable.", input_schema: { type: "object", properties: { kind: { type: "string", enum: ["spend"] }, timing: { type: "string", enum: ["oneoff", "recurring"] }, amount: { type: "number" }, fundingSource: { type: "string", enum: ["taxable", "tax_deferred", "roth", "cash", "auto"] }, startAge: { type: "number" }, overrides: { type: "object", additionalProperties: true } }, required: ["kind", "timing", "amount"], additionalProperties: false } },
 ];
 
 export async function POST(req: Request) {
@@ -137,7 +139,7 @@ export async function POST(req: Request) {
 - The member tier is ${access.tier}. Plus has a limited monthly coach allowance; Premium and Concierge are unlimited subject to abuse limits.
 - Saved context available through tools: the user's profile plus latest saved answers and score. Null profile fields are omitted from context, so treat omitted values as not provided rather than as $0. Do not ask for PII beyond the values provided.
 - NEVER state a number, age, tax amount, probability, balance, benefit, dollar amount, percentage, bracket, threshold, or score unless it is returned by one of the tools in this conversation. If a number cannot be computed with tools, say so and suggest what to ask a fiduciary or qualified tax professional.
-- Use the exact tools for personalized math: compute_safety_score, project_depletion, tax_for_income, irmaa_for_income, compare_ss_claiming, rmd_for_age, roth_conversion_impact.
+- Use the exact tools for personalized math: compute_safety_score, project_depletion, tax_for_income, irmaa_for_income, compare_ss_claiming, rmd_for_age, roth_conversion_impact, analyze_affordability.
 - Plain English for adults ages 55-80. Keep sentences short and warm.
 - Keep answers focused on the member's question and the tool-backed calculations available in this conversation.
 ${coachMode === "advisory" ? '- Show this disclosure in your answer when you provide advisory guidance: Review RetireGuard\'s Form ADV/CRS before relying on advisory guidance.' : ''}`;
@@ -163,6 +165,7 @@ ${coachMode === "advisory" ? '- Show this disclosure in your answer when you pro
             case "compare_ss_claiming": result = compareSocialSecurity(profileWithOverrides(profile, input), { monteCarloRuns: Math.min(500, Math.max(50, Math.floor(input.monteCarloRuns ?? 300))) }); break;
             case "rmd_for_age": result = { rmd: rmdAmount(numberInput(input.age), numberInput(input.priorYearEndTaxDeferredBalance)) }; break;
             case "roth_conversion_impact": result = analyzeRothConversion(profileWithOverrides(profile, input), { targetBracketRate: input.targetBracketRate }); break;
+            case "analyze_affordability": result = analyzeAffordability({ kind: "spend", timing: input.timing, amount: numberInput(input.amount), fundingSource: input.fundingSource, startAge: input.startAge }, profileWithOverrides(profile, input)); break;
             default: throw new Error(`Unknown tool: ${toolUse.name}`);
           }
           calculations.push({ tool: toolUse.name as ToolName, inputs: input, outputs: result });
