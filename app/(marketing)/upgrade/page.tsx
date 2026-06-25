@@ -4,20 +4,13 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BillingToggle } from "@/components/BillingToggle";
 import { Button, Eyebrow } from "@/components/ui";
-import { alternatePrice, type BillingCycle, pricingTiers, primaryPrice, type TierKey } from "@/lib/pricing";
+import { alternatePrice, type BillingCycle, pricingTiers, primaryPrice, type PriceTier } from "@/lib/pricing";
 
 type CheckoutPlan = { tier: "plus" | "premium"; cadence: BillingCycle };
 
-type Tier = {
-  key: TierKey;
-  name: string;
-  description: string;
+type Tier = PriceTier & {
   bullets: string[];
   cta: string;
-  selfServe?: boolean;
-  popular?: boolean;
-  from?: boolean;
-  monthlyCents: number;
 };
 
 
