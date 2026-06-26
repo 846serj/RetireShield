@@ -7,13 +7,9 @@ import type { SubscriptionAccess } from "@/lib/subscription-types";
 import { Button } from "@/components/ui";
 
 const navItems = [
-  { label: "Home", href: "/ask" },
-  { label: "Safety Score", href: "/dashboard/score" },
-  { label: "Retirement Watch", href: "/dashboard/monitoring" },
-  { label: "AI Coach", href: "/dashboard/coach" },
-  { label: "Tools", href: "/dashboard/tools" },
-  { label: "Accounts", href: "/dashboard/accounts" },
-  { label: "Settings", href: "/dashboard/settings" },
+  { label: "Coach", href: "/ask" },
+  { label: "Score", href: "/dashboard" },
+  { label: "Alerts", href: "/dashboard/monitoring" },
 ] as const;
 
 function LogoLink({ onClick }: { onClick?: () => void }) {
@@ -40,7 +36,7 @@ function SidebarNav({ onNavigate, unreadAlertCount = 0 }: { onNavigate?: () => v
   return (
     <nav className="mt-6 grid gap-1.5" aria-label="App navigation">
       {navItems.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
         const showUnreadBadge = item.href === "/dashboard/monitoring" && unreadAlertCount > 0;
         return (
           <Link
@@ -63,6 +59,26 @@ function SidebarNav({ onNavigate, unreadAlertCount = 0 }: { onNavigate?: () => v
   );
 }
 
+function UserMenu({ userEmail }: { userEmail: string }) {
+  return (
+    <details className="relative">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-3 text-sm font-extrabold text-ink hover:bg-band hover:text-brand [&::-webkit-details-marker]:hidden">
+        <span className="hidden max-w-64 truncate sm:inline" title={userEmail}>{userEmail}</span>
+        <span className="sm:hidden" aria-hidden="true">Account</span>
+        <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z" clipRule="evenodd" /></svg>
+      </summary>
+      <div className="absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+        <div className="border-b border-slate-100 px-3 py-2 text-sm font-bold text-slate-600">{userEmail}</div>
+        <Link href="/dashboard/settings" className="block rounded-xl px-3 py-2 text-sm font-extrabold text-ink no-underline hover:bg-band hover:text-brand">Settings</Link>
+        <Link href="/dashboard/accounts" className="block rounded-xl px-3 py-2 text-sm font-extrabold text-ink no-underline hover:bg-band hover:text-brand">Connect accounts</Link>
+        <form action="/auth/sign-out" method="post">
+          <button type="submit" className="block w-full rounded-xl px-3 py-2 text-left text-sm font-extrabold text-ink hover:bg-band hover:text-brand">Sign out</button>
+        </form>
+      </div>
+    </details>
+  );
+}
+
 export default function AppShell({ children, userEmail, access, unreadAlertCount = 0 }: { children: React.ReactNode; userEmail: string; access: SubscriptionAccess; unreadAlertCount?: number }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isFree = !access.active;
@@ -82,12 +98,9 @@ export default function AppShell({ children, userEmail, access, unreadAlertCount
             </button>
             <div className="hidden lg:block"><LogoLink /></div>
             <div className="ml-auto flex min-w-0 items-center justify-end gap-3">
-              <span className="hidden max-w-64 truncate text-sm font-bold text-slate-600 sm:inline" title={userEmail}>{userEmail}</span>
               <PlanBadge access={access} />
               {isFree ? <Button href="/upgrade" className="hidden min-h-11 px-4 py-2 text-sm sm:inline-flex">Upgrade</Button> : null}
-              <form action="/auth/sign-out" method="post">
-                <button type="submit" className="min-h-11 rounded-xl px-3 text-sm font-extrabold text-ink hover:bg-band hover:text-brand">Sign out</button>
-              </form>
+              <UserMenu userEmail={userEmail} />
             </div>
           </div>
         </header>

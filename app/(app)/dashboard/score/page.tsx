@@ -1,5 +1,5 @@
-import RetirementScoreDashboard from "../RetirementScoreDashboard";
+import { redirect } from "next/navigation";
 
 export default function ScorePage() {
-  return <RetirementScoreDashboard next="/dashboard/score" />;
+  redirect("/dashboard");
 }

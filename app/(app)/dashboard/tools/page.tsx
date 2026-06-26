@@ -1,8 +1,5 @@
-import Link from "next/link";
-import { getSubscriptionAccess } from "@/lib/subscription";
-import LockedTeaser from "@/components/LockedTeaser";
-import { Button, Eyebrow } from "@/components/ui";
-import { requireUser, TOOL_CARDS } from "../_lib/dashboard";
+import { redirect } from "next/navigation";
 
-function ToolCards() { return <div className="grid gap-4 md:grid-cols-2">{TOOL_CARDS.map((tool) => <Link key={tool.title} href={tool.href} className="rg-card no-underline transition hover:-translate-y-0.5 hover:border-brand"><p className="rg-kicker text-brand">{tool.eyebrow}</p><h3 className="mt-2 text-xl font-extrabold text-ink">{tool.title}</h3><p className="mt-3 text-slate-700">{tool.description}</p><p className="mt-3 text-sm font-semibold text-slate-600">{tool.ask}</p></Link>)}</div>; }
-export default async function ToolsPage() { const { user } = await requireUser("/dashboard/tools"); const access = await getSubscriptionAccess(user.id); return <div className="mx-auto max-w-6xl py-8"><div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><Eyebrow>Tools</Eyebrow><h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">Planning tools</h1><p className="mt-2 max-w-3xl text-slate-700">Medicare, tax, and Social Security checks.</p></div>{access.active ? <Button href="/dashboard/tools/plan/setup" variant="secondary">Open planning lab</Button> : <Button href="/upgrade" variant="secondary">Start your free trial</Button>}</div>{access.active ? <ToolCards /> : <LockedTeaser title="Unlock premium tools" description="Premium members can review Medicare/IRMAA and Social Security guidance."><ToolCards /></LockedTeaser>}</div>; }
+export default function ToolsPage() {
+  redirect("/ask");
+}
