@@ -43,7 +43,6 @@ export default function Quiz() {
   const [accountDismissed, setAccountDismissed] = useState(false);
   const [accountError, setAccountError] = useState("");
   const [accountNotice, setAccountNotice] = useState("");
-  const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false);
   const router = useRouter();
 
   const visible = useMemo(() => QUESTIONS.filter((q) => !q.when || q.when(answers)), [answers]);
@@ -112,7 +111,6 @@ export default function Quiz() {
     const normalizedEmail = email.trim().toLowerCase();
     setAccountError("");
     setAccountNotice("");
-    setAwaitingEmailConfirmation(false);
 
     if (!normalizedEmail.includes("@")) {
       setAccountError("Please enter a valid email address above before creating an account.");
@@ -137,7 +135,7 @@ export default function Quiz() {
       if (error) {
         const message = error.message.toLowerCase();
         if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
-          setAccountNotice("You already have an account — log in instead.");
+          setAccountNotice("You already have an account —");
         } else {
           setAccountError(error.message || "We could not create your account. Please try again.");
         }
@@ -150,16 +148,22 @@ export default function Quiz() {
         body: JSON.stringify({ email: normalizedEmail, utmSource: "quiz_signup" }),
       }).catch((error) => console.error("newsletter signup sync failed", error));
 
+      const existingUser = data.user?.identities?.length === 0;
+      if (existingUser) {
+        setAccountNotice("You already have an account —");
+        return;
+      }
+
       if (!data.session) {
-        const existingUser = data.user?.identities?.length === 0;
-        if (existingUser) {
-          setAccountNotice("That email is already registered. Log in instead to continue to Ask.");
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
+
+        if (signInError) {
+          setAccountError("We created your account, but could not sign you in automatically. Please log in to continue.");
           return;
         }
-
-        setAccountNotice("Check your email to confirm your account. After confirming, we’ll send you to your Ask page and save this score there.");
-        setAwaitingEmailConfirmation(true);
-        return;
       }
 
       try {
@@ -413,10 +417,10 @@ export default function Quiz() {
                 <Button
                   type="button"
                   onClick={createAccount}
-                  disabled={creatingAccount || awaitingEmailConfirmation || password.length < 8}
+                  disabled={creatingAccount || password.length < 8}
                   className="disabled:opacity-50"
                 >
-                  {creatingAccount ? "Creating account…" : awaitingEmailConfirmation ? "Check your email" : "Create my account"}
+                  {creatingAccount ? "Creating account…" : "Create my account"}
                 </Button>
                 <Button
                   type="button"

@@ -13,7 +13,6 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [creating, setCreating] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false);
   const [err, setErr] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -66,7 +65,7 @@ export default function Signup() {
 
       if (error) {
         if (/already|registered|exists/i.test(error.message)) {
-          setNotice("That email already has an account. Log in to continue to your dashboard.");
+          setNotice("You already have an account —");
         } else {
           setErr(error.message || "We could not create your account. Please try again.");
         }
@@ -79,10 +78,22 @@ export default function Signup() {
         body: JSON.stringify({ email: normalizedEmail, utmSource: "direct_signup" }),
       }).catch((error) => console.error("newsletter signup sync failed", error));
 
-      if (!data.session) {
-        setAwaitingEmailConfirmation(true);
-        setNotice("Check your email to confirm your account — then we'll take you to your account.");
+      const existingUser = data.user?.identities?.length === 0;
+      if (existingUser) {
+        setNotice("You already have an account —");
         return;
+      }
+
+      if (!data.session) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
+
+        if (signInError) {
+          setErr("We created your account, but could not sign you in automatically. Please log in to continue.");
+          return;
+        }
       }
 
       router.push("/coach");
@@ -139,19 +150,17 @@ export default function Signup() {
               <p className="mt-2 text-sm font-semibold text-slate-500">Use at least 8 characters.</p>
             </div>
             <Button
-              disabled={!email.trim().includes("@") || password.length < 8 || creating || awaitingEmailConfirmation}
+              disabled={!email.trim().includes("@") || password.length < 8 || creating}
               onClick={createAccount}
               className="w-full disabled:opacity-50"
             >
-              {creating ? "Creating account…" : awaitingEmailConfirmation ? "Check your email" : "Create free account"}
+              {creating ? "Creating account…" : "Create free account"}
             </Button>
             {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{err}</p>}
             {notice && (
               <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-slate-700">
                 {notice}
-                {!awaitingEmailConfirmation && (
-                  <> <Link href="/login" className="font-bold text-brand underline">Log in instead</Link>.</>
-                )}
+                <> <Link href="/login" className="font-bold text-brand underline">Log in instead</Link>.</>
               </p>
             )}
             <div className="flex flex-col gap-3 text-base sm:flex-row sm:items-center sm:justify-between">
