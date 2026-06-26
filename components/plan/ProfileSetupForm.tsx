@@ -258,7 +258,7 @@ export default function ProfileSetupForm({
       </section>
 
       <div className="mt-6 text-center">
-        <Link href="/dashboard" className="text-brand underline">Return to dashboard</Link>
+        <Link href="/score" className="text-brand underline">Return to dashboard</Link>
       </div>
     </main>
   );

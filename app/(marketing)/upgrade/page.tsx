@@ -104,7 +104,7 @@ function UpgradeContent() {
                   {loading === `${tier.key}_${billing}` ? "Starting checkout…" : tier.cta}
                 </Button>
               ) : tier.key === "free" ? (
-                <Button href="/dashboard" variant="secondary" className="mt-7 w-full">{tier.cta}</Button>
+                <Button href="/coach" variant="secondary" className="mt-7 w-full">{tier.cta}</Button>
               ) : (
                 <Button href="mailto:hello@retireshield.com" variant="secondary" className="mt-7 w-full">{tier.cta}</Button>
               )}

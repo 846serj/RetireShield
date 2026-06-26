@@ -171,7 +171,7 @@ export default function Quiz() {
       } catch {
         /* ScoreHydrator can retry from localStorage after navigation. */
       }
-      router.push("/ask?firstQuestion=1");
+      router.push("/coach?firstQuestion=1");
       router.refresh();
     } catch {
       setAccountError("We could not reach the sign-up service. Please try again.");
@@ -434,7 +434,7 @@ export default function Quiz() {
             <p className="mx-auto mt-3 max-w-2xl text-slate-200">
               Markets move, prices rise, rules change. We&apos;ll re-check your plan every month and tell you the moment something matters — Medicare thresholds, Social Security timing, scams in your state.
             </p>
-            <Button href="/ask?firstQuestion=1" className="mt-5">
+            <Button href="/coach?firstQuestion=1" className="mt-5">
               Ask your first question
             </Button>
           </div>

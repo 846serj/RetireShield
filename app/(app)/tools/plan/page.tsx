@@ -51,7 +51,7 @@ export default async function PlanPage() {
   if (!user) redirect("/login");
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
-  if (!profile || !isProfileScoreable(profile, false)) redirect("/dashboard/tools/plan/setup");
+  if (!profile || !isProfileScoreable(profile, false)) redirect("/tools/plan/setup");
   const paid = await hasPaidAccess(user.id);
 
   const typedProfile = profile as FinancialProfile;
@@ -94,7 +94,7 @@ export default async function PlanPage() {
             <h2 className="text-2xl font-extrabold">Balance over time</h2>
             <p className="text-slate-600">Ending projected balance: {dollars(last?.endBalances.total ?? 0)}. Range shows lower to higher market outcomes.</p>
           </div>
-          <Link href="/dashboard/tools/plan/setup" className="font-bold text-brand underline">Edit profile</Link>
+          <Link href="/tools/plan/setup" className="font-bold text-brand underline">Edit profile</Link>
         </div>
         <BalanceChart points={projection.years.map((row) => ({ age: row.age, total: row.endBalances.total }))} bands={monteCarlo.paths} />
       </section>

@@ -65,7 +65,7 @@ export default function CoachChat({ tier = "premium", scoreSummary = null }: { t
   return (
     <section className="flex min-h-[calc(100vh-6.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:min-h-[calc(100vh-2.5rem)]">
       {scoreSummary ? (
-        <Link href="/dashboard" className="block border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-base font-extrabold text-emerald-950 no-underline transition hover:bg-emerald-100 sm:px-6">
+        <Link href="/score" className="block border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-base font-extrabold text-emerald-950 no-underline transition hover:bg-emerald-100 sm:px-6">
           Retirement Score {scoreSummary.score} · {scoreSummary.status} · safe to spend ~{money(scoreSummary.safeMonthly)}/mo
         </Link>
       ) : (

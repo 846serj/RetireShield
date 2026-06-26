@@ -4,7 +4,7 @@ import LockedTeaser from "@/components/LockedTeaser";
 import { Eyebrow } from "@/components/ui";
 import { buildFinancialPicture, type SpendingAccount, type SpendingTransaction } from "@/lib/engine/spending";
 import { buildPortfolioAnalysis, type FinancialAccountRow, type HoldingRow, type SecurityRow } from "@/lib/engine/portfolio";
-import { formatCheckedDate, formatMoney, formatMonths, formatPercent, getLatestScore, requireUser } from "../_lib/dashboard";
+import { formatCheckedDate, formatMoney, formatMonths, formatPercent, getLatestScore, requireUser } from "../dashboard/_lib/dashboard";
 
 function Snapshot({ hasLinkedAccounts, checkedDate, financialPicture, portfolioAnalysis, connectedDataError }: any) {
   const coveragePct = financialPicture.monthlyEssential > 0 ? financialPicture.guaranteedIncome / financialPicture.monthlyEssential : 0;
@@ -12,7 +12,7 @@ function Snapshot({ hasLinkedAccounts, checkedDate, financialPicture, portfolioA
 }
 
 export default async function AccountsPage() {
-  const { supabase, user } = await requireUser("/dashboard/accounts"); const access = await getSubscriptionAccess(user.id);
+  const { supabase, user } = await requireUser("/accounts"); const access = await getSubscriptionAccess(user.id);
   if (!access.active) return <div className="mx-auto max-w-5xl py-8"><LockedTeaser title="Unlock connected accounts" description="Premium members can connect read-only bank and brokerage data."><ConnectAccounts institutions={[]} /></LockedTeaser></div>;
   const latest = await getLatestScore(supabase, user.id); const checkedDate = formatCheckedDate(latest?.created_at);
   const [transactionsResult, accountsResult, holdingsResult, securitiesResult, profileResult, connectedInstitutionsResult] = await Promise.all([supabase.from("transactions").select("*").eq("user_id", user.id), supabase.from("financial_accounts").select("*").eq("user_id", user.id), supabase.from("holdings").select("*").eq("user_id", user.id), supabase.from("securities").select("*"), supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(), supabase.from("plaid_items").select("item_id,institution_name,status,created_at").eq("user_id", user.id).order("created_at", { ascending: false })]);

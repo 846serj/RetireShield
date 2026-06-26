@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     score_source: "quiz",
   });
 
-  // Carry quiz onboarding assumptions into the planning profile used by /ask.
+  // Carry quiz onboarding assumptions into the planning profile used by /coach.
   await supabase.from("profiles").upsert(buildProfileFromQuiz(user.id, answers), { onConflict: "user_id" });
 
   return NextResponse.json({ ok: true });

@@ -26,7 +26,7 @@ export default function UpdatePasswordPage() {
         setError("We could not update your password. Please request a new reset link and try again.");
         return;
       }
-      router.push("/dashboard");
+      router.push("/coach");
       router.refresh();
     } catch {
       setError("We could not reach the password service. Please try again.");

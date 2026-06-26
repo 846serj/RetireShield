@@ -7,14 +7,14 @@ import type { SubscriptionAccess } from "@/lib/subscription-types";
 import { Button } from "@/components/ui";
 
 const navItems = [
-  { label: "Coach", href: "/ask" },
-  { label: "Score", href: "/dashboard" },
-  { label: "Alerts", href: "/dashboard/monitoring" },
+  { label: "Coach", href: "/coach" },
+  { label: "Score", href: "/score" },
+  { label: "Alerts", href: "/alerts" },
 ] as const;
 
 function LogoLink({ onClick }: { onClick?: () => void }) {
   return (
-    <Link href="/ask" onClick={onClick} className="flex min-h-12 items-center gap-3 text-ink no-underline hover:text-brand-dark" aria-label="RetireShield dashboard">
+    <Link href="/coach" onClick={onClick} className="flex min-h-12 items-center gap-3 text-ink no-underline hover:text-brand-dark" aria-label="RetireShield dashboard">
       <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-dark text-white shadow-sm" aria-hidden="true">
         <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 3 5 6v5c0 4.5 2.9 8.5 7 10 4.1-1.5 7-5.5 7-10V6l-7-3Z" />
@@ -36,8 +36,8 @@ function SidebarNav({ onNavigate, unreadAlertCount = 0 }: { onNavigate?: () => v
   return (
     <nav className="mt-6 grid gap-1.5" aria-label="App navigation">
       {navItems.map((item) => {
-        const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
-        const showUnreadBadge = item.href === "/dashboard/monitoring" && unreadAlertCount > 0;
+        const active = pathname === item.href || (item.href !== "/score" && pathname.startsWith(`${item.href}/`));
+        const showUnreadBadge = item.href === "/alerts" && unreadAlertCount > 0;
         return (
           <Link
             key={item.href}
@@ -69,8 +69,8 @@ function UserMenu({ userEmail }: { userEmail: string }) {
       </summary>
       <div className="absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
         <div className="border-b border-slate-100 px-3 py-2 text-sm font-bold text-slate-600">{userEmail}</div>
-        <Link href="/dashboard/settings" className="block rounded-xl px-3 py-2 text-sm font-extrabold text-ink no-underline hover:bg-band hover:text-brand">Settings</Link>
-        <Link href="/dashboard/accounts" className="block rounded-xl px-3 py-2 text-sm font-extrabold text-ink no-underline hover:bg-band hover:text-brand">Connect accounts</Link>
+        <Link href="/settings" className="block rounded-xl px-3 py-2 text-sm font-extrabold text-ink no-underline hover:bg-band hover:text-brand">Settings</Link>
+        <Link href="/accounts" className="block rounded-xl px-3 py-2 text-sm font-extrabold text-ink no-underline hover:bg-band hover:text-brand">Connect accounts</Link>
         <form action="/auth/sign-out" method="post">
           <button type="submit" className="block w-full rounded-xl px-3 py-2 text-left text-sm font-extrabold text-ink hover:bg-band hover:text-brand">Sign out</button>
         </form>

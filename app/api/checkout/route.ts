@@ -59,7 +59,7 @@ export async function POST(req: Request) {
         metadata: { user_id: user.id, tier: normalizedTier, cadence: normalizedCadence, plan: planKey },
       },
       allow_promotion_codes: true,
-      success_url: `${base}/dashboard?welcome=1&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${base}/coach?welcome=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${base}/upgrade?tier=${normalizedTier}&cadence=${normalizedCadence}`,
     });
 

@@ -14,6 +14,6 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  const path = type === "recovery" ? "/auth/update-password" : "/ask?firstQuestion=1";
+  const path = type === "recovery" ? "/auth/update-password" : "/coach?firstQuestion=1";
   return NextResponse.redirect(`${getPublicBaseUrl(request.url)}${path}`);
 }

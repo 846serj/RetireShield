@@ -73,7 +73,7 @@ const helpLadder = [
 
 function primaryCta(userEmail: string | false | null) {
   return {
-    href: userEmail ? "/dashboard" : "/quiz",
+    href: userEmail ? "/coach" : "/quiz",
     label: userEmail ? "Go to my dashboard" : "Get my free Safety Score",
   };
 }

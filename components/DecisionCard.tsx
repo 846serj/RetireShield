@@ -47,7 +47,7 @@ export default function DecisionCard({ result }: DecisionCardProps) {
         <span className="inline-flex rounded-full border border-amber-200 bg-white px-4 py-2 text-base font-extrabold text-amber-800">⚠️ Needs your numbers</span>
         <h2 className="mt-5 text-2xl sm:text-3xl">Set your numbers first.</h2>
         <p className="mt-4 text-xl text-slate-700">Add your profile to check this decision.</p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row"><Link className="inline-flex min-h-14 items-center justify-center rounded-xl bg-brand px-6 py-3 text-lg font-bold text-white no-underline" href="/quiz">Take the 2-minute quiz</Link><Link className="inline-flex min-h-14 items-center justify-center rounded-xl border-2 border-brand px-6 py-3 text-lg font-bold no-underline" href="/dashboard/accounts">Connect accounts</Link></div>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row"><Link className="inline-flex min-h-14 items-center justify-center rounded-xl bg-brand px-6 py-3 text-lg font-bold text-white no-underline" href="/quiz">Take the 2-minute quiz</Link><Link className="inline-flex min-h-14 items-center justify-center rounded-xl border-2 border-brand px-6 py-3 text-lg font-bold no-underline" href="/accounts">Connect accounts</Link></div>
       </section>
     );
   }

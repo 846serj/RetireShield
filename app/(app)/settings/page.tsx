@@ -1,9 +1,9 @@
 import { getSubscriptionAccess } from "@/lib/subscription";
 import { Button, Eyebrow } from "@/components/ui";
-import { formatRenewDate, requireUser, saveTrustedContact } from "../_lib/dashboard";
+import { formatRenewDate, requireUser, saveTrustedContact } from "../dashboard/_lib/dashboard";
 
 export default async function SettingsPage() {
-  const { supabase, user } = await requireUser("/dashboard/settings");
+  const { supabase, user } = await requireUser("/settings");
   const access = await getSubscriptionAccess(user.id);
   const paid = access.active;
   const { data: contacts } = await supabase.from("trusted_contacts").select("name,email,consent_at").eq("user_id", user.id).order("created_at", { ascending: false });

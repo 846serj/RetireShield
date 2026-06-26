@@ -11,7 +11,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const nextPath = useMemo(() => {
     const next = searchParams.get("next");
-    return next?.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+    return next?.startsWith("/") && !next.startsWith("//") ? next : "/coach";
   }, [searchParams]);
 
   const [email, setEmail] = useState("");

@@ -24,7 +24,7 @@ export default function Signup() {
     supabase.auth.getUser().then(({ data }) => {
       if (!mounted) return;
       if (data.user) {
-        router.replace("/dashboard");
+        router.replace("/coach");
       } else {
         setCheckingSession(false);
       }
@@ -85,7 +85,7 @@ export default function Signup() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/coach");
       router.refresh();
     } catch {
       setErr("We could not reach the sign-up service. Please try again.");

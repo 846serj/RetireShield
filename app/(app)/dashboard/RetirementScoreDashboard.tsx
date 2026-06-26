@@ -65,7 +65,7 @@ function StatTile({ label, value, detail }: { label: string; value: string; deta
   </div>;
 }
 
-export default async function RetirementScoreDashboard({ next = "/dashboard" }: { next?: string }) {
+export default async function RetirementScoreDashboard({ next = "/score" }: { next?: string }) {
   const { supabase, user } = await requireUser(next);
   const latest = await getLatestScore(supabase, user.id);
   const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
@@ -99,7 +99,7 @@ export default async function RetirementScoreDashboard({ next = "/dashboard" }: 
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">Your one-glance retirement dashboard</h1>
         <p className="mt-2 max-w-3xl text-base font-semibold text-slate-700">{bandVerdict(latest.band)}</p>
       </div>
-      <Button href="/ask" className="shrink-0">Ask the coach about this →</Button>
+      <Button href="/coach" className="shrink-0">Ask the coach about this →</Button>
     </div>
 
     <section className="grid gap-5 lg:grid-cols-[minmax(300px,0.95fr)_1.4fr]">
@@ -125,6 +125,6 @@ export default async function RetirementScoreDashboard({ next = "/dashboard" }: 
       </div>
     </section>
 
-    <Link href="/ask" className="mt-5 inline-flex text-sm font-extrabold text-brand underline sm:hidden">Ask the coach about this →</Link>
+    <Link href="/coach" className="mt-5 inline-flex text-sm font-extrabold text-brand underline sm:hidden">Ask the coach about this →</Link>
   </div>;
 }

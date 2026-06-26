@@ -110,7 +110,7 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
           <div className="hidden shrink-0 items-center gap-4 min-[1120px]:flex">
             {userEmail ? (
               <>
-                <Button href="/dashboard" className="min-h-11 px-5 py-2.5 text-[15px]">Dashboard</Button>
+                <Button href="/coach" className="min-h-11 px-5 py-2.5 text-[15px]">Dashboard</Button>
                 <span className="max-w-48 truncate text-sm font-semibold text-slate-600" title={userEmail}>{userEmail}</span>
                 <form action="/auth/sign-out" method="post">
                   <button type="submit" className="whitespace-nowrap font-bold text-ink no-underline hover:text-brand">Sign out</button>
@@ -157,7 +157,7 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
             <div className="mt-auto grid gap-3 pt-8">
               {userEmail ? (
                 <>
-                  <Button href="/dashboard" onClick={() => setDrawerOpen(false)} className="w-full text-base">Dashboard</Button>
+                  <Button href="/coach" onClick={() => setDrawerOpen(false)} className="w-full text-base">Dashboard</Button>
                   <p className="truncate text-center text-sm font-semibold text-slate-600">{userEmail}</p>
                   <form action="/auth/sign-out" method="post" className="text-center">
                     <button type="submit" className="font-bold text-ink no-underline">Sign out</button>

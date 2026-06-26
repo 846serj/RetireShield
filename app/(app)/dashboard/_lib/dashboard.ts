@@ -52,7 +52,7 @@ export function formatMonths(value: number) {
   return Number.isFinite(value) ? value.toFixed(1) : "0.0";
 }
 
-export async function requireUser(next = "/dashboard") {
+export async function requireUser(next = "/coach") {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(next)}`);
