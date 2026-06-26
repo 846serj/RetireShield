@@ -11,6 +11,7 @@ import { analyzeRothConversion } from "@/lib/engine/roth";
 import { analyzeAffordability } from "@/lib/engine/affordability";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { isProfileScoreable } from "@/lib/profileCompleteness";
+import { IRMAA_BRACKETS } from "@/lib/engine/params/2026";
 import { filingStatusFromMaritalStatus, irmaaSurcharge, rmdAmount, totalIncomeTaxes, type FilingStatus } from "@/lib/engine/tax";
 import { computeScores, type Answers } from "@/lib/scoring";
 
@@ -58,7 +59,9 @@ function omitNullProfileFields(profile: FinancialProfile) {
 }
 
 function compactProjection(result: ReturnType<typeof runProjection>) {
-  return { depletionAge: result.depletionAge, firstYear: result.years[0], lastYear: result.years.at(-1), sampleYears: result.years.filter((_, i) => i % 5 === 0).slice(0, 8) };
+  const sampleYears = result.years.filter((_, i) => i % 5 === 0 || i === result.years.length - 1).slice(0, 12);
+  const chartYears = sampleYears.map((year) => ({ year: year.year, age: year.age, balance: Math.round(year.endBalances.total) }));
+  return { depletionAge: result.depletionAge, firstYear: result.years[0], lastYear: result.years.at(-1), sampleYears, chartYears };
 }
 
 function coachJson(answer: string, calculations: CalculationTrace[] = [], init?: ResponseInit, usage?: { tier: SubscriptionTier; remaining: number | null; cap: number | null }) {
@@ -161,8 +164,8 @@ ${coachMode === "advisory" ? '- Show this disclosure in your answer when you pro
             case "compute_safety_score": result = score ? { score, answers: scoreRow?.answers, profile: coachProfile, created_at: scoreRow?.created_at } : { error: "No saved Safety Score yet", profile: coachProfile }; break;
             case "project_depletion": result = compactProjection(runProjection(profileWithOverrides(profile, input), { drawdownMode: input.drawdownMode, targetBracketRate: input.targetBracketRate })); break;
             case "tax_for_income": result = totalIncomeTaxes({ status: (input.status as FilingStatus) ?? filingStatusFromMaritalStatus(profile.marital_status), ages: Array.isArray(input.ages) && input.ages.length ? input.ages.map((age: unknown) => numberInput(age)) : [65], ordinaryIncome: numberInput(input.ordinaryIncome), socialSecurity: numberInput(input.socialSecurity), longTermCapitalGains: numberInput(input.longTermCapitalGains), state: typeof input.state === "string" ? input.state : profile.state, stateFlatRate: input.stateFlatRate === undefined ? undefined : numberInput(input.stateFlatRate) }); break;
-            case "irmaa_for_income": result = { annualSurcharge: irmaaSurcharge(numberInput(input.magi), (input.status as FilingStatus) ?? filingStatusFromMaritalStatus(profile.marital_status)) }; break;
-            case "compare_ss_claiming": result = compareSocialSecurity(profileWithOverrides(profile, input), { monteCarloRuns: Math.min(500, Math.max(50, Math.floor(input.monteCarloRuns ?? 300))) }); break;
+            case "irmaa_for_income": { const status = (input.status as FilingStatus) ?? filingStatusFromMaritalStatus(profile.marital_status); const magi = numberInput(input.magi); result = { magi, status, annualSurcharge: irmaaSurcharge(magi, status), brackets: IRMAA_BRACKETS[status].map((bracket) => ({ upTo: Number.isFinite(bracket.upTo) ? bracket.upTo : null, annualSurcharge: bracket.annualSurcharge })) }; break; }
+            case "compare_ss_claiming": { const comparison = compareSocialSecurity(profileWithOverrides(profile, input), { monteCarloRuns: Math.min(500, Math.max(50, Math.floor(input.monteCarloRuns ?? 300))) }); result = { ...comparison, chartStrategies: comparison.strategies.filter((strategy) => [62, comparison.assumptions.fullRetirementAge, 70].includes(strategy.claimAge)).map((strategy) => ({ claimAge: strategy.claimAge, householdMonthlyBenefit: strategy.householdMonthlyBenefit, monthlyBenefit: strategy.monthlyBenefit, successRate: strategy.successRate, lifetimeValueToHorizon: strategy.lifetimeValueToHorizon })) }; break; }
             case "rmd_for_age": result = { rmd: rmdAmount(numberInput(input.age), numberInput(input.priorYearEndTaxDeferredBalance)) }; break;
             case "roth_conversion_impact": result = analyzeRothConversion(profileWithOverrides(profile, input), { targetBracketRate: input.targetBracketRate }); break;
             case "analyze_affordability": result = analyzeAffordability({ kind: "spend", timing: input.timing, amount: numberInput(input.amount), fundingSource: input.fundingSource, startAge: input.startAge }, profileWithOverrides(profile, input), (scoreRow?.answers as Answers | null) ?? null); break;
