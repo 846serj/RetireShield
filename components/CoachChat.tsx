@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { COACH_MESSAGE_CAPS, type SubscriptionTier } from "@/lib/subscription-types";
 
 type CalculationTrace = { tool: string; inputs: unknown; outputs: unknown };
@@ -24,13 +24,6 @@ function formatTraceValue(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
 
-function tierLabel(tier: SubscriptionTier) {
-  if (tier === "plus") return `Plus: ${COACH_MESSAGE_CAPS.plus} messages / month`;
-  if (tier === "premium") return "Premium: unlimited messages";
-  if (tier === "concierge") return "Concierge: unlimited messages";
-  return "Paid coach access required";
-}
-
 type ScoreSummary = { score: number; status: string; safeMonthly: number | null };
 
 function money(value?: number | null) {
@@ -41,14 +34,7 @@ export default function CoachChat({ tier = "premium", scoreSummary = null }: { t
   const [messages, setMessages] = useState<ChatMessage[]>([OPENING_MESSAGE]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [usage, setUsage] = useState<UsageMeta>({ tier, remaining: tier === "plus" ? COACH_MESSAGE_CAPS.plus : null, cap: tier === "plus" ? COACH_MESSAGE_CAPS.plus : null });
-
-  const isLimited = usage.cap !== null;
-  const allowanceText = useMemo(() => {
-    if (!isLimited) return "Unlimited coach messages, subject to hourly safety limits.";
-    const remaining = usage.remaining ?? 0;
-    return `${remaining} of ${usage.cap} Plus messages remain this month.`;
-  }, [isLimited, usage.cap, usage.remaining]);
+  const [, setUsage] = useState<UsageMeta>({ tier, remaining: tier === "plus" ? COACH_MESSAGE_CAPS.plus : null, cap: tier === "plus" ? COACH_MESSAGE_CAPS.plus : null });
 
   async function send(text = input) {
     const trimmed = text.trim();
@@ -77,9 +63,9 @@ export default function CoachChat({ tier = "premium", scoreSummary = null }: { t
   }
 
   return (
-    <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="flex min-h-[calc(100vh-6.5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:min-h-[calc(100vh-2.5rem)]">
       {scoreSummary ? (
-        <Link href="/dashboard/score" className="block border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-base font-extrabold text-emerald-950 no-underline transition hover:bg-emerald-100 sm:px-6">
+        <Link href="/dashboard" className="block border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-base font-extrabold text-emerald-950 no-underline transition hover:bg-emerald-100 sm:px-6">
           Retirement Score {scoreSummary.score} · {scoreSummary.status} · safe to spend ~{money(scoreSummary.safeMonthly)}/mo
         </Link>
       ) : (
@@ -87,32 +73,17 @@ export default function CoachChat({ tier = "premium", scoreSummary = null }: { t
           Set your numbers (2-min quiz)
         </Link>
       )}
-      <div className="border-b border-slate-200 bg-white p-4 sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-2xl font-extrabold sm:text-3xl">Ask RetireShield</h2>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 text-base shadow-sm lg:min-w-64">
-            <p className="font-extrabold text-slate-900">{tierLabel(usage.tier)}</p>
-            <p className="mt-1 text-sm font-semibold text-slate-600">{allowanceText}</p>
-          </div>
-        </div>
-        <p className="mt-3 text-sm font-semibold text-slate-600">Do not share account numbers, SSNs, passwords, or payment details.</p>
-      </div>
 
-      <div className="p-4 sm:p-6">
-        <div className="mb-4">
-          <p className="mb-2 text-sm font-extrabold uppercase tracking-[0.16em] text-slate-500">Suggested questions</p>
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTED_QUESTIONS.map((q) => (
-              <button key={q} type="button" onClick={() => send(q)} className="min-h-12 rounded-full border-2 border-slate-300 bg-white px-4 py-2 text-left text-base font-bold text-slate-800 shadow-sm transition hover:border-brand hover:bg-blue-50 disabled:opacity-50" disabled={loading}>
-                {q}
-              </button>
-            ))}
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-6">
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTED_QUESTIONS.map((q) => (
+            <button key={q} type="button" onClick={() => send(q)} className="min-h-12 rounded-full border-2 border-slate-300 bg-white px-4 py-2 text-left text-base font-bold text-slate-800 shadow-sm transition hover:border-brand hover:bg-blue-50 disabled:opacity-50" disabled={loading}>
+              {q}
+            </button>
+          ))}
         </div>
 
-        <div className="mb-4 max-h-[30rem] min-h-[18rem] space-y-4 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-5" aria-live="polite">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto rounded-3xl border border-slate-200 bg-slate-50 p-3 sm:p-5" aria-live="polite">
           {messages.map((m, i) => (
             <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
               <div className={`inline-block max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-left text-base leading-7 sm:max-w-[82%] ${m.role === "user" ? "bg-brand text-white" : "bg-white text-slate-800 shadow-sm ring-1 ring-slate-200"}`}>
@@ -137,13 +108,16 @@ export default function CoachChat({ tier = "premium", scoreSummary = null }: { t
           {loading ? <p className="text-base font-semibold text-slate-600">RetireShield is checking…</p> : null}
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex flex-col gap-3 sm:flex-row">
-          <label className="sr-only" htmlFor="coach-question">Ask a retirement question</label>
-          <input id="coach-question" value={input} onChange={(e) => setInput(e.target.value)} className="rg-input min-w-0 flex-1" placeholder="Ask: Will an extra withdrawal raise my Medicare?" />
-          <button type="submit" disabled={loading || !input.trim()} className="min-h-12 rounded-xl bg-brand px-5 py-3 text-base font-extrabold text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50">
-            {loading ? "Thinking…" : "Send"}
-          </button>
-        </form>
+        <div className="mt-auto space-y-2">
+          <form onSubmit={(e) => { e.preventDefault(); send(); }} className="flex flex-col gap-3 sm:flex-row">
+            <label className="sr-only" htmlFor="coach-question">Ask a retirement question</label>
+            <input id="coach-question" value={input} onChange={(e) => setInput(e.target.value)} className="rg-input min-w-0 flex-1" placeholder="Ask: Will an extra withdrawal raise my Medicare?" />
+            <button type="submit" disabled={loading || !input.trim()} className="min-h-12 rounded-xl bg-brand px-5 py-3 text-base font-extrabold text-white shadow-sm transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50">
+              {loading ? "Thinking…" : "Send"}
+            </button>
+          </form>
+          <p className="text-xs text-slate-400">Do not share account numbers, SSNs, passwords, or payment details.</p>
+        </div>
       </div>
     </section>
   );
