@@ -13,7 +13,7 @@ export default async function AskPage({ searchParams }: { searchParams?: { first
   const [{ data: profile }, { data: latest }, { data: recent }, { data: connections }] = await Promise.all([
     supabase.from("profiles").select("*").eq("user_id", user!.id).maybeSingle(),
     supabase.from("scores").select("score_source").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("decisions").select("id, verdict, created_at, input").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(5),
+    supabase.from("decisions").select("id, verdict, created_at, input, result").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(5),
     supabase.from("plaid_items").select("id").eq("user_id", user!.id).limit(1),
   ]);
   const hasDataScore = ["quiz", "connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""));

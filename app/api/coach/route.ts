@@ -186,6 +186,13 @@ ${coachMode === "advisory" ? '- Show this disclosure in your answer when you pro
       ? rawText
       : "I can only share numeric figures that came from RetireGuard tools. Please ask me to run the specific calculation again.";
     if (logId) await supabase.from("coach_usage").update({ tool_calls: calculations.length, prompt_chars: incoming.reduce((sum, m) => sum + m.content.length, 0) }).eq("id", logId);
+    await supabase.from("decisions").insert({
+      user_id: user.id,
+      input: { question: incoming.at(-1)?.content ?? "" },
+      result: { answer, calculations },
+      verdict: answer.split("\n").find(Boolean)?.slice(0, 160) || "Coach answer",
+      tier: access.tier,
+    });
     return coachJson(answer, calculations, undefined, usageMeta(access.tier, access.tier === "plus" ? ((monthlyCountForResponse ?? 0) + 1) : 0));
   } catch (error) {
     console.error("Coach failed", { userId: user.id, error });

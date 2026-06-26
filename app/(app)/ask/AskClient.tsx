@@ -1,51 +1,57 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
-import DecisionCard from "@/components/DecisionCard";
-import type { DecisionResult } from "@/lib/engine/affordability";
+import type { CalculationTrace } from "@/lib/ai/coachNumbers";
 
-type Template = "purchase" | "gift" | "trip" | "car" | "repair" | "else";
-type ApiResult = DecisionResult & { safeToSpend?: { annualDiscretionarySpend?: number | null; needsProfile?: boolean } };
+type CoachResult = { answer: string; calculations?: CalculationTrace[]; usage?: { remaining: number | null; cap: number | null } };
+type RecentQuestion = { id: string; verdict: string; created_at: string; input?: { question?: string } | null; result?: { answer?: string } | null };
 
-const templates: { id: Template; label: string }[] = [
-  { id: "purchase", label: "A big purchase" },
-  { id: "gift", label: "Help family/a gift" },
-  { id: "trip", label: "A trip" },
-  { id: "car", label: "A new car" },
-  { id: "repair", label: "A home repair" },
-  { id: "else", label: "Something else" },
+const starterQuestions = [
+  "Can I afford a $25,000 remodel?",
+  "Should I claim Social Security now or wait?",
+  "Will my money last if the market drops?",
+  "How much can I safely spend this year?",
+  "Will a big withdrawal raise my Medicare?",
 ];
 
 function money(value?: number | null) {
   return Number.isFinite(Number(value)) ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number(value)) : "—";
 }
 
-export default function AskClient({ initialPrompt, initialSafeMonthly, horizonAge, connected, profileComplete, recent }: { initialPrompt?: string; initialSafeMonthly?: number | null; horizonAge?: number | null; connected: boolean; profileComplete: boolean; recent: { id: string; verdict: string; created_at: string; input?: { amount?: number; timing?: string } | null }[] }) {
-  const [template, setTemplate] = useState<Template>("purchase");
-  const [amount, setAmount] = useState("");
-  const [timing, setTiming] = useState<"oneoff" | "recurring">("oneoff");
-  const [fundingSource, setFundingSource] = useState("auto");
-  const [carMode, setCarMode] = useState<"cash" | "financed">("cash");
-  const [result, setResult] = useState<ApiResult | null>(null);
+function shortSummary(answer?: string) {
+  if (!answer) return "Coach answer saved";
+  const firstLine = answer.split("\n").find(Boolean) ?? answer;
+  return firstLine.length > 120 ? `${firstLine.slice(0, 117)}…` : firstLine;
+}
+
+function calculationLabel(calculation: CalculationTrace) {
+  return calculation.tool.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export default function AskClient({ initialPrompt, initialSafeMonthly, horizonAge, connected, profileComplete, recent }: { initialPrompt?: string; initialSafeMonthly?: number | null; horizonAge?: number | null; connected: boolean; profileComplete: boolean; recent: RecentQuestion[] }) {
+  const [question, setQuestion] = useState("");
+  const [result, setResult] = useState<CoachResult | null>(null);
+  const [recentItems, setRecentItems] = useState(recent);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveTiming = useMemo(() => template === "car" && carMode === "financed" ? "recurring" : timing, [template, carMode, timing]);
-  const selectedTemplate = templates.find((item) => item.id === template);
-  const templateLabel = selectedTemplate?.label.replace(/^A\s+/i, "").replace(/^Help family\/a gift$/i, "family gift").toLowerCase() ?? "purchase";
-  const showTiming = ["gift", "trip", "else"].includes(template);
-
   async function submit(event: FormEvent) {
     event.preventDefault();
+    const trimmed = question.trim();
+    if (!trimmed) {
+      setError("Type a money question first.");
+      return;
+    }
     setLoading(true); setError(null); setResult(null);
     try {
-      const response = await fetch("/api/decision", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "spend", amount: Number(amount), timing: effectiveTiming, fundingSource, label: templateLabel }) });
+      const response = await fetch("/api/coach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: [{ role: "user", content: trimmed }] }) });
       const json = await response.json();
-      if (!response.ok && !json.needsProfile) throw new Error(json.error || "We couldn't check this right now.");
+      if (!response.ok) throw new Error(json.answer || json.error || "We couldn't ask the coach right now.");
       setResult(json);
+      setRecentItems((items) => [{ id: `local-${Date.now()}`, verdict: shortSummary(json.answer), created_at: new Date().toISOString(), input: { question: trimmed }, result: { answer: json.answer } }, ...items].slice(0, 5));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "We couldn't check this right now.");
+      setError(err instanceof Error ? err.message : "We couldn't ask the coach right now.");
     } finally { setLoading(false); }
   }
 
@@ -63,7 +69,7 @@ export default function AskClient({ initialPrompt, initialSafeMonthly, horizonAg
           <div className="grid gap-3 md:grid-cols-2">
             <a href="#ask-form" className="flex min-h-32 flex-col justify-center rounded-2xl border-2 border-brand bg-white p-5 text-ink no-underline shadow-sm transition hover:bg-band">
               <span className="text-2xl font-extrabold">Ask a question</span>
-              <span className="mt-2 font-semibold text-slate-700">Try a purchase, gift, trip, car, or repair decision now.</span>
+              <span className="mt-2 font-semibold text-slate-700">Ask in your own words about spending, withdrawals, Social Security, taxes, or market stress.</span>
             </a>
             <div className="flex min-h-32 flex-col justify-center rounded-2xl border-2 border-brand bg-white p-5 shadow-sm">
               <p className="text-2xl font-extrabold text-ink">Set your numbers</p>
@@ -77,23 +83,20 @@ export default function AskClient({ initialPrompt, initialSafeMonthly, horizonAg
         </div>}
       </section>
 
-      <div className="mb-8 max-w-3xl"><p className="rg-kicker">Ask before you spend</p><h1 className="mt-3 text-5xl sm:text-7xl">{initialPrompt ?? "What are you thinking about?"}</h1><p className="mt-4 text-xl text-slate-700">Pick a template, add the amount, choose one-off or recurring, set the funding source, and get a plain-English retirement decision card.</p></div>
+      <div className="mb-8 max-w-3xl"><p className="rg-kicker">Ask anything</p><h1 className="mt-3 text-5xl sm:text-7xl">{initialPrompt ?? "What money question is on your mind?"}</h1><p className="mt-4 text-xl text-slate-700">Use plain English. The coach will answer from your saved numbers and show the calculation trace it used.</p></div>
 
       <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <form id="ask-form" onSubmit={submit} className="rg-card space-y-5">
-          <div className="flex flex-wrap gap-2">{templates.map((item) => <button key={item.id} type="button" onClick={() => setTemplate(item.id)} className={`rounded-full border px-4 py-2 text-base font-extrabold ${template === item.id ? "border-brand bg-brand text-white" : "border-slate-200 bg-white text-ink"}`}>{item.label}</button>)}</div>
-          <label className="block"><span className="text-lg font-extrabold">Amount</span><input className="rg-input mt-2 text-2xl font-bold" inputMode="decimal" required min="1" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="25000" /></label>
-          {showTiming ? <div><p className="text-lg font-extrabold">Timing</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => setTiming("oneoff")} className={`rounded-xl border-2 p-3 font-extrabold ${timing === "oneoff" ? "border-brand bg-band" : "border-slate-200"}`}>One-off</button><button type="button" onClick={() => setTiming("recurring")} className={`rounded-xl border-2 p-3 font-extrabold ${timing === "recurring" ? "border-brand bg-band" : "border-slate-200"}`}>Recurring / yr</button></div></div> : null}
-          {template === "car" ? <div><p className="text-lg font-extrabold">Car payment style</p><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => setCarMode("cash")} className={`rounded-xl border-2 p-3 font-extrabold ${carMode === "cash" ? "border-brand bg-band" : "border-slate-200"}`}>Cash</button><button type="button" onClick={() => setCarMode("financed")} className={`rounded-xl border-2 p-3 font-extrabold ${carMode === "financed" ? "border-brand bg-band" : "border-slate-200"}`}>Financed / yr</button></div></div> : null}
-          <label className="block"><span className="text-lg font-extrabold">Funding source</span><select className="rg-input mt-2" value={fundingSource} onChange={(e) => setFundingSource(e.target.value)}><option value="auto">Auto</option><option value="taxable">Taxable</option><option value="tax_deferred">Tax-deferred</option><option value="roth">Roth</option><option value="cash">Cash</option></select></label>
-          <button disabled={loading} className="min-h-16 w-full rounded-2xl bg-brand px-6 py-4 text-xl font-extrabold text-white disabled:opacity-60">{loading ? "Checking…" : "Check this decision"}</button>
+          <label className="block"><span className="text-lg font-extrabold">Your question</span><textarea className="rg-input mt-2 min-h-44 resize-y text-2xl font-bold leading-snug" required value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Ask anything about your money…" /></label>
+          <div><p className="text-sm font-extrabold uppercase tracking-[0.14em] text-slate-500">Starter questions</p><div className="mt-3 flex flex-wrap gap-2">{starterQuestions.map((starter) => <button key={starter} type="button" onClick={() => { setQuestion(starter); setError(null); }} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-left text-sm font-extrabold text-ink shadow-sm transition hover:border-brand hover:bg-band">{starter}</button>)}</div></div>
+          <button disabled={loading} className="min-h-16 w-full rounded-2xl bg-brand px-6 py-4 text-xl font-extrabold text-white disabled:opacity-60">{loading ? "Asking the coach…" : "Ask the coach"}</button>
           {error ? <p className="rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</p> : null}
         </form>
 
-        <aside className="rg-card h-fit"><p className="rg-kicker">Recent questions</p>{recent.length ? <div className="mt-4 space-y-3">{recent.map((item) => <div key={item.id} className="rounded-2xl border border-slate-200 p-4"><p className="font-extrabold">{item.verdict} · {money(item.input?.amount)}</p><p className="text-sm font-semibold text-slate-500">{new Date(item.created_at).toLocaleDateString()}</p></div>)}</div> : <p className="mt-4 text-slate-700">Saved recent questions are available for Plus members.</p>}<Link href="/upgrade" className="mt-4 inline-flex font-extrabold">Save decisions with Plus →</Link></aside>
+        <aside className="rg-card h-fit"><p className="rg-kicker">Recent questions</p>{recentItems.length ? <div className="mt-4 space-y-3">{recentItems.map((item) => <div key={item.id} className="rounded-2xl border border-slate-200 p-4"><p className="font-extrabold text-ink">{item.input?.question ?? "Money question"}</p><p className="mt-2 text-sm font-semibold text-slate-600">{item.verdict || shortSummary(item.result?.answer)}</p><p className="mt-2 text-sm font-semibold text-slate-500">{new Date(item.created_at).toLocaleDateString()}</p></div>)}</div> : <p className="mt-4 text-slate-700">Saved recent questions are available for Plus members.</p>}<Link href="/upgrade" className="mt-4 inline-flex font-extrabold">Save decisions with Plus →</Link></aside>
       </section>
 
-      <div className="mt-8">{loading ? <div className="rg-card animate-pulse text-2xl font-extrabold">Building your Decision Card…</div> : result ? <DecisionCard result={result} /> : <div className="rg-card text-xl text-slate-700">Your Decision Card will appear here after you ask.</div>}</div>
+      <div className="mt-8">{loading ? <div className="rg-card animate-pulse text-2xl font-extrabold">Building your answer…</div> : result ? <article className="rg-card space-y-6"><div><p className="rg-kicker">Coach answer</p><div className="mt-3 whitespace-pre-wrap text-xl leading-8 text-ink sm:text-2xl sm:leading-10">{result.answer}</div></div><details className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><summary className="cursor-pointer text-lg font-extrabold text-ink">How this was calculated</summary>{result.calculations?.length ? <div className="mt-4 space-y-4">{result.calculations.map((calculation, index) => <div key={`${calculation.tool}-${index}`} className="rounded-2xl bg-white p-4"><p className="font-extrabold text-ink">{calculationLabel(calculation)}</p><pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-950 p-4 text-xs leading-5 text-slate-100">{JSON.stringify({ inputs: calculation.inputs, outputs: calculation.outputs }, null, 2)}</pre></div>)}</div> : <p className="mt-3 font-semibold text-slate-700">The coach did not need a calculation tool for this answer.</p>}</details></article> : <div className="rg-card text-xl text-slate-700">Your plain-English answer will appear here after you ask.</div>}</div>
     </div>
   );
 }
