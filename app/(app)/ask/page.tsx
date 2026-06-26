@@ -1,23 +1,40 @@
 import type { Metadata } from "next";
-import AskClient from "./AskClient";
+import CoachChat from "@/components/CoachChat";
 import { computeSafeToSpend } from "@/lib/engine/affordability";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { createClient } from "@/lib/supabase/server";
 import { isProfileScoreable } from "@/lib/profileCompleteness";
 
-export const metadata: Metadata = { title: "Ask before you spend", description: "Check whether a purchase fits your retirement plan before you spend." };
+export const metadata: Metadata = { title: "Ask RetireShield", description: "Chat with your retirement coach about spending, Social Security, markets, and your plan." };
 
-export default async function AskPage({ searchParams }: { searchParams?: { firstQuestion?: string } }) {
+function scoreStatus(band?: string | null) {
+  if (band === "Secure" || band === "Mostly Secure") return "On track";
+  if (band === "At Risk") return "Needs attention";
+  if (band === "Vulnerable") return "Review soon";
+  return "On track";
+}
+
+export default async function AskPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const [{ data: profile }, { data: latest }, { data: recent }, { data: connections }] = await Promise.all([
+  const [{ data: profile }, { data: latest }] = await Promise.all([
     supabase.from("profiles").select("*").eq("user_id", user!.id).maybeSingle(),
-    supabase.from("scores").select("score_source").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-    supabase.from("decisions").select("id, verdict, created_at, input, result").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(5),
-    supabase.from("plaid_items").select("id").eq("user_id", user!.id).limit(1),
+    supabase.from("scores").select("overall, band, score_source").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
   const hasDataScore = ["quiz", "connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""));
   const scoreable = isProfileScoreable(profile, hasDataScore);
   const safe = profile && scoreable ? computeSafeToSpend(profile as FinancialProfile) : { annualDiscretionarySpend: null, needsProfile: true };
-  return <AskClient initialPrompt={searchParams?.firstQuestion ? "Ask your first question" : undefined} initialSafeMonthly={safe.annualDiscretionarySpend ? Math.round(safe.annualDiscretionarySpend / 12) : null} horizonAge={scoreable ? profile?.planning_horizon_age ?? null : null} connected={Boolean(connections?.length) || ["connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""))} profileComplete={scoreable} recent={(recent ?? []) as never} />;
+  const safeMonthly = safe.annualDiscretionarySpend ? Math.round(safe.annualDiscretionarySpend / 12) : null;
+
+  return (
+    <div className="mx-auto max-w-6xl py-6 sm:py-10">
+      <CoachChat
+        scoreSummary={scoreable && latest?.overall ? {
+          score: Math.round(Number(latest.overall)),
+          status: scoreStatus(latest.band),
+          safeMonthly,
+        } : null}
+      />
+    </div>
+  );
 }
