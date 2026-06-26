@@ -33,6 +33,8 @@ function buildProfileFromQuiz(userId: string, answers: Record<string, unknown> |
   const maritalStatus = stringAnswer<MaritalStatus>(answers, "maritalStatus", ["single", "married", "widowed", "divorced"]);
   const spouseAge = maritalStatus === "married" ? numericAnswer(answers, "spouseAge") : null;
   const hasPension = answers?.hasPension === "yes";
+  const stockPct = numericAnswer(answers, "stockPct");
+  const balanceTaxDeferred = numericAnswer(answers, "balance_tax_deferred") ?? numericAnswer(answers, "savings");
 
   return {
     user_id: userId,
@@ -43,10 +45,12 @@ function buildProfileFromQuiz(userId: string, answers: Record<string, unknown> |
       "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
     ] as const),
     balance_taxable: numericAnswer(answers, "balance_taxable"),
-    balance_tax_deferred: numericAnswer(answers, "balance_tax_deferred"),
+    balance_tax_deferred: balanceTaxDeferred,
     balance_roth: numericAnswer(answers, "balance_roth"),
-    stock_pct: numericAnswer(answers, "stockPct"),
-    ss_benefit_fra: numericAnswer(answers, "ssaBenefitEstimate"),
+    stock_pct: stockPct,
+    bond_pct: stockPct === null ? null : Math.max(0, 100 - stockPct),
+    cash_pct: stockPct === null ? null : 0,
+    ss_benefit_fra: numericAnswer(answers, "ssaBenefitEstimate") ?? numericAnswer(answers, "guaranteedIncome"),
     ss_claim_age: null,
     spouse_ss_benefit_fra: maritalStatus === "married" ? numericAnswer(answers, "spouseSsaBenefitEstimate") : null,
     spouse_ss_claim_age: null,

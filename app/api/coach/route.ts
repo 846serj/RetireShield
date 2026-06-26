@@ -11,6 +11,7 @@ import { analyzeRothConversion } from "@/lib/engine/roth";
 import { analyzeAffordability } from "@/lib/engine/affordability";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { isProfileScoreable } from "@/lib/profileCompleteness";
+import { hydrateProfileForEngine } from "@/lib/profileForEngine";
 import { IRMAA_BRACKETS } from "@/lib/engine/params/2026";
 import { filingStatusFromMaritalStatus, irmaaSurcharge, rmdAmount, totalIncomeTaxes, type FilingStatus } from "@/lib/engine/tax";
 import { computeScores, type Answers } from "@/lib/scoring";
@@ -127,8 +128,7 @@ export async function POST(req: Request) {
       supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("scores").select("answers, overall, band, sub_scores, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
-    if (!profileRow) return coachJson("Please complete your retirement profile before using the AI coach.", [], { status: 400 });
-    const profile = profileRow as FinancialProfile;
+    const profile = hydrateProfileForEngine(profileRow ?? {}, scoreRow?.answers) as FinancialProfile;
     const hasSavedScore = Boolean(scoreRow?.answers);
     if (!isProfileScoreable(profile, hasSavedScore)) return coachJson("Please add a few profile details or take the quiz before using the AI coach. I do not want to treat unknown balances or spending as $0.", [], { status: 400 });
     const coachProfile = omitNullProfileFields(profile);

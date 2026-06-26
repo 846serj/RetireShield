@@ -3,9 +3,9 @@ import { Button, Eyebrow } from "@/components/ui";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { bandVerdict } from "@/lib/verdicts";
 import { runMonteCarlo } from "@/lib/engine/montecarlo";
-import type { FinancialProfile } from "@/lib/engine/types";
-import { FINANCIAL_PROFILE_DEFAULTS } from "@/lib/engine/types";
+import { FINANCIAL_PROFILE_DEFAULTS, type FinancialProfile } from "@/lib/engine/types";
 import { isProfileScoreable } from "@/lib/profileCompleteness";
+import { estimatedMonthlyIncomeForEngine, guaranteedMonthlyIncomeForEngine, hydrateProfileForEngine, totalPortfolioForEngine } from "@/lib/profileForEngine";
 import type { Answers } from "@/lib/scoring";
 import { formatMoney, formatPercent, getLatestScore, getPlanForLatest, requireUser } from "./_lib/dashboard";
 
@@ -14,55 +14,6 @@ const SUSTAINABLE_WITHDRAWAL_RATE = 0.04;
 
 function knownNumber(value: number | null | undefined) {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
-}
-
-function totalPortfolio(profile: Partial<FinancialProfile> | null | undefined, answers?: Answers | null) {
-  if (!profile) return knownNumber(answers?.savings);
-  return knownNumber(profile.balance_taxable) + knownNumber(profile.balance_tax_deferred) + knownNumber(profile.balance_roth) || knownNumber(answers?.savings);
-}
-
-function guaranteedMonthlyIncome(profile: Partial<FinancialProfile> | null | undefined, answers?: Answers | null) {
-  if (!profile) return knownNumber(answers?.guaranteedIncome);
-  return knownNumber(profile.ss_benefit_fra) + knownNumber(profile.spouse_ss_benefit_fra) + knownNumber(profile.pension_amount) || knownNumber(answers?.guaranteedIncome);
-}
-
-function estimatedMonthlyIncome(profile: Partial<FinancialProfile> | null | undefined, answers?: Answers | null) {
-  const sustainableWithdrawal = (totalPortfolio(profile, answers) * SUSTAINABLE_WITHDRAWAL_RATE) / 12;
-  return guaranteedMonthlyIncome(profile, answers) + sustainableWithdrawal;
-}
-
-function birthdateFromAge(age: number | null | undefined) {
-  if (!Number.isFinite(Number(age)) || Number(age) <= 0) return null;
-  return `${new Date().getUTCFullYear() - Math.floor(Number(age))}-07-01`;
-}
-
-function profileFromAnswers(userId: string, answers: Answers | null | undefined): Partial<FinancialProfile> | null {
-  if (!answers) return null;
-  const stockPct = knownNumber(answers.stockPct) || 60;
-  return {
-    user_id: userId,
-    birthdate: birthdateFromAge(answers.age),
-    marital_status: answers.maritalStatus ?? "single",
-    state: answers.state ?? null,
-    balance_taxable: knownNumber(answers.balance_taxable),
-    balance_tax_deferred: knownNumber(answers.balance_tax_deferred) || knownNumber(answers.savings),
-    balance_roth: knownNumber(answers.balance_roth),
-    stock_pct: stockPct,
-    bond_pct: Math.max(0, 100 - stockPct),
-    cash_pct: 0,
-    ss_benefit_fra: knownNumber(answers.ssaBenefitEstimate) || knownNumber(answers.guaranteedIncome),
-    ss_claim_age: answers.claimedSocialSecurity === "yes" ? Math.floor(answers.age) : answers.targetRetirementAge ?? 67,
-    spouse_ss_benefit_fra: answers.spouseSsaBenefitEstimate ?? null,
-    spouse_ss_claim_age: answers.spouseAge ? answers.targetRetirementAge ?? 67 : null,
-    pension_amount: answers.hasPension === "yes" ? Math.max(0, knownNumber(answers.pensionAmount) || knownNumber(answers.guaranteedIncome) - knownNumber(answers.ssaBenefitEstimate)) : null,
-    pension_start_age: answers.targetRetirementAge ?? Math.floor(answers.age),
-    pension_has_cola: answers.pensionHasCola === "yes",
-    pension_survivor_pct: answers.pensionSurvivorPct ?? null,
-    spending_essential_monthly: answers.essentialExpenses,
-    spending_discretionary_monthly: 0,
-    target_retirement_age: answers.targetRetirementAge ?? null,
-    planning_horizon_age: answers.planning_horizon_age ?? FINANCIAL_PROFILE_DEFAULTS.planning_horizon_age,
-  };
 }
 
 function canRunMonteCarlo(profile: Partial<FinancialProfile> | null | undefined) {
@@ -125,9 +76,10 @@ export default async function RetirementScoreDashboard({ next = "/dashboard" }: 
   const plan = scoreable ? await getPlanForLatest(supabase, latest) : [];
   const biggestRisk = plan[0];
   const biggestOpportunity = plan.find((item) => item.title !== biggestRisk?.title) ?? plan[1];
-  const engineProfile = canRunMonteCarlo(profile) ? profile : profileFromAnswers(user.id, answers);
+  const hydratedProfile = hydrateProfileForEngine(profile, answers);
+  const engineProfile = canRunMonteCarlo(profile) ? profile : { ...hydratedProfile, user_id: hydratedProfile.user_id ?? user.id };
   const probability = scoreable ? confidence(engineProfile, user.id) : null;
-  const monthlyIncome = scoreable ? estimatedMonthlyIncome(profile, answers) : null;
+  const monthlyIncome = scoreable ? estimatedMonthlyIncomeForEngine(profile, answers) : null;
 
   if (!scoreable || !latest) {
     return <div className="mx-auto max-w-5xl py-8 sm:py-10">
@@ -156,8 +108,8 @@ export default async function RetirementScoreDashboard({ next = "/dashboard" }: 
       <div className="grid content-start gap-4 sm:grid-cols-2">
         <StatTile label="Confidence" value={probability === null ? "Add profile" : formatPercent(probability)} detail={probability === null ? "Complete profile details to run Monte Carlo." : `${MONTE_CARLO_RUNS.toLocaleString()} Monte Carlo paths`} />
         <StatTile label="Estimated monthly income" value={monthlyIncome === null ? "—" : formatMoney(monthlyIncome)} detail="Guaranteed income + sustainable withdrawal" />
-        <StatTile label="Guaranteed income" value={formatMoney(guaranteedMonthlyIncome(profile, answers))} detail="Social Security, pension, or other steady income" />
-        <StatTile label="Portfolio draw" value={formatMoney((totalPortfolio(profile, answers) * SUSTAINABLE_WITHDRAWAL_RATE) / 12)} detail="4% sustainable withdrawal estimate" />
+        <StatTile label="Guaranteed income" value={formatMoney(guaranteedMonthlyIncomeForEngine(profile, answers))} detail="Social Security, pension, or other steady income" />
+        <StatTile label="Portfolio draw" value={formatMoney((totalPortfolioForEngine(profile, answers) * SUSTAINABLE_WITHDRAWAL_RATE) / 12)} detail="4% sustainable withdrawal estimate" />
 
         <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 sm:col-span-2">
           <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-amber-700">Biggest risk</p>
