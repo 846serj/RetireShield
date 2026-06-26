@@ -17,7 +17,7 @@ HARD RULES:
 - Scam-protective: never ask for account numbers, SSNs, passwords, or payments; remind users RetireShield
   never asks for these. Assume the user may be vulnerable to financial exploitation.
 - If asked for specific advice, decline and redirect to education + "talk to a fiduciary."
-- Plain, warm, short sentences. Stay strictly in retirement-education scope; politely refuse off-topic.`;
+- Plain, warm, short sentences. Stay strictly in retirement-education scope; politely refuse off-topic with the calculation redirect.`;
 
 export const ADVISORY_SAFETY_SYSTEM = `You are RetireShield's retirement advisory assistant for U.S. adults ~55-80.
 HARD RULES:
@@ -31,7 +31,7 @@ HARD RULES:
 - Scam-protective: never ask for account numbers, SSNs, passwords, or payments; remind users RetireShield
   never asks for these. Assume the user may be vulnerable to financial exploitation.
 - Include this disclosure when advisory context is relevant: Review RetireGuard's Form ADV/CRS before relying on advisory guidance.
-- Plain, warm, short sentences. Stay strictly in retirement-planning scope; politely refuse off-topic.`;
+- Plain, warm, short sentences. Stay strictly in retirement-planning scope; politely refuse off-topic with the calculation redirect.`;
 
 export function safetySystemForCoachMode(mode: CoachMode = getCoachMode()) {
   return mode === "advisory" ? ADVISORY_SAFETY_SYSTEM : SAFETY_SYSTEM;
@@ -54,8 +54,16 @@ const sensitiveInfoPatterns = [
   /\b(account\s*(?:number|#)|routing\s*(?:number|#)|ssn|social\s+security\s+number|password|login|pin|payment|credit\s+card|wire\s+transfer)\b/i,
 ];
 
+const outOfScopePatterns = [
+  /\b(recipe|cook|bake|meal\s+plan|weather|sports|game|movie|travel\s+itinerary|essay|homework|debug|code|programming|javascript|python|dating|medical\s+diagnosis|symptoms)\b/i,
+  /\b(who\s+will\s+win|what\s+is\s+the\s+weather|write\s+(?:me\s+)?a\s+poem|summarize\s+this\s+article)\b/i,
+];
+
 export const COACH_GUARDRAIL_REDIRECT =
   "I can't provide specific allocation, product, or buy/sell advice. RetireGuard is education-only. I can explain general retirement concepts, risks, fees, liquidity, taxes, and questions to ask a licensed fiduciary. RetireGuard will never ask for account numbers, SSNs, passwords, or payments.";
+
+export const COACH_OUT_OF_SCOPE_REDIRECT =
+  "I can't calculate that — here's what to ask a fiduciary: how does this decision affect my retirement income, taxes, risk, liquidity, and long-term plan? RetireGuard can help with retirement spending, Social Security, tax, Medicare, RMD, Roth conversion, and affordability questions when the numbers come from our tools.";
 
 export function isSpecificAdvicePrompt(prompt: string) {
   return specificAdvicePatterns.some((pattern) => pattern.test(prompt));
@@ -69,10 +77,17 @@ export function isSensitiveInfoPrompt(prompt: string) {
   return sensitiveInfoPatterns.some((pattern) => pattern.test(prompt));
 }
 
+export function isOutOfScopePrompt(prompt: string) {
+  const normalized = prompt.trim();
+  if (!normalized) return false;
+  return outOfScopePatterns.some((pattern) => pattern.test(normalized));
+}
+
 export function coachGuardrailResponse(prompt: string, mode: CoachMode = getCoachMode()) {
   const blocksSpecificAdvice = mode === "analytical" && isSpecificAdvicePrompt(prompt);
   if (blocksSpecificAdvice || isJailbreakPrompt(prompt) || isSensitiveInfoPrompt(prompt)) {
     return COACH_GUARDRAIL_REDIRECT;
   }
+  if (isOutOfScopePrompt(prompt)) return COACH_OUT_OF_SCOPE_REDIRECT;
   return null;
 }
