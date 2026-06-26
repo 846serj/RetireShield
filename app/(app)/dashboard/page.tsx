@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import RetirementScoreDashboard from "./RetirementScoreDashboard";
 
-export default function DashboardRedirect() {
-  redirect("/ask");
+export default function DashboardPage() {
+  return <RetirementScoreDashboard next="/dashboard" />;
 }
