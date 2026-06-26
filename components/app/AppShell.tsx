@@ -85,18 +85,25 @@ export default function AppShell({ children, userEmail, access, unreadAlertCount
 
   return (
     <div className="min-h-screen bg-slate-50 text-ink lg:grid lg:grid-cols-[248px_1fr]">
-      <aside className="sticky top-0 hidden h-screen border-r border-slate-200 bg-white px-4 py-5 lg:block">
+      <aside className="sticky top-0 hidden h-screen flex-col border-r border-slate-200 bg-white px-4 py-5 lg:flex">
         <LogoLink />
         <SidebarNav unreadAlertCount={unreadAlertCount} />
+        <div className="mt-auto space-y-3 border-t border-slate-100 pt-4">
+          <PlanBadge access={access} />
+          {isFree ? <Button href="/upgrade" className="w-full justify-center text-sm">Upgrade</Button> : null}
+          <UserMenu userEmail={userEmail} />
+        </div>
       </aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur lg:hidden">
           <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-            <button type="button" className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-slate-300 text-ink lg:hidden" aria-label="Open app navigation" onClick={() => setDrawerOpen(true)}>
-              <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
-            </button>
-            <div className="hidden lg:block"><LogoLink /></div>
+            <div className="flex min-w-0 items-center gap-3">
+              <button type="button" className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-300 text-ink" aria-label="Open app navigation" onClick={() => setDrawerOpen(true)}>
+                <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+              </button>
+              <LogoLink />
+            </div>
             <div className="ml-auto flex min-w-0 items-center justify-end gap-3">
               <PlanBadge access={access} />
               {isFree ? <Button href="/upgrade" className="hidden min-h-11 px-4 py-2 text-sm sm:inline-flex">Upgrade</Button> : null}
@@ -105,7 +112,7 @@ export default function AppShell({ children, userEmail, access, unreadAlertCount
           </div>
         </header>
 
-        <main className="min-h-[calc(100vh-4rem)] px-4 py-5 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-h-[calc(100vh-4rem)] px-4 py-5 sm:px-6 lg:min-h-screen lg:px-8">{children}</main>
       </div>
 
       {drawerOpen ? (
