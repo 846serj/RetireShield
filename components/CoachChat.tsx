@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { COACH_MESSAGE_CAPS, type SubscriptionTier } from "@/lib/subscription-types";
 
@@ -8,9 +9,12 @@ type ChatMessage = { role: "user" | "assistant"; content: string; calculations?:
 type UsageMeta = { tier: SubscriptionTier; remaining: number | null; cap: number | null };
 
 const SUGGESTED_QUESTIONS = [
-  "Can I afford X?",
-  "Should I delay Social Security?",
-  "Will an extra withdrawal raise my Medicare?",
+  "Can I retire?",
+  "Can I afford a big purchase?",
+  "How much can I safely spend?",
+  "When should I claim Social Security?",
+  "What if I retire earlier?",
+  "What happens if the market drops?",
 ];
 
 const OPENING_MESSAGE: ChatMessage = {
@@ -29,7 +33,13 @@ function tierLabel(tier: SubscriptionTier) {
   return "Paid coach access required";
 }
 
-export default function CoachChat({ tier = "premium" }: { tier?: SubscriptionTier }) {
+type ScoreSummary = { score: number; status: string; safeMonthly: number | null };
+
+function money(value?: number | null) {
+  return Number.isFinite(Number(value)) ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(Number(value)) : "—";
+}
+
+export default function CoachChat({ tier = "premium", scoreSummary = null }: { tier?: SubscriptionTier; scoreSummary?: ScoreSummary | null }) {
   const [messages, setMessages] = useState<ChatMessage[]>([OPENING_MESSAGE]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,6 +80,15 @@ export default function CoachChat({ tier = "premium" }: { tier?: SubscriptionTie
 
   return (
     <section className="mb-8 overflow-hidden rounded-3xl border-2 border-slate-200 bg-white shadow-sm">
+      {scoreSummary ? (
+        <Link href="/dashboard/score" className="block border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-base font-extrabold text-emerald-950 no-underline transition hover:bg-emerald-100 sm:px-6">
+          Retirement Score {scoreSummary.score} · {scoreSummary.status} · safe to spend ~{money(scoreSummary.safeMonthly)}/mo
+        </Link>
+      ) : (
+        <Link href="/quiz" className="block border-b border-blue-200 bg-blue-50 px-4 py-3 text-base font-extrabold text-blue-950 no-underline transition hover:bg-blue-100 sm:px-6">
+          Set your numbers (2-min quiz)
+        </Link>
+      )}
       <div className="border-b border-slate-200 bg-gradient-to-br from-white via-emerald-50 to-blue-50 p-5 sm:p-7">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
