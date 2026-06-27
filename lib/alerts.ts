@@ -1,7 +1,11 @@
 // Profile-matched alerts feed. Matches content_items to the user's state, age, and top worry.
 
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { IRMAA_BRACKETS } from "@/lib/engine/params/2026";
 import type { Answers } from "@/lib/scoring";
+import { getLatestScoreForUser } from "@/lib/auth/currentUser";
 import { monitorRuleAlerts, type MonitorRulesInput } from "@/lib/connected/monitorRules";
 import type { SpendingAccount, SpendingTransaction } from "@/lib/engine/spending";
 import { detectFraudFlags, type FraudFlag } from "@/lib/engine/fraud";
@@ -172,19 +176,51 @@ function fraudAlerts(context?: AlertMatchContext): Alert[] {
   return flags.filter((flag) => flag.riskScore >= 80).map((flag) => fraudAlertBase(flag, now));
 }
 
+const getCachedContentItems = unstable_cache(async (age: number): Promise<Alert[]> => {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from("content_items")
+    .select("*")
+    .or(`min_age.is.null,min_age.lte.${age}`)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(80);
+  return (data ?? []) as Alert[];
+}, ["content-items"], { revalidate: 600, tags: ["content_items"] });
+
+export const getUnreadAlertCount = cache(async (profile: AlertProfile, lastSeenAt?: string | null): Promise<number> => {
+  if (!lastSeenAt) return 0;
+  const supabase = createClient();
+  let query = supabase
+    .from("content_items")
+    .select("id", { head: true, count: "exact" })
+    .or(`min_age.is.null,min_age.lte.${profile.age}`)
+    .in("status", ["approved", "published"])
+    .gt("created_at", lastSeenAt);
+  if (profile.state) query = query.or(`states.is.null,states.cs.{${profile.state}}`);
+  const { count } = await query;
+  return count ?? 0;
+});
+
+export const getUnreadAlertCountForUser = cache(async (userId: string): Promise<number> => {
+  const supabase = createClient();
+  const [latestScore, { data: activity }] = await Promise.all([
+    getLatestScoreForUser(userId),
+    supabase.from("user_activity").select("last_seen_at").eq("user_id", userId).maybeSingle(),
+  ]);
+  const answers = latestScore?.answers as Answers | undefined;
+  if (!answers) return 0;
+  return getUnreadAlertCount({ state: answers.state, age: answers.age, worry: answers.worry }, activity?.last_seen_at as string | null | undefined);
+});
+
 export async function getMatchedAlerts(
   supabase: SupabaseLike,
   profile: AlertProfile,
   limit = 12,
   context?: AlertMatchContext
 ): Promise<Alert[]> {
-  const { data } = await supabase
-    .from("content_items")
-    .select("*")
-    .or(`min_age.is.null,min_age.lte.${profile.age}`)
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .limit(80);
+  void supabase;
+  const data = await getCachedContentItems(profile.age);
 
   const now = new Date();
   const items: Alert[] = (data ?? [])

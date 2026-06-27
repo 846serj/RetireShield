@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { curateAlertsFromSource } from "@/lib/ai/alerts";
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
     if (rows.length === 0) return NextResponse.json({ error: "No items" }, { status: 400 });
     const { data, error } = await createServiceClient().from("content_items").insert(rows).select("id,title");
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidateTag("content_items");
     return NextResponse.json({ inserted: data });
   }
   if (Array.isArray(body.newsroomItems)) {
