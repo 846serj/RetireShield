@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { runMonteCarlo } from "@/lib/engine/montecarlo";
+import { getCachedMonteCarlo } from "@/lib/engine/cachedMonteCarlo";
 import { runProjection } from "@/lib/engine/projection";
 import { analyzeRothConversion } from "@/lib/engine/roth";
 import { guardrails } from "@/lib/engine/withdrawal";
 import { compareSocialSecurity } from "@/lib/engine/socialSecurity";
 import type { FinancialProfile } from "@/lib/engine/types";
 import { isProfileScoreable } from "@/lib/profileCompleteness";
-import { createClient } from "@/lib/supabase/server";
-import { hasPaidAccess } from "@/lib/subscription";
+import { getRequestContext } from "@/lib/auth/currentUser";
 import CoachChat from "@/components/CoachChat";
 
 function dollars(value: number) {
@@ -46,19 +45,16 @@ function BalanceChart({ points, bands }: { points: { age: number; total: number 
 }
 
 export default async function PlanPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, access, profile } = await getRequestContext();
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
   if (!profile || !isProfileScoreable(profile, false)) redirect("/tools/plan/setup");
-  const paid = await hasPaidAccess(user.id);
+  const paid = Boolean(access?.active);
 
   const typedProfile = profile as FinancialProfile;
   const projection = runProjection(typedProfile);
   const taxOptimizedProjection = runProjection(typedProfile, { drawdownMode: "taxOptimized" });
   const rothConversion = analyzeRothConversion(typedProfile);
-  const monteCarlo = runMonteCarlo(typedProfile, 1000, { seed: user.id });
+  const monteCarlo = await getCachedMonteCarlo(typedProfile, 400, user.id);
   const socialSecurity = compareSocialSecurity(typedProfile);
   const guardrailPlan = guardrails(typedProfile);
   const currentGuardrail = guardrailPlan.path[0];

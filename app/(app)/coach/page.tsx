@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import CoachChat from "@/components/CoachChat";
 import { computeSafeToSpend } from "@/lib/engine/affordability";
 import type { FinancialProfile } from "@/lib/engine/types";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestContext } from "@/lib/auth/currentUser";
 import { isProfileScoreable } from "@/lib/profileCompleteness";
 import { hydrateProfileForEngine } from "@/lib/profileForEngine";
 
@@ -16,12 +16,7 @@ function scoreStatus(band?: string | null) {
 }
 
 export default async function AskPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const [{ data: profile }, { data: latest }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("user_id", user!.id).maybeSingle(),
-    supabase.from("scores").select("overall, band, score_source, answers").eq("user_id", user!.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-  ]);
+  const { profile, latestScore: latest } = await getRequestContext();
   const hasDataScore = ["quiz", "connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""));
   const hydrated = hydrateProfileForEngine(profile, latest?.answers);
   const scoreable = isProfileScoreable(hydrated, hasDataScore);

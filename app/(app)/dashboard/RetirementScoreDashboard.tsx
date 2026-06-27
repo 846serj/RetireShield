@@ -2,14 +2,15 @@ import Link from "next/link";
 import { Button, Eyebrow } from "@/components/ui";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { bandVerdict } from "@/lib/verdicts";
-import { runMonteCarlo } from "@/lib/engine/montecarlo";
+import { getCachedMonteCarlo } from "@/lib/engine/cachedMonteCarlo";
 import { FINANCIAL_PROFILE_DEFAULTS, type FinancialProfile } from "@/lib/engine/types";
 import { isProfileScoreable } from "@/lib/profileCompleteness";
 import { estimatedMonthlyIncomeForEngine, guaranteedMonthlyIncomeForEngine, hydrateProfileForEngine, totalPortfolioForEngine } from "@/lib/profileForEngine";
 import type { Answers } from "@/lib/scoring";
-import { formatMoney, formatPercent, getLatestScore, getPlanForLatest, requireUser } from "./_lib/dashboard";
+import { getRequestContext } from "@/lib/auth/currentUser";
+import { formatMoney, formatPercent, getPlanForLatest } from "./_lib/dashboard";
 
-const MONTE_CARLO_RUNS = 1000;
+const MONTE_CARLO_RUNS = 400;
 const SUSTAINABLE_WITHDRAWAL_RATE = 0.04;
 
 function knownNumber(value: number | null | undefined) {
@@ -52,9 +53,10 @@ function profileForEngine(profile: Partial<FinancialProfile>): FinancialProfile 
   };
 }
 
-function confidence(profile: Partial<FinancialProfile> | null | undefined, seed: string) {
+async function confidence(profile: Partial<FinancialProfile> | null | undefined, seed: string) {
   if (!canRunMonteCarlo(profile)) return null;
-  return runMonteCarlo(profileForEngine(profile!), MONTE_CARLO_RUNS, { seed }).probabilityOfSuccess;
+  const result = await getCachedMonteCarlo(profileForEngine(profile!), MONTE_CARLO_RUNS, seed);
+  return result.probabilityOfSuccess;
 }
 
 function StatTile({ label, value, detail }: { label: string; value: string; detail: string }) {
@@ -66,9 +68,8 @@ function StatTile({ label, value, detail }: { label: string; value: string; deta
 }
 
 export default async function RetirementScoreDashboard({ next = "/score" }: { next?: string }) {
-  const { supabase, user } = await requireUser(next);
-  const latest = await getLatestScore(supabase, user.id);
-  const { data: profile } = await supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle();
+  const { supabase, user, latestScore: latest, profile } = await getRequestContext();
+  if (!user) return null;
   const answers = latest?.answers as Answers | null | undefined;
   const hasQuizScore = latest?.score_source === "quiz";
   const connectedScored = ["connected", "monthly_rescore"].includes(String(latest?.score_source ?? ""));
@@ -78,7 +79,7 @@ export default async function RetirementScoreDashboard({ next = "/score" }: { ne
   const biggestOpportunity = plan.find((item) => item.title !== biggestRisk?.title) ?? plan[1];
   const hydratedProfile = hydrateProfileForEngine(profile, answers);
   const engineProfile = canRunMonteCarlo(profile) ? profile : { ...hydratedProfile, user_id: hydratedProfile.user_id ?? user.id };
-  const probability = scoreable ? confidence(engineProfile, user.id) : null;
+  const probability = scoreable ? await confidence(engineProfile, user.id) : null;
   const monthlyIncome = scoreable ? estimatedMonthlyIncomeForEngine(profile, answers) : null;
 
   if (!scoreable || !latest) {

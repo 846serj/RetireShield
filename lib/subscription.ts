@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { SubscriptionAccess, SubscriptionTier } from "@/lib/subscription-types";
 
@@ -9,7 +10,7 @@ function tierFromPlan(plan?: string | null): SubscriptionTier {
   return "free";
 }
 
-export async function getSubscriptionAccess(userId: string): Promise<SubscriptionAccess> {
+export const getSubscriptionAccess = cache(async (userId: string): Promise<SubscriptionAccess> => {
   const supabase = createClient();
   const { data } = await supabase
     .from("subscriptions")
@@ -24,7 +25,7 @@ export async function getSubscriptionAccess(userId: string): Promise<Subscriptio
     status: data?.status ?? null,
     currentPeriodEnd: data?.current_period_end ?? null,
   };
-}
+});
 
 // True when the user may access paid features (in trial or actively paying).
 export async function hasPaidAccess(userId: string): Promise<boolean> {

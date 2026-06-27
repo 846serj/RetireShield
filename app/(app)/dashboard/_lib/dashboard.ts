@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { getCurrentSession, getLatestScoreForUser } from "@/lib/auth/currentUser";
 import { stripe } from "@/lib/stripe";
 import { buildActionPlan, type PlanItem } from "@/lib/actionPlan";
 import { generateAIActionPlan } from "@/lib/ai/actionPlan";
@@ -54,14 +55,14 @@ export function formatMonths(value: number) {
 
 export async function requireUser(next = "/coach") {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await getCurrentSession();
+  const user = session?.user ?? null;
   if (!user) redirect(`/login?next=${encodeURIComponent(next)}`);
   return { supabase, user };
 }
 
-export async function getLatestScore(supabase: ReturnType<typeof createClient>, userId: string) {
-  const { data: latest } = await supabase.from("scores").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  return latest;
+export async function getLatestScore(_supabase: ReturnType<typeof createClient>, userId: string) {
+  return getLatestScoreForUser(userId);
 }
 
 export async function syncCheckoutSession(sessionId: string, userId: string) {
