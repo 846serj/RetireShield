@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { QUESTIONS } from "@/lib/questions";
 import { US_STATES } from "@/lib/usStates";
-import { computeScores, actions, type Answers, type SubScores } from "@/lib/scoring";
+import { computeScores, type Answers, type Result, type SubScores } from "@/lib/scoring";
+import type { AIReport } from "@/lib/ai/report";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { SubScoreBar } from "@/components/SubScoreBar";
 import { Button, Eyebrow } from "@/components/ui";
@@ -38,6 +39,8 @@ export default function Quiz() {
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [emailNotice, setEmailNotice] = useState("");
+  const [report, setReport] = useState<AIReport | null>(null);
+  const [serverResult, setServerResult] = useState<Result | null>(null);
   const [emailError, setEmailError] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -50,10 +53,7 @@ export default function Quiz() {
   const visible = useMemo(() => QUESTIONS.filter((q) => !q.when || q.when(answers)), [answers]);
   const done = introComplete && step >= visible.length;
   const result = useMemo(() => (done ? computeScores(answers as unknown as Answers) : null), [done, answers]);
-  const acts = useMemo(
-    () => (result ? actions(answers as unknown as Answers, result) : []),
-    [result, answers]
-  );
+  const displayResult = serverResult ?? result;
 
   function setAnswer(key: string, value: string | number | undefined) {
     setAnswers((p) => ({ ...p, [key]: value }));
@@ -94,9 +94,12 @@ export default function Quiz() {
         setEmailError("We could not save your email. Please check it and try again.");
         return;
       }
+      const returnedResult = payload.result ? (payload.result as Result) : result;
+      if (returnedResult) setServerResult(returnedResult);
+      if (payload.report) setReport(payload.report as AIReport);
       // Cache so a new account can "claim" this score after sign-up (see ScoreHydrator).
       try {
-        localStorage.setItem("rg_score", JSON.stringify({ answers, result }));
+        localStorage.setItem("rg_score", JSON.stringify({ answers, result: returnedResult }));
       } catch {
         /* ignore */
       }
@@ -295,7 +298,7 @@ export default function Quiz() {
   return (
     <div className="rg-page-shell">
     <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
-      <ScoreGauge value={result!.overall} band={result!.band} subScores={[]} subtitle="Your result" badge="Visible now" />
+      <ScoreGauge value={displayResult!.overall} band={displayResult!.band} subScores={[]} subtitle="Your result" badge="Visible now" />
 
       {!revealed ? (
         <div className="rg-card-highlight mt-8 text-center">
@@ -303,26 +306,33 @@ export default function Quiz() {
           <p className="mx-auto mt-3 max-w-2xl text-slate-600">
             Enter your email and we&apos;ll unlock your four sub-scores + 3 steps and email you your full personalized report.
           </p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <div className="flex-1 text-left">
-              <label htmlFor="results-email" className="sr-only">Email address for unlocking full results</label>
-              <input
-                id="results-email"
-                type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@email.com"
-                autoComplete="email"
-                className="rg-input"
-                aria-describedby={emailError ? "results-email-error" : undefined}
-              />
+          {submitting ? (
+            <div className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl border border-brand/20 bg-white p-5 text-left shadow-sm">
+              <span className="size-5 animate-spin rounded-full border-2 border-brand/30 border-t-brand" aria-hidden="true" />
+              <p className="text-lg font-bold text-ink">Building your personalized report… This usually takes just a few seconds.</p>
             </div>
-            <Button
-              disabled={!email.trim().includes("@") || submitting}
-              onClick={submitEmail}
-              className="disabled:opacity-50"
-            >
-              {submitting ? "…" : "Show my full results"}
-            </Button>
-          </div>
+          ) : (
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <div className="flex-1 text-left">
+                <label htmlFor="results-email" className="sr-only">Email address for unlocking full results</label>
+                <input
+                  id="results-email"
+                  type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  autoComplete="email"
+                  className="rg-input"
+                  aria-describedby={emailError ? "results-email-error" : undefined}
+                />
+              </div>
+              <Button
+                disabled={!email.trim().includes("@") || submitting}
+                onClick={submitEmail}
+                className="disabled:opacity-50"
+              >
+                Show my full results
+              </Button>
+            </div>
+          )}
           <label className="mt-5 flex cursor-pointer items-start gap-4 rounded-2xl border-2 border-brand bg-white p-5 text-left shadow-sm transition hover:bg-band motion-reduce:transition-none">
             <input
               type="checkbox"
@@ -340,28 +350,61 @@ export default function Quiz() {
       ) : (
         <div className="mt-10 space-y-6">
           {!LEADGEN_ONLY && emailNotice && <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-slate-700">{emailNotice}</p>}
+          {report && (
+            <div className="rg-card-highlight">
+              <h3 className="text-2xl font-bold text-ink">What this means for you</h3>
+              <p className="mt-3 text-lg leading-8 text-slate-700">{report.narrative}</p>
+            </div>
+          )}
           <div className="rg-card space-y-5">
             <div>
               <h3 className="text-2xl font-bold text-ink">What&apos;s behind your score</h3>
               <p className="mt-2 text-slate-600">These four sub-scores point to areas worth reviewing first.</p>
             </div>
             {(Object.keys(SUB_LABEL) as (keyof SubScores)[]).map((k) => (
-              <SubScoreBar key={k} label={SUB_LABEL[k]} value={result!.sub[k]} scoreKey={k} />
+              <div key={k} className="space-y-2">
+                <SubScoreBar label={SUB_LABEL[k]} value={displayResult!.sub[k]} scoreKey={k} />
+                {report?.subScoreNotes?.[k] && <p className="text-sm font-semibold leading-6 text-slate-600">{report.subScoreNotes[k]}</p>}
+              </div>
             ))}
           </div>
 
-          <div className="rg-card">
-            <h3 className="mb-3 text-2xl font-bold text-ink">Your 3 next steps</h3>
-            <div className="grid gap-3">
-              {acts.map((a, i) => (
-                <article key={i} className="rounded-2xl border border-slate-200 bg-surface p-5">
-                  <p className="text-sm font-extrabold uppercase tracking-[0.14em] text-brand">Step {i + 1}</p>
-                  <p className="mt-2 text-lg font-semibold leading-7 text-ink">{a}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">Use this as a conversation starter — what to look at, what to ask, and what to understand before making decisions.</p>
-                </article>
-              ))}
+          {report ? (
+            <>
+              <div className="rg-card">
+                <h3 className="mb-3 text-2xl font-bold text-ink">Your personalized plan</h3>
+                <div className="grid gap-4">
+                  {report.plan.map((item, i) => (
+                    <article key={`${item.title}-${i}`} className="rounded-2xl border border-slate-200 bg-surface p-5">
+                      <p className="inline-flex rounded-full bg-brand/10 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-brand">{item.priority} priority</p>
+                      <h4 className="mt-3 text-xl font-bold leading-7 text-ink">{item.title}</h4>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{item.why}</p>
+                      <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-700">
+                        {item.steps.map((stepItem, stepIndex) => <li key={stepIndex}>{stepItem}</li>)}
+                      </ul>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rg-card">
+                <h3 className="text-2xl font-bold text-ink">Questions to ask a fiduciary</h3>
+                <ul className="mt-4 list-disc space-y-3 pl-5 text-base leading-7 text-slate-700">
+                  {report.fiduciaryQuestions.map((question, i) => <li key={i}>{question}</li>)}
+                </ul>
+              </div>
+
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
+                <h3 className="text-2xl font-bold text-ink">Stay scam-safe</h3>
+                <p className="mt-3 text-base font-semibold leading-7 text-slate-700">{report.scamNote}</p>
+              </div>
+            </>
+          ) : (
+            <div className="rg-card">
+              <h3 className="text-2xl font-bold text-ink">Your sub-scores</h3>
+              <p className="mt-2 text-slate-600">Your personalized report is not available yet, but these deterministic sub-scores show where to review first.</p>
             </div>
-          </div>
+          )}
 
           {LEADGEN_ONLY ? (
             <div className="rg-card text-center">
