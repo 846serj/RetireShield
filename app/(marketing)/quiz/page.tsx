@@ -10,6 +10,7 @@ import { computeScores, actions, type Answers, type SubScores } from "@/lib/scor
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { SubScoreBar } from "@/components/SubScoreBar";
 import { Button, Eyebrow } from "@/components/ui";
+import { LEADGEN_ONLY } from "@/lib/flags";
 
 type State = Record<string, string | number | undefined>;
 
@@ -347,7 +348,7 @@ export default function Quiz() {
         </div>
       ) : (
         <div className="mt-10 space-y-6">
-          {emailNotice && <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-slate-700">{emailNotice}</p>}
+          {!LEADGEN_ONLY && emailNotice && <p className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-slate-700">{emailNotice}</p>}
           <div className="rg-card space-y-5">
             <div>
               <h3 className="text-2xl font-bold text-ink">What&apos;s behind your score</h3>
@@ -371,77 +372,88 @@ export default function Quiz() {
             </div>
           </div>
 
-          {!accountDismissed && (
-            <div className="rg-card-highlight">
-              <h3 className="text-2xl font-bold">Create your free account</h3>
-              <p className="mt-2 text-lg text-slate-700">Save your score and go ask your first question — pick a password.</p>
-              <div className="mt-5 grid gap-4">
-                <div>
-                  <label htmlFor="account-email" className="block text-base font-bold text-ink">Email address</label>
-                  <input
-                    id="account-email"
-                    type="email"
-                    value={email.trim().toLowerCase()}
-                    readOnly
-                    className="rg-input text-slate-700"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="account-password" className="block text-base font-bold text-ink">Password</label>
-                  <div className="mt-2 flex rounded-xl border-2 border-slate-300 bg-white focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
-                    <input
-                      id="account-password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      minLength={8}
-                      autoComplete="new-password"
-                      className="min-h-14 flex-1 rounded-l-xl px-4 text-lg outline-none"
-                      aria-describedby="password-help"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((show) => !show)}
-                      className="rounded-r-xl px-4 text-base font-bold text-brand underline"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                  <p id="password-help" className="mt-2 text-sm text-slate-600">At least 8 characters.</p>
-                </div>
-              </div>
-              {accountError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{accountError}</p>}
-              {accountNotice && <p className="mt-4 rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-700">{accountNotice} <Link href="/login" className="font-bold text-brand underline">Log in instead</Link>.</p>}
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                <Button
-                  type="button"
-                  onClick={createAccount}
-                  disabled={creatingAccount || password.length < 8}
-                  className="disabled:opacity-50"
-                >
-                  {creatingAccount ? "Creating account…" : "Create my account"}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setAccountDismissed(true)}
-                  variant="secondary"
-                >
-                  No thanks, maybe later
-                </Button>
-              </div>
+          {LEADGEN_ONLY ? (
+            <div className="rg-card text-center">
+              <h3 className="text-2xl font-bold text-ink">You&apos;re on the list ✓</h3>
+              <p className="mx-auto mt-3 max-w-2xl text-lg leading-7 text-slate-700">
+                Your Safety Score is saved and we&apos;ll email your results plus a short monthly retirement check-in. Live monitoring and the AI coach are coming soon.
+              </p>
             </div>
-          )}
+          ) : (
+            <>
+              {!accountDismissed && (
+                <div className="rg-card-highlight">
+                  <h3 className="text-2xl font-bold">Create your free account</h3>
+                  <p className="mt-2 text-lg text-slate-700">Save your score and go ask your first question — pick a password.</p>
+                  <div className="mt-5 grid gap-4">
+                    <div>
+                      <label htmlFor="account-email" className="block text-base font-bold text-ink">Email address</label>
+                      <input
+                        id="account-email"
+                        type="email"
+                        value={email.trim().toLowerCase()}
+                        readOnly
+                        className="rg-input text-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="account-password" className="block text-base font-bold text-ink">Password</label>
+                      <div className="mt-2 flex rounded-xl border-2 border-slate-300 bg-white focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
+                        <input
+                          id="account-password"
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          minLength={8}
+                          autoComplete="new-password"
+                          className="min-h-14 flex-1 rounded-l-xl px-4 text-lg outline-none"
+                          aria-describedby="password-help"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((show) => !show)}
+                          className="rounded-r-xl px-4 text-base font-bold text-brand underline"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                      <p id="password-help" className="mt-2 text-sm text-slate-600">At least 8 characters.</p>
+                    </div>
+                  </div>
+                  {accountError && <p className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-bad">{accountError}</p>}
+                  {accountNotice && <p className="mt-4 rounded-xl border border-blue-200 bg-white p-3 text-sm text-slate-700">{accountNotice} <Link href="/login" className="font-bold text-brand underline">Log in instead</Link>.</p>}
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                    <Button
+                      type="button"
+                      onClick={createAccount}
+                      disabled={creatingAccount || password.length < 8}
+                      className="disabled:opacity-50"
+                    >
+                      {creatingAccount ? "Creating account…" : "Create my account"}
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => setAccountDismissed(true)}
+                      variant="secondary"
+                    >
+                      No thanks, maybe later
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-          <div className="rounded-3xl bg-ink p-6 text-center text-white shadow-xl sm:p-8">
-            <h3 className="font-sans text-2xl font-bold text-white">Want RetireShield to keep watch for you?</h3>
-            <p className="mx-auto mt-3 max-w-2xl text-slate-200">
-              Markets move, prices rise, rules change. We&apos;ll re-check your plan every month and tell you the moment something matters — Medicare thresholds, Social Security timing, scams in your state.
-            </p>
-            <Button href="/coach?firstQuestion=1" className="mt-5">
-              Ask your first question
-            </Button>
-          </div>
+              <div className="rounded-3xl bg-ink p-6 text-center text-white shadow-xl sm:p-8">
+                <h3 className="font-sans text-2xl font-bold text-white">Want RetireShield to keep watch for you?</h3>
+                <p className="mx-auto mt-3 max-w-2xl text-slate-200">
+                  Markets move, prices rise, rules change. We&apos;ll re-check your plan every month and tell you the moment something matters — Medicare thresholds, Social Security timing, scams in your state.
+                </p>
+                <Button href="/coach?firstQuestion=1" className="mt-5">
+                  Ask your first question
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
