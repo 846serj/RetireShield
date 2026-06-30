@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { QUESTIONS } from "@/lib/questions";
@@ -34,6 +34,7 @@ export default function Quiz() {
   const [answers, setAnswers] = useState<State>({});
   const [selectedChoice, setSelectedChoice] = useState<string | number | null>(null);
   const [email, setEmail] = useState("");
+  const [subscribeNewsletter, setSubscribeNewsletter] = useState(true);
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [emailNotice, setEmailNotice] = useState("");
@@ -85,6 +86,7 @@ export default function Quiz() {
           result,
           source: params.get("utm_source") || "direct",
           campaign: params.get("utm_campaign") || "",
+          subscribeNewsletter,
         }),
       });
       const payload = await res.json().catch(() => ({}));
@@ -193,16 +195,19 @@ export default function Quiz() {
           <div className="rg-card overflow-hidden">
             <Eyebrow>Retirement Safety Score</Eyebrow>
             <div className="mt-8 rounded-[2rem] bg-band p-5 sm:p-8">
-              <h1 className="font-serif text-[2rem] font-semibold leading-tight text-ink sm:text-5xl">Let&apos;s see where your retirement stands.</h1>
+              <p className="text-2xl font-extrabold leading-tight text-ink sm:text-4xl">
+                Are you on track to run out of money in retirement? Find out in 5 minutes.
+              </p>
+              <h1 className="mt-4 font-serif text-[2rem] font-semibold leading-tight text-ink sm:text-5xl">Let&apos;s see where your retirement stands.</h1>
               <p className="mt-5 text-xl font-semibold leading-8 text-slate-700">
-                A short adaptive quiz. About 2 minutes. We only ask follow-ups that fit your situation — answer as best you know.
+                About 5 minutes. The more you share, the more accurate and personal your Safety Score and action steps. Every answer stays private.
               </p>
             </div>
             <Button type="button" onClick={() => setIntroComplete(true)} className="mt-8 w-full sm:w-auto">
               Start — question 1
             </Button>
             <p className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600">
-              ⏱ ~2 minutes · 🆓 Always free to see your score
+              ⏱ ~5 minutes · 🆓 Always free to see your score
             </p>
           </div>
         </div>
@@ -231,31 +236,6 @@ export default function Quiz() {
         </div>
         <h1 className="font-serif text-[1.625rem] font-semibold leading-tight text-ink sm:text-3xl">{q.prompt}</h1>
         {q.help && <p className="mb-8 mt-3 text-lg leading-7 text-slate-600">{q.help}</p>}
-
-        {q.kind === "number" && (
-          <NumberStep
-            prefix={q.prefix}
-            placeholder={q.placeholder}
-            initial={answers[q.key] as number | undefined}
-            onNext={(v) => { setAnswer(q.key, v); goToStep(step + 1); }}
-            onSkip={q.optional ? () => { setAnswer(q.key, undefined); goToStep(step + 1); } : undefined}
-          />
-        )}
-
-        {q.kind === "savingsAmount" && (
-          <SavingsStep
-            initial={answers[q.key] as number | undefined}
-            onNext={(v) => { setAnswer(q.key, v); goToStep(step + 1); }}
-          />
-        )}
-
-        {q.kind === "socialSecurityDetails" && (
-          <SocialSecurityStep
-            answers={answers}
-            isMarried={false}
-            onNext={(updates) => { setAnswers((p) => ({ ...p, ...updates })); goToStep(step + 1); }}
-          />
-        )}
 
         {q.kind === "state" && (
           <div>
@@ -321,7 +301,7 @@ export default function Quiz() {
         <div className="rg-card-highlight mt-8 text-center">
           <h2 className="text-2xl font-bold">See exactly what&apos;s behind your score — and your 3 next steps.</h2>
           <p className="mx-auto mt-3 max-w-2xl text-slate-600">
-            Enter your email and we&apos;ll show your four sub-scores and a personalized action plan. We&apos;ll also send you a short monthly check-in. No spam, unsubscribe anytime.
+            Enter your email and we&apos;ll unlock your four sub-scores + 3 steps and email you your full personalized report.
           </p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <div className="flex-1 text-left">
@@ -343,8 +323,19 @@ export default function Quiz() {
               {submitting ? "…" : "Show my full results"}
             </Button>
           </div>
+          <label className="mt-5 flex cursor-pointer items-start gap-4 rounded-2xl border-2 border-brand bg-white p-5 text-left shadow-sm transition hover:bg-band motion-reduce:transition-none">
+            <input
+              type="checkbox"
+              checked={subscribeNewsletter}
+              onChange={(e) => setSubscribeNewsletter(e.target.checked)}
+              className="mt-1 size-6 shrink-0 accent-brand"
+            />
+            <span className="text-lg font-extrabold leading-7 text-ink">
+              Yes, send me the free weekly Retirement Watch — plain-English tips to make my money last.
+            </span>
+          </label>
           {emailError && <p id="results-email-error" className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-bad">{emailError}</p>}
-          <p className="mt-3 text-xs text-slate-500">Your score stays visible either way. Creating an account is optional after you see your results.</p>
+          <p className="mt-3 text-xs text-slate-500">We email your report either way. We never sell your email — unsubscribe anytime.</p>
         </div>
       ) : (
         <div className="mt-10 space-y-6">
@@ -374,9 +365,9 @@ export default function Quiz() {
 
           {LEADGEN_ONLY ? (
             <div className="rg-card text-center">
-              <h3 className="text-2xl font-bold text-ink">You&apos;re on the list ✓</h3>
+              <h3 className="text-2xl font-bold text-ink">Your full report is on its way ✓</h3>
               <p className="mx-auto mt-3 max-w-2xl text-lg leading-7 text-slate-700">
-                Your Safety Score is saved and we&apos;ll email your results plus a short monthly retirement check-in. Live monitoring and the AI coach are coming soon.
+                Check your inbox in the next few minutes (peek in Promotions/Spam just in case). You&apos;re on the list for the weekly Retirement Watch. Know someone who should check their score? Send them retireshield.com.
               </p>
             </div>
           ) : (
@@ -457,153 +448,6 @@ export default function Quiz() {
         </div>
       )}
     </div>
-    </div>
-  );
-}
-
-const SAVINGS_RANGES = [
-  { label: "Under $50k", value: 25000 },
-  { label: "$50k – $150k", value: 100000 },
-  { label: "$150k – $500k", value: 325000 },
-  { label: "$500k – $1M", value: 750000 },
-  { label: "Over $1M", value: 1500000 },
-];
-
-function formatMoneyInput(value: number) {
-  return value ? value.toLocaleString("en-US") : "";
-}
-
-function SavingsStep({
-  initial, onNext,
-}: { initial?: number; onNext: (v: number) => void }) {
-  const [val, setVal] = useState(initial != null ? formatMoneyInput(initial) : "");
-  const inputId = useId();
-  const num = Number(val.replace(/[^0-9.]/g, ""));
-
-  return (
-    <div>
-      <div className="mb-5 grid gap-3 sm:grid-cols-2">
-        {SAVINGS_RANGES.map((range) => (
-          <button
-            key={range.label}
-            type="button"
-            onClick={() => setVal(formatMoneyInput(range.value))}
-            className={`rounded-2xl border-2 px-4 py-3 text-left text-lg font-bold transition hover:border-brand hover:bg-band motion-reduce:transition-none ${
-              num === range.value ? "border-brand bg-band" : "border-slate-200 bg-white"
-            }`}
-          >
-            {range.label}
-          </button>
-        ))}
-      </div>
-      <label htmlFor={inputId} className="mb-2 block text-base font-bold text-ink">Or enter a closer estimate</label>
-      <div className="flex min-h-20 items-center rounded-2xl border-2 border-slate-300 bg-white px-5 py-4 text-[1.75rem] focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
-        <span className="mr-2 font-bold text-slate-500" aria-hidden="true">$</span>
-        <input
-          id={inputId}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9,]*"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          placeholder="325,000"
-          className="w-full bg-transparent font-bold outline-none placeholder:font-semibold placeholder:text-slate-300"
-          onKeyDown={(e) => { if (e.key === "Enter" && num >= 0) onNext(num); }}
-        />
-      </div>
-      <button disabled={!(num >= 0)} onClick={() => onNext(num)} className="mt-6 min-h-16 w-full rounded-xl bg-brand px-8 py-3 text-lg font-bold text-white transition hover:bg-brand-dark disabled:opacity-50 sm:w-auto motion-reduce:transition-none">
-        Continue
-      </button>
-    </div>
-  );
-}
-
-function SocialSecurityStep({
-  answers, isMarried, onNext,
-}: { answers: State; isMarried: boolean; onNext: (updates: State) => void }) {
-  const [ssaBenefitEstimate, setSsaBenefitEstimate] = useState(formatMoneyInput(Number(answers.ssaBenefitEstimate ?? 0)));
-  const [claimedSocialSecurity, setClaimedSocialSecurity] = useState(String(answers.claimedSocialSecurity ?? "skip"));
-  const [spouseAge, setSpouseAge] = useState(answers.spouseAge != null ? String(answers.spouseAge) : "");
-  const [spouseSsaBenefitEstimate, setSpouseSsaBenefitEstimate] = useState(formatMoneyInput(Number(answers.spouseSsaBenefitEstimate ?? 0)));
-
-  function submit() {
-    const updates: State = { claimedSocialSecurity };
-    const benefit = Number(ssaBenefitEstimate.replace(/[^0-9.]/g, ""));
-    const spouseBenefit = Number(spouseSsaBenefitEstimate.replace(/[^0-9.]/g, ""));
-    const parsedSpouseAge = Number(spouseAge.replace(/[^0-9.]/g, ""));
-    if (benefit > 0) updates.ssaBenefitEstimate = benefit;
-    if (isMarried && parsedSpouseAge > 0) updates.spouseAge = parsedSpouseAge;
-    if (isMarried && spouseBenefit > 0) updates.spouseSsaBenefitEstimate = spouseBenefit;
-    onNext(updates);
-  }
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <label htmlFor="ssa-benefit" className="block text-base font-bold text-ink">Your estimated Social Security benefit ($/mo)</label>
-        <p className="mt-1 text-sm text-slate-600">Optional — use your latest SSA estimate or current check amount.</p>
-        <div className="mt-2 flex min-h-14 items-center rounded-xl border-2 border-slate-300 bg-white px-4 text-lg focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
-          <span className="mr-2 font-bold text-slate-500">$</span>
-          <input id="ssa-benefit" inputMode="numeric" value={ssaBenefitEstimate} onChange={(e) => setSsaBenefitEstimate(e.target.value)} placeholder="2,100" className="w-full bg-transparent font-bold outline-none" />
-        </div>
-      </div>
-      <fieldset>
-        <legend className="block text-base font-bold text-ink">Have you claimed Social Security yet?</legend>
-        <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          {[{ value: "no", label: "Not yet" }, { value: "yes", label: "Yes" }, { value: "skip", label: "Skip" }].map((choice) => (
-            <button key={choice.value} type="button" onClick={() => setClaimedSocialSecurity(choice.value)} className={`rounded-xl border-2 px-4 py-3 font-bold ${claimedSocialSecurity === choice.value ? "border-brand bg-band" : "border-slate-200 bg-white"}`}>{choice.label}</button>
-          ))}
-        </div>
-      </fieldset>
-      {isMarried && (
-        <div className="grid gap-4 rounded-2xl border border-slate-200 bg-surface p-4 sm:grid-cols-2">
-          <div><label htmlFor="spouse-age" className="block text-base font-bold text-ink">Spouse age</label><input id="spouse-age" inputMode="numeric" value={spouseAge} onChange={(e) => setSpouseAge(e.target.value)} placeholder="65" className="rg-input mt-2" /></div>
-          <div><label htmlFor="spouse-ssa" className="block text-base font-bold text-ink">Spouse SSA benefit ($/mo)</label><input id="spouse-ssa" inputMode="numeric" value={spouseSsaBenefitEstimate} onChange={(e) => setSpouseSsaBenefitEstimate(e.target.value)} placeholder="1,800" className="rg-input mt-2" /></div>
-        </div>
-      )}
-      <button type="button" onClick={submit} className="min-h-16 w-full rounded-xl bg-brand px-8 py-3 text-lg font-bold text-white transition hover:bg-brand-dark sm:w-auto motion-reduce:transition-none">
-        Continue
-      </button>
-    </div>
-  );
-}
-
-function NumberStep({
-  prefix, placeholder, initial, onNext, onSkip,
-}: { prefix?: string; placeholder?: string; initial?: number; onNext: (v: number) => void; onSkip?: () => void }) {
-  const [val, setVal] = useState(initial != null ? String(initial) : "");
-  const inputId = useId();
-  const num = Number(val.replace(/[^0-9.]/g, ""));
-  return (
-    <div>
-      <label htmlFor={inputId} className="mb-2 block text-base font-bold text-ink">Enter your answer</label>
-      <div className="flex min-h-20 items-center rounded-2xl border-2 border-slate-300 bg-white px-5 py-4 text-[1.75rem] focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/10">
-        {prefix && <span className="mr-2 font-bold text-slate-500" aria-hidden="true">{prefix}</span>}
-        <input
-          id={inputId}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9,]*"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-transparent font-bold outline-none placeholder:font-semibold placeholder:text-slate-300"
-          onKeyDown={(e) => { if (e.key === "Enter" && num > 0) onNext(num); }}
-        />
-      </div>
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <button
-          disabled={!(num > 0)} onClick={() => onNext(num)}
-          className="min-h-16 w-full rounded-xl bg-brand px-8 py-3 text-lg font-bold text-white transition hover:bg-brand-dark disabled:opacity-50 sm:w-auto motion-reduce:transition-none"
-        >
-          Continue
-        </button>
-        {onSkip && (
-          <button type="button" onClick={onSkip} className="min-h-16 w-full rounded-xl border-2 border-slate-200 bg-white px-8 py-3 text-lg font-bold text-slate-600 transition hover:border-brand hover:bg-band sm:w-auto motion-reduce:transition-none">
-            Skip for now
-          </button>
-        )}
-      </div>
     </div>
   );
 }
