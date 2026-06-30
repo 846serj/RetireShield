@@ -3,6 +3,7 @@ import DashboardPreview from "@/components/DashboardPreview";
 import FeatureShowcase from "@/components/FeatureShowcase";
 import { PricingPreview } from "@/components/PricingPreview";
 import { Button, Container } from "@/components/ui";
+import { LEADGEN_ONLY } from "@/lib/flags";
 import { pageMetadata } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 
@@ -195,8 +196,12 @@ export default async function Home() {
               </article>
             ))}
           </div>
-          <PricingPreview />
-          <div className="mt-8 text-center"><Button href="/upgrade" className="px-7 py-4 text-xl">Compare help levels</Button></div>
+          {!LEADGEN_ONLY && (
+            <>
+              <PricingPreview />
+              <div className="mt-8 text-center"><Button href="/upgrade" className="px-7 py-4 text-xl">Compare help levels</Button></div>
+            </>
+          )}
         </Container>
       </section>
 
