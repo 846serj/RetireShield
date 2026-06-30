@@ -22,7 +22,7 @@ export async function addBeehiivSubscriber(email: string, opts?: BeehiivSubscrib
       body: JSON.stringify({
         email,
         reactivate_existing: true,
-        send_welcome_email: false,
+        send_welcome_email: true,
         utm_source: opts?.utmSource ?? "retireshield",
         custom_fields: opts?.tier ? [{ name: "tier", value: opts.tier }] : undefined,
       }),
