@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import posthog from "posthog-js";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { QUESTIONS } from "@/lib/questions";
@@ -19,6 +20,11 @@ const SUB_LABEL: Record<keyof SubScores, string> = {
   income: "Income Stability", withdrawal: "Withdrawal Sustainability",
   inflation: "Inflation Impact", market: "Market-Risk Buffer",
 };
+
+function captureQuizEvent(event: string, properties?: Record<string, string | number | boolean>) {
+  if (!posthog.__loaded) return;
+  posthog.capture(event, properties);
+}
 
 function getAuthCallbackUrl() {
   const configuredBaseUrl = process.env.NEXT_PUBLIC_BASE_URL;
@@ -49,11 +55,42 @@ export default function Quiz() {
   const [accountError, setAccountError] = useState("");
   const [accountNotice, setAccountNotice] = useState("");
   const router = useRouter();
+  const lastViewedQuestionRef = useRef<string | null>(null);
+  const completedCapturedRef = useRef(false);
+  const reportCapturedRef = useRef(false);
 
   const visible = useMemo(() => QUESTIONS.filter((q) => !q.when || q.when(answers)), [answers]);
   const done = introComplete && step >= visible.length;
   const result = useMemo(() => (done ? computeScores(answers as unknown as Answers) : null), [done, answers]);
   const displayResult = serverResult ?? result;
+
+  useEffect(() => {
+    if (!introComplete || done) return;
+    const question = visible[step];
+    if (!question) return;
+
+    const viewedKey = `${step}:${question.key}`;
+    if (lastViewedQuestionRef.current === viewedKey) return;
+
+    lastViewedQuestionRef.current = viewedKey;
+    captureQuizEvent("quiz_step_viewed", { index: step, key: question.key });
+  }, [done, introComplete, step, visible]);
+
+  useEffect(() => {
+    if (!done || !displayResult || completedCapturedRef.current) return;
+    completedCapturedRef.current = true;
+    captureQuizEvent("quiz_completed", { overall: displayResult.overall, band: displayResult.band });
+  }, [displayResult, done]);
+
+  useEffect(() => {
+    if (!revealed || !report || reportCapturedRef.current) return;
+    reportCapturedRef.current = true;
+    captureQuizEvent("report_generated");
+  }, [report, revealed]);
+
+  function trackStepAnswered(index: number, key: string) {
+    captureQuizEvent("quiz_step_answered", { index, key });
+  }
 
   function setAnswer(key: string, value: string | number | undefined) {
     setAnswers((p) => ({ ...p, [key]: value }));
@@ -67,6 +104,7 @@ export default function Quiz() {
   function selectChoice(key: string, value: string | number) {
     setSelectedChoice(value);
     setAnswer(key, value);
+    trackStepAnswered(step, key);
     window.setTimeout(() => goToStep(step + 1), 180);
   }
 
@@ -103,6 +141,7 @@ export default function Quiz() {
       } catch {
         /* ignore */
       }
+      captureQuizEvent("quiz_email_submitted", { subscribeNewsletter });
       setEmailNotice("Your results are unlocked. You can review them here, or create a free account below to save your score and ask your first question.");
       setRevealed(true);
     } catch {
@@ -206,7 +245,7 @@ export default function Quiz() {
                 About 5 minutes. The more you share, the more accurate and personal your Safety Score and action steps. Every answer stays private.
               </p>
             </div>
-            <Button type="button" onClick={() => setIntroComplete(true)} className="mt-8 w-full sm:w-auto">
+            <Button type="button" onClick={() => { captureQuizEvent("quiz_started"); setIntroComplete(true); }} className="mt-8 w-full sm:w-auto">
               Start — question 1
             </Button>
             <p className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600">
@@ -246,7 +285,7 @@ export default function Quiz() {
             <select
               id={`quiz-${q.key}`}
               defaultValue={(answers[q.key] as string) ?? ""}
-              onChange={(e) => { if (e.target.value) { setAnswer(q.key, e.target.value); window.setTimeout(() => goToStep(step + 1), 120); } }}
+              onChange={(e) => { if (e.target.value) { setAnswer(q.key, e.target.value); trackStepAnswered(step, q.key); window.setTimeout(() => goToStep(step + 1), 120); } }}
               className="rg-input min-h-16 text-xl"
             >
             <option value="" disabled>Select your state…</option>
@@ -254,7 +293,7 @@ export default function Quiz() {
                 <option key={s.code} value={s.code}>{s.name}</option>
               ))}
             </select>
-            <button type="button" onClick={() => { setAnswer(q.key, undefined); goToStep(step + 1); }} className="mt-4 min-h-14 w-full rounded-xl border-2 border-slate-200 bg-white px-6 py-3 text-lg font-bold text-slate-600 transition hover:border-brand hover:bg-band sm:w-auto motion-reduce:transition-none">
+            <button type="button" onClick={() => { setAnswer(q.key, undefined); trackStepAnswered(step, q.key); goToStep(step + 1); }} className="mt-4 min-h-14 w-full rounded-xl border-2 border-slate-200 bg-white px-6 py-3 text-lg font-bold text-slate-600 transition hover:border-brand hover:bg-band sm:w-auto motion-reduce:transition-none">
               Skip for now
             </button>
           </div>
