@@ -68,12 +68,6 @@ export async function POST(req: NextRequest) {
     console.log("[lead captured — no DB configured]", JSON.stringify(row));
   }
 
-  try {
-    report = await generateAIReport(answers as Answers, result, rulePlan);
-  } catch (error) {
-    console.error("lead AI report failed:", error);
-  }
-
   if (subscribeNewsletter) {
     try {
       await addBeehiivSubscriber(normalizedEmail, { utmSource: normalizedSource, tier: "free" });
@@ -83,13 +77,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    report = await generateAIReport(answers as Answers, result, rulePlan);
     await sendTransactionalEmail({
       to: normalizedEmail,
       subject: "Your Retirement Safety Score",
       html: renderReportHtml(result, report),
     });
   } catch (error) {
-    console.error("lead report email failed:", error);
+    console.error("lead AI report email failed:", error);
   }
 
   return NextResponse.json({ ok: true, result, report });
