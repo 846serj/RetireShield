@@ -146,7 +146,7 @@ export function buildFallbackReport(answers: Answers, result: Result, rulePlan: 
       `Is my current risk level reasonable to discuss for someone age ${answers.age} with ${answers.stockPct}% in stocks, ${EMERGENCY_FUND_LABELS[answers.emergencyFund]}, and ${DEBT_LABELS[answers.debt]}?`,
       `What tax, healthcare, inflation, or state-specific issues${stateText} should I understand before changing my retirement spending plan?`,
     ],
-    scamNote: "Be cautious with unsolicited calls, texts, emails, or seminars about retirement money, especially anything requiring quick action or personal information. RetireShield will never ask for account numbers, Social Security numbers, passwords, or payments.",
+    scamNote: "Be cautious with unsolicited calls, texts, emails, or seminars about retirement money, especially anything requiring quick action or personal information. Verify the source independently and never share account numbers, Social Security numbers, passwords, or payment details with an unsolicited contact.",
   };
 }
 
@@ -162,7 +162,7 @@ export async function generateAIReport(answers: Answers, result: Result, rulePla
       system: SAFETY_SYSTEM,
       messages: [{
         role: "user",
-        content: `Create a personalized RetireShield AIReport for this user. Return ONLY strict JSON matching this exact TypeScript shape and no markdown: {"narrative": string, "subScoreNotes": {"income": string, "withdrawal": string, "inflation": string, "market": string}, "plan": {"area": string, "priority": "High"|"Medium"|"Low", "title": string, "why": string, "steps": string[]}[], "fiduciaryQuestions": string[], "scamNote": string}.
+        content: `Create a personalized AIReport for this user. Return ONLY strict JSON matching this exact TypeScript shape and no markdown: {"narrative": string, "subScoreNotes": {"income": string, "withdrawal": string, "inflation": string, "market": string}, "plan": {"area": string, "priority": "High"|"Medium"|"Low", "title": string, "why": string, "steps": string[]}[], "fiduciaryQuestions": string[], "scamNote": string}.
 
 Ground EVERYTHING in the user's actual numbers and facts below. The narrative and every subScoreNotes sentence must read as written FOR THEM, not generic. Explicitly reference their age, marital status, retirement stage, guaranteed-income-vs-essentials coverage percentage, exact monthly gap, savings, stock percentage versus the age-appropriate reference level, emergency fund, debt, state cost-of-living context, pension/home/Social Security details when present, and their stated #1 worry.
 
@@ -171,7 +171,7 @@ Rules:
 - plan: provide 5–6 PlanItem objects, built on and improving the supplied rulePlan, prioritized, education only.
 - fiduciaryQuestions: provide 3–5 concrete questions THIS person should ask a fiduciary, tied to their gaps.
 - scamNote: 1–2 protective sentences tuned to their worry and state.
-- Obey the system guardrails: no specific buy/sell/allocation/product advice; only concepts, factors, and questions.
+- Obey the system guardrails: no specific buy/sell/allocation/product advice; only concepts, factors, and questions. Do not mention any app, tool, product, monitoring service, affiliate, or brand name.
 
 User facts:
 ${contextualFacts(answers).map((fact) => `- ${fact}`).join("\n")}
