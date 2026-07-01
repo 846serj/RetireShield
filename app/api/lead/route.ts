@@ -1,11 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildActionPlan } from "@/lib/actionPlan";
-import { generateAIReport, buildFallbackReport } from "@/lib/ai/report";
+import { generateAIReport, buildFallbackReport, type AIReport } from "@/lib/ai/report";
 import { addBeehiivSubscriber } from "@/lib/beehiiv";
 import { renderReportHtml } from "@/lib/reportEmail";
 import { sendTransactionalEmail } from "@/lib/resend";
 import { computeScores, type Answers, type Result } from "@/lib/scoring";
+
+const REPORT_FOOTER_DISCLAIMER =
+  "Educational information only - not financial, tax, or legal advice. We will never ask you for an account number, Social Security number, password, or payment. American Signal Media, LLC, 598 West Interstate 30, Royse City, TX 75189.";
+
+const subScoreLabels = {
+  income: "Income Stability",
+  withdrawal: "Withdrawal Sustainability",
+  inflation: "Inflation Impact",
+  market: "Market-Risk Buffer",
+} as const;
+
+function renderReportText(result: Result, report: AIReport): string {
+  const subScores = (Object.keys(subScoreLabels) as Array<keyof typeof subScoreLabels>)
+    .map((key) => `${subScoreLabels[key]}: ${result.sub[key]}\n${report.subScoreNotes[key]}`)
+    .join("\n\n");
+
+  const actionPlan = report.plan
+    .map((item, index) => {
+      const steps = item.steps.map((step) => `   - ${step}`).join("\n");
+      return `${index + 1}. ${item.title} (${item.priority})\n   Why: ${item.why}\n   Steps:\n${steps}`;
+    })
+    .join("\n\n");
+
+  const fiduciaryQuestions = report.fiduciaryQuestions
+    .map((question) => `- ${question}`)
+    .join("\n");
+
+  return [
+    "Your Retirement Safety Score",
+    `${result.overall} (${result.band})`,
+    "",
+    "What this means for you",
+    report.narrative,
+    "",
+    "Your sub-scores",
+    subScores,
+    "",
+    "Your action plan",
+    actionPlan,
+    "",
+    "Questions to ask a fiduciary",
+    fiduciaryQuestions,
+    "",
+    "Stay scam-safe",
+    report.scamNote,
+    "",
+    REPORT_FOOTER_DISCLAIMER,
+  ].join("\n");
+}
 
 function isValidEmail(email: unknown): email is string {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -82,6 +131,7 @@ export async function POST(req: NextRequest) {
       to: normalizedEmail,
       subject: "Your Retirement Safety Score",
       html: renderReportHtml(result, report),
+      text: renderReportText(result, report),
     });
   } catch (error) {
     console.error("lead AI report email failed:", error);
