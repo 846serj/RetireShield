@@ -4,16 +4,22 @@ type AnswerMap = Record<string, string | number | undefined>;
 type Conditional = { when?: (answers: AnswerMap) => boolean };
 
 export type Choice = { value: string | number; label: string };
-export type Question = Conditional & (
-  | { key: string; kind: "number"; prompt: string; placeholder?: string; min?: number; max?: number; prefix?: string; help?: string; optional?: boolean }
-  | { key: string; kind: "choice"; prompt: string; choices: Choice[]; help?: string; defaultValue?: string | number }
-  | { key: string; kind: "savingsAmount"; prompt: string; help?: string }
-  | { key: string; kind: "socialSecurityDetails"; prompt: string; help?: string }
-  | { key: string; kind: "state"; prompt: string; help?: string }
-);
+export type Question = Conditional &
+  (
+    | {
+        key: string;
+        kind: "choice";
+        prompt: string;
+        choices: Choice[];
+        help?: string;
+        defaultValue?: string | number;
+      }
+    | { key: string; kind: "state"; prompt: string; help?: string }
+  );
 
 const isMarried = (answers: AnswerMap) => answers.maritalStatus === "married";
-const isPreRetirement = (answers: AnswerMap) => answers.status === "working" || answers.status === "near";
+const isPreRetirement = (answers: AnswerMap) =>
+  answers.status === "working" || answers.status === "near";
 const hasPension = (answers: AnswerMap) => answers.hasPension === "yes";
 const ownsHome = (answers: AnswerMap) => answers.ownsHome === "yes";
 
@@ -107,9 +113,18 @@ const ACCOUNT_BALANCE_CHOICES: Choice[] = [
 ];
 
 export const QUESTIONS: Question[] = [
-  { key: "age", kind: "choice", prompt: "What's your age?", help: "Choose the range that includes your current age; we use the midpoint for scoring.", choices: AGE_CHOICES },
   {
-    key: "maritalStatus", kind: "choice", prompt: "What's your marital status?", help: "This helps us ask only the household questions that apply to you.",
+    key: "age",
+    kind: "choice",
+    prompt: "What's your age?",
+    help: "Choose the range that includes your current age; we use the midpoint for scoring.",
+    choices: AGE_CHOICES,
+  },
+  {
+    key: "maritalStatus",
+    kind: "choice",
+    prompt: "What's your marital status?",
+    help: "This helps us ask only the household questions that apply to you.",
     choices: [
       { value: "single", label: "Single" },
       { value: "married", label: "Married" },
@@ -118,63 +133,193 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    key: "status", kind: "choice", prompt: "Where are you with retirement?", help: "Pick the answer that feels closest — this just sets context for your score.",
+    key: "status",
+    kind: "choice",
+    prompt: "Where are you with retirement?",
+    help: "Pick the answer that feels closest — this just sets context for your score.",
     choices: [
       { value: "working", label: "Still working" },
       { value: "near", label: "Near retirement" },
       { value: "retired", label: "Retired" },
     ],
   },
-  { key: "savings", kind: "choice", prompt: "Roughly how much do you have in retirement savings?", help: "Choose the range that best matches your total retirement savings; we use a representative dollar estimate.", choices: SAVINGS_CHOICES },
   {
-    key: "guaranteedIncome", kind: "choice",
-    prompt: "Your guaranteed monthly income (Social Security + pension + annuity)?", help: "Choose the range that best matches monthly Social Security, pension, and annuity income.", choices: MONTHLY_INCOME_CHOICES,
+    key: "savings",
+    kind: "choice",
+    prompt: "Roughly how much do you have in retirement savings?",
+    help: "Choose the range that best matches your total retirement savings; we use a representative dollar estimate.",
+    choices: SAVINGS_CHOICES,
   },
   {
-    key: "essentialExpenses", kind: "choice",
-    prompt: "Your essential monthly expenses (housing, food, utilities, insurance, meds)?", help: "Choose the range that best matches monthly basics: housing, food, utilities, insurance, prescriptions, and regular bills.", choices: MONTHLY_EXPENSE_CHOICES,
+    key: "guaranteedIncome",
+    kind: "choice",
+    prompt:
+      "Your guaranteed monthly income (Social Security + pension + annuity)?",
+    help: "Choose the range that best matches monthly Social Security, pension, and annuity income.",
+    choices: MONTHLY_INCOME_CHOICES,
   },
-  { key: "spouseAge", kind: "choice", prompt: "How old is your spouse?", help: "Choose the range that includes your spouse's current age, or Not sure if you do not know.", choices: [...AGE_CHOICES, { value: 67, label: "Not sure" }], when: isMarried },
-  { key: "spouseSsaBenefitEstimate", kind: "choice", prompt: "Your spouse's estimated Social Security benefit ($/mo)?", help: "Choose their latest SSA estimate or current check range, or Not sure for a conservative default.", choices: SOCIAL_SECURITY_CHOICES, when: isMarried },
-  { key: "targetRetirementAge", kind: "choice", prompt: "At what age do you hope to retire?", help: "Choose the range closest to your planned retirement age, or Not sure for a standard age-67 assumption.", choices: RETIREMENT_AGE_CHOICES, when: isPreRetirement },
   {
-    key: "hasPension", kind: "choice", prompt: "Do you have a pension?", help: "Answer yes if you expect a monthly pension separate from Social Security.",
-    choices: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }],
+    key: "essentialExpenses",
+    kind: "choice",
+    prompt:
+      "Your essential monthly expenses (housing, food, utilities, insurance, meds)?",
+    help: "Choose the range that best matches monthly basics: housing, food, utilities, insurance, prescriptions, and regular bills.",
+    choices: MONTHLY_EXPENSE_CHOICES,
   },
-  { key: "pensionAmount", kind: "choice", prompt: "How much is the pension per month?", help: "Choose the expected or current monthly amount before tax, or Not sure if you do not know.", choices: PENSION_CHOICES, when: hasPension },
-  { key: "pensionHasCola", kind: "choice", prompt: "Does that pension have cost-of-living increases?", help: "Choose whether the pension adjusts for inflation; Not sure uses a safe no-COLA assumption.", choices: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }, { value: "no", label: "Not sure" }], when: hasPension },
-  { key: "pensionSurvivorPct", kind: "choice", prompt: "What survivor percent would continue for a spouse?", help: "Choose the percentage that would continue to a spouse; Not sure uses 50%.", choices: SURVIVOR_PCT_CHOICES, when: hasPension },
   {
-    key: "ownsHome", kind: "choice", prompt: "Do you own your home?", help: "This lets us ask home-equity follow-ups only when relevant.",
-    choices: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }],
+    key: "spouseAge",
+    kind: "choice",
+    prompt: "How old is your spouse?",
+    help: "Choose the range that includes your spouse's current age, or Not sure if you do not know.",
+    choices: [...AGE_CHOICES, { value: 67, label: "Not sure" }],
+    when: isMarried,
   },
-  { key: "homeEquity", kind: "choice", prompt: "About how much home equity do you have?", help: "Choose your estimated home value minus mortgage debt, or Not sure if you do not know.", choices: HOME_EQUITY_CHOICES, when: ownsHome },
-  { key: "planToDownsize", kind: "choice", prompt: "Do you plan to downsize or sell later?", help: "Choose your current expectation; Not sure keeps a conservative no-downsize assumption.", choices: [{ value: "yes", label: "Yes" }, { value: "no", label: "No" }, { value: "no", label: "Not sure" }], when: ownsHome },
-  { key: "balance_taxable", kind: "choice", prompt: "How much is in taxable brokerage/savings?", help: "Choose the closest taxable brokerage or savings range, or Not sure if you do not know the split.", choices: ACCOUNT_BALANCE_CHOICES },
-  { key: "balance_tax_deferred", kind: "choice", prompt: "How much is in IRA/401(k)/tax-deferred accounts?", help: "Choose the closest IRA, 401(k), or tax-deferred range, or Not sure if you do not know the split.", choices: ACCOUNT_BALANCE_CHOICES },
-  { key: "balance_roth", kind: "choice", prompt: "How much is in Roth accounts?", help: "Choose the closest Roth account range, or Not sure if you do not know the split.", choices: ACCOUNT_BALANCE_CHOICES },
   {
-    key: "stockPct", kind: "choice", prompt: "About what share of your savings is in stocks?", help: "A best guess is enough. Include stock funds inside retirement accounts if you know them.",
+    key: "spouseSsaBenefitEstimate",
+    kind: "choice",
+    prompt: "Your spouse's estimated Social Security benefit ($/mo)?",
+    help: "Choose their latest SSA estimate or current check range, or Not sure for a conservative default.",
+    choices: SOCIAL_SECURITY_CHOICES,
+    when: isMarried,
+  },
+  {
+    key: "targetRetirementAge",
+    kind: "choice",
+    prompt: "At what age do you hope to retire?",
+    help: "Choose the range closest to your planned retirement age, or Not sure for a standard age-67 assumption.",
+    choices: RETIREMENT_AGE_CHOICES,
+    when: isPreRetirement,
+  },
+  {
+    key: "hasPension",
+    kind: "choice",
+    prompt: "Do you have a pension?",
+    help: "Answer yes if you expect a monthly pension separate from Social Security.",
     choices: [
-      { value: 0, label: "None" }, { value: 25, label: "About a quarter" },
-      { value: 50, label: "About half" }, { value: 75, label: "Most of it" }, { value: 100, label: "Almost all" },
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
     ],
   },
   {
-    key: "emergencyFund", kind: "choice", prompt: "How many months of expenses do you keep in cash?", help: "Cash means money you can reach without selling investments, like checking, savings, or money market funds.",
+    key: "pensionAmount",
+    kind: "choice",
+    prompt: "How much is the pension per month?",
+    help: "Choose the expected or current monthly amount before tax, or Not sure if you do not know.",
+    choices: PENSION_CHOICES,
+    when: hasPension,
+  },
+  {
+    key: "pensionHasCola",
+    kind: "choice",
+    prompt: "Does that pension have cost-of-living increases?",
+    help: "Choose whether the pension adjusts for inflation; Not sure uses a safe no-COLA assumption.",
     choices: [
-      { value: "0", label: "None" }, { value: "1-3", label: "1–3 months" },
-      { value: "3-6", label: "3–6 months" }, { value: "6+", label: "6+ months" },
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+      { value: "no", label: "Not sure" },
+    ],
+    when: hasPension,
+  },
+  {
+    key: "pensionSurvivorPct",
+    kind: "choice",
+    prompt: "What survivor percent would continue for a spouse?",
+    help: "Choose the percentage that would continue to a spouse; Not sure uses 50%.",
+    choices: SURVIVOR_PCT_CHOICES,
+    when: hasPension,
+  },
+  {
+    key: "ownsHome",
+    kind: "choice",
+    prompt: "Do you own your home?",
+    help: "This lets us ask home-equity follow-ups only when relevant.",
+    choices: [
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
     ],
   },
   {
-    key: "debt", kind: "choice", prompt: "How would you describe your debt?", help: "Consider monthly payments and stress level, not just the balance.",
+    key: "homeEquity",
+    kind: "choice",
+    prompt: "About how much home equity do you have?",
+    help: "Choose your estimated home value minus mortgage debt, or Not sure if you do not know.",
+    choices: HOME_EQUITY_CHOICES,
+    when: ownsHome,
+  },
+  {
+    key: "planToDownsize",
+    kind: "choice",
+    prompt: "Do you plan to downsize or sell later?",
+    help: "Choose your current expectation; Not sure keeps a conservative no-downsize assumption.",
     choices: [
-      { value: "none", label: "None to speak of" }, { value: "some", label: "Some" }, { value: "heavy", label: "A heavy load" },
+      { value: "yes", label: "Yes" },
+      { value: "no", label: "No" },
+      { value: "no", label: "Not sure" },
+    ],
+    when: ownsHome,
+  },
+  {
+    key: "balance_taxable",
+    kind: "choice",
+    prompt: "How much is in taxable brokerage/savings?",
+    help: "Choose the closest taxable brokerage or savings range, or Not sure if you do not know the split.",
+    choices: ACCOUNT_BALANCE_CHOICES,
+  },
+  {
+    key: "balance_tax_deferred",
+    kind: "choice",
+    prompt: "How much is in IRA/401(k)/tax-deferred accounts?",
+    help: "Choose the closest IRA, 401(k), or tax-deferred range, or Not sure if you do not know the split.",
+    choices: ACCOUNT_BALANCE_CHOICES,
+  },
+  {
+    key: "balance_roth",
+    kind: "choice",
+    prompt: "How much is in Roth accounts?",
+    help: "Choose the closest Roth account range, or Not sure if you do not know the split.",
+    choices: ACCOUNT_BALANCE_CHOICES,
+  },
+  {
+    key: "stockPct",
+    kind: "choice",
+    prompt: "About what share of your savings is in stocks?",
+    help: "A best guess is enough. Include stock funds inside retirement accounts if you know them.",
+    choices: [
+      { value: 0, label: "None" },
+      { value: 25, label: "About a quarter" },
+      { value: 50, label: "About half" },
+      { value: 75, label: "Most of it" },
+      { value: 100, label: "Almost all" },
     ],
   },
   {
-    key: "filingStatus", kind: "choice", prompt: "What tax filing status should we keep on file?", help: "Pick your best guess for future tax and Medicare estimates; this does not affect today's score.",
+    key: "emergencyFund",
+    kind: "choice",
+    prompt: "How many months of expenses do you keep in cash?",
+    help: "Cash means money you can reach without selling investments, like checking, savings, or money market funds.",
+    choices: [
+      { value: "0", label: "None" },
+      { value: "1-3", label: "1–3 months" },
+      { value: "3-6", label: "3–6 months" },
+      { value: "6+", label: "6+ months" },
+    ],
+  },
+  {
+    key: "debt",
+    kind: "choice",
+    prompt: "How would you describe your debt?",
+    help: "Consider monthly payments and stress level, not just the balance.",
+    choices: [
+      { value: "none", label: "None to speak of" },
+      { value: "some", label: "Some" },
+      { value: "heavy", label: "A heavy load" },
+    ],
+  },
+  {
+    key: "filingStatus",
+    kind: "choice",
+    prompt: "What tax filing status should we keep on file?",
+    help: "Pick your best guess for future tax and Medicare estimates; this does not affect today's score.",
     choices: [
       { value: "single", label: "Single" },
       { value: "married_joint", label: "Married filing jointly" },
@@ -195,15 +340,34 @@ export const QUESTIONS: Question[] = [
       { value: 100, label: "About 100" },
     ],
   },
-  { key: "state", kind: "state", prompt: "Which state do you live in?", help: "Your state helps us account for broad cost-of-living differences." },
   {
-    key: "claimedSocialSecurity", kind: "choice", prompt: "Have you claimed Social Security yet?", help: "Choose whether you have already started your own Social Security retirement benefit.", choices: [{ value: "no", label: "Not yet" }, { value: "yes", label: "Yes" }],
+    key: "state",
+    kind: "state",
+    prompt: "Which state do you live in?",
+    help: "Your state helps us account for broad cost-of-living differences.",
   },
   {
-    key: "ssaBenefitEstimate", kind: "choice", prompt: "Your estimated Social Security benefit ($/mo)?", help: "Choose your latest SSA estimate or current check range, or Not sure for a conservative default.", choices: SOCIAL_SECURITY_CHOICES,
+    key: "claimedSocialSecurity",
+    kind: "choice",
+    prompt: "Have you claimed Social Security yet?",
+    help: "Choose whether you have already started your own Social Security retirement benefit.",
+    choices: [
+      { value: "no", label: "Not yet" },
+      { value: "yes", label: "Yes" },
+    ],
   },
   {
-    key: "worry", kind: "choice", prompt: "What worries you most?", help: "This lightly adjusts the lens of your score toward what matters most to you.",
+    key: "ssaBenefitEstimate",
+    kind: "choice",
+    prompt: "Your estimated Social Security benefit ($/mo)?",
+    help: "Choose your latest SSA estimate or current check range, or Not sure for a conservative default.",
+    choices: SOCIAL_SECURITY_CHOICES,
+  },
+  {
+    key: "worry",
+    kind: "choice",
+    prompt: "What worries you most?",
+    help: "This lightly adjusts the lens of your score toward what matters most to you.",
     choices: [
       { value: "running_out", label: "Running out of money" },
       { value: "inflation", label: "Inflation / rising costs" },
