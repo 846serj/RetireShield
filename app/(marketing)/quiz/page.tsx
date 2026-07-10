@@ -399,20 +399,41 @@ export default function Quiz() {
             </div>
           </>
         ) : (
-          <div className="rg-card mt-8 text-center">
-            <h2 className="text-2xl font-bold text-ink">
-              Your report is on its way
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-lg leading-8 text-slate-700">
-              We just emailed your personalized Retirement Safety Score and
-              action plan to {email.trim()}. Check your inbox in the next few
-              minutes — peek in Promotions or Spam just in case, and drag it to
-              your main inbox so future emails land there too.
-            </p>
-            <p className="mx-auto mt-4 max-w-2xl text-lg font-bold leading-7 text-ink">
-              Know someone who should check theirs? Send them retireshield.com.
-            </p>
-          </div>
+          <>
+            <div className="rg-card mt-8 text-center">
+              <h2 className="text-2xl font-bold text-ink">
+                Your report is on its way
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-lg leading-8 text-slate-700">
+                We just emailed your personalized Retirement Safety Score and
+                action plan to {email.trim()}. Check your inbox in the next few
+                minutes — peek in Promotions or Spam just in case, and drag it to
+                your main inbox so future emails land there too.
+              </p>
+              <p className="mx-auto mt-4 max-w-2xl text-lg font-bold leading-7 text-ink">
+                Know someone who should check theirs? Send them retireshield.com.
+              </p>
+            </div>
+            {subscribeNewsletter && (
+              <div className="rg-card-highlight mt-6 text-center">
+                <h2 className="font-serif text-3xl font-semibold leading-tight text-ink sm:text-4xl">
+                  You&apos;re in — welcome to Retirement Shield
+                </h2>
+                <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-700">
+                  Twice a week — every Tuesday and Friday — you&apos;ll get our free
+                  email from Ellen Marsh: the money you may be owed, the scams
+                  to dodge, and the Social Security and Medicare changes that
+                  hit your check. Plain English, always something you can
+                  actually use.
+                </p>
+                <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-brand/20 bg-white px-5 py-4 text-lg font-bold leading-7 text-ink shadow-sm">
+                  Watch for an email from Ellen Marsh — Retirement Shield. Add
+                  us to your contacts and drag our emails to your main inbox so
+                  you never miss one.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
