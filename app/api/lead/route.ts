@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildActionPlan } from "@/lib/actionPlan";
-import { generateAIReport, buildFallbackReport, type AIReport } from "@/lib/ai/report";
+import {
+  generateAIReport,
+  buildFallbackReport,
+  type AIReport,
+} from "@/lib/ai/report";
 import { addBeehiivSubscriber } from "@/lib/beehiiv";
 import { renderReportHtml } from "@/lib/reportEmail";
 import { sendTransactionalEmail } from "@/lib/resend";
@@ -17,9 +21,19 @@ const subScoreLabels = {
   market: "Market-Risk Buffer",
 } as const;
 
-function renderReportText(result: Result, report: AIReport): string {
-  const subScores = (Object.keys(subScoreLabels) as Array<keyof typeof subScoreLabels>)
-    .map((key) => `${subScoreLabels[key]}: ${result.sub[key]}\n${report.subScoreNotes[key]}`)
+function renderReportText(
+  result: Result,
+  report: AIReport,
+  firstName = "",
+): string {
+  const greeting = firstName ? [`Hi ${firstName},`, ""] : [];
+  const subScores = (
+    Object.keys(subScoreLabels) as Array<keyof typeof subScoreLabels>
+  )
+    .map(
+      (key) =>
+        `${subScoreLabels[key]}: ${result.sub[key]}\n${report.subScoreNotes[key]}`,
+    )
     .join("\n\n");
 
   const actionPlan = report.plan
@@ -35,6 +49,7 @@ function renderReportText(result: Result, report: AIReport): string {
 
   return [
     "Your Retirement Safety Score",
+    ...greeting,
     `${result.overall} (${result.band})`,
     "",
     "What this means for you",
@@ -57,7 +72,9 @@ function renderReportText(result: Result, report: AIReport): string {
 }
 
 function isValidEmail(email: unknown): email is string {
-  return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  return (
+    typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  );
 }
 
 // Saves a captured lead, returns the personalized report for the on-screen reveal,
@@ -71,10 +88,15 @@ export async function POST(req: NextRequest) {
   }
 
   const { email, answers, source, campaign } = body ?? {};
+  const firstName =
+    typeof body?.firstName === "string" ? body.firstName.trim() : "";
   const subscribeNewsletter = body?.subscribeNewsletter ?? true;
 
   if (!isValidEmail(email)) {
-    return NextResponse.json({ ok: false, error: "invalid email" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid email" },
+      { status: 400 },
+    );
   }
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -86,7 +108,10 @@ export async function POST(req: NextRequest) {
     result = computeScores(answers as Answers);
   } catch (error) {
     console.error("lead scoring failed:", error);
-    return NextResponse.json({ ok: false, error: "invalid answers" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid answers" },
+      { status: 400 },
+    );
   }
 
   const rulePlan = buildActionPlan(answers as Answers, result);
@@ -96,6 +121,7 @@ export async function POST(req: NextRequest) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const row = {
     email: normalizedEmail,
+    first_name: firstName,
     answers,
     overall_score: result.overall,
     sub_scores: result.sub,
@@ -119,7 +145,11 @@ export async function POST(req: NextRequest) {
 
   if (subscribeNewsletter) {
     try {
-      await addBeehiivSubscriber(normalizedEmail, { utmSource: normalizedSource, tier: "free" });
+      await addBeehiivSubscriber(normalizedEmail, {
+        utmSource: normalizedSource,
+        tier: "free",
+        firstName,
+      });
     } catch (error) {
       console.error("lead newsletter subscription failed:", error);
     }
@@ -130,8 +160,8 @@ export async function POST(req: NextRequest) {
     await sendTransactionalEmail({
       to: normalizedEmail,
       subject: "Your Retirement Safety Score",
-      html: renderReportHtml(result, report),
-      text: renderReportText(result, report),
+      html: renderReportHtml(result, report, firstName),
+      text: renderReportText(result, report, firstName),
     });
   } catch (error) {
     console.error("lead AI report email failed:", error);
