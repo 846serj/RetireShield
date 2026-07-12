@@ -333,8 +333,9 @@ export default function Quiz() {
                 steps.
               </h2>
               <p className="mx-auto mt-3 max-w-2xl text-slate-600">
-                Enter your email and we&apos;ll unlock your four sub-scores + 3
-                steps and email you your full personalized report.
+                Enter your name and email to unlock your four sub-scores and 3
+                next steps, get your full report by email, and join the free
+                Retirement Shield newsletter.
               </p>
               {submitting ? (
                 <div className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl border border-brand/20 bg-white p-5 text-left shadow-sm">
@@ -389,18 +390,27 @@ export default function Quiz() {
                   </Button>
                 </div>
               )}
-              <label className="mt-5 flex cursor-pointer items-start gap-3 p-1 text-left">
-                <input
-                  type="checkbox"
-                  checked={subscribeNewsletter}
-                  onChange={(e) => setSubscribeNewsletter(e.target.checked)}
-                  className="mt-1 size-4 shrink-0 accent-brand"
-                />
-                <span className="text-sm font-medium leading-6 text-slate-600">
-                  Yes, send me the free weekly Retirement Shield — plain-English
-                  tips to make my money last.
-                </span>
-              </label>
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-band p-4 text-left">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={subscribeNewsletter}
+                    onChange={(e) => setSubscribeNewsletter(e.target.checked)}
+                    className="mt-1 size-5 shrink-0 accent-brand"
+                  />
+                  <span>
+                    <span className="block text-base font-bold text-ink">
+                      Yes — send me the free Retirement Shield newsletter
+                    </span>
+                    <span className="mt-1 block text-sm leading-6 text-slate-600">
+                      Twice a week (Tuesday and Friday), editor Ellen Marsh
+                      sends the money you may be owed, the scams to dodge, and
+                      the Social Security and Medicare changes that hit your
+                      check. Plain English, always something you can use.
+                    </span>
+                  </span>
+                </label>
+              </div>
               {emailError && (
                 <p
                   id="results-email-error"
