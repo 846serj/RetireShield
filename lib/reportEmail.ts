@@ -18,7 +18,7 @@ function escapeHtml(value: string | number): string {
 }
 
 function renderParagraph(text: string): string {
-  return `<p style="margin:0;color:#1f2937;font-size:16px;line-height:1.65;">${escapeHtml(text).replace(/\n\n+/g, "</p><p style=\"margin:16px 0 0;color:#1f2937;font-size:16px;line-height:1.65;\">").replace(/\n/g, "<br>")}</p>`;
+  return `<p style="margin:0;color:#1f2937;font-size:16px;line-height:1.65;">${escapeHtml(text).replace(/\n\n+/g, '</p><p style="margin:16px 0 0;color:#1f2937;font-size:16px;line-height:1.65;">').replace(/\n/g, "<br>")}</p>`;
 }
 
 function priorityColor(priority: string): string {
@@ -27,9 +27,17 @@ function priorityColor(priority: string): string {
   return "#166534";
 }
 
-export function renderReportHtml(result: Result, report: AIReport): string {
+export function renderReportHtml(
+  result: Result,
+  report: AIReport,
+  firstName = "",
+): string {
+  const greeting = firstName.trim()
+    ? `<p style="margin:0 0 20px;color:#1f2937;font-size:16px;line-height:1.65;">Hi ${escapeHtml(firstName.trim())},</p>`
+    : "";
   const subScores = (Object.keys(subScoreLabels) as Array<keyof SubScores>)
-    .map((key) => `
+    .map(
+      (key) => `
       <tr>
         <td style="padding:16px 0;border-top:1px solid #e5e7eb;vertical-align:top;">
           <div style="font-size:16px;line-height:1.35;font-weight:700;color:#111827;">${escapeHtml(subScoreLabels[key])}</div>
@@ -38,11 +46,13 @@ export function renderReportHtml(result: Result, report: AIReport): string {
         <td style="padding:16px 0 16px 16px;border-top:1px solid #e5e7eb;vertical-align:top;text-align:right;white-space:nowrap;">
           <span style="display:inline-block;min-width:54px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:18px;line-height:1;font-weight:800;padding:10px 12px;text-align:center;">${escapeHtml(result.sub[key])}</span>
         </td>
-      </tr>`)
+      </tr>`,
+    )
     .join("");
 
   const actionPlan = report.plan
-    .map((item) => `
+    .map(
+      (item) => `
       <li style="margin:0 0 20px;padding-left:2px;">
         <div style="font-size:16px;line-height:1.45;font-weight:800;color:#111827;">
           ${escapeHtml(item.title)}
@@ -52,11 +62,15 @@ export function renderReportHtml(result: Result, report: AIReport): string {
         <ul style="margin:10px 0 0 20px;padding:0;color:#374151;font-size:15px;line-height:1.6;">
           ${item.steps.map((step) => `<li style="margin:0 0 6px;">${escapeHtml(step)}</li>`).join("")}
         </ul>
-      </li>`)
+      </li>`,
+    )
     .join("");
 
   const fiduciaryQuestions = report.fiduciaryQuestions
-    .map((question) => `<li style="margin:0 0 8px;color:#374151;font-size:16px;line-height:1.55;">${escapeHtml(question)}</li>`)
+    .map(
+      (question) =>
+        `<li style="margin:0 0 8px;color:#374151;font-size:16px;line-height:1.55;">${escapeHtml(question)}</li>`,
+    )
     .join("");
 
   return `<!doctype html>
@@ -75,6 +89,7 @@ export function renderReportHtml(result: Result, report: AIReport): string {
             <tr>
               <td style="padding:32px 24px 26px;background:#ffffff;">
                 <h1 style="margin:0 0 20px;color:#111827;font-size:28px;line-height:1.2;font-weight:800;">Your Retirement Safety Score</h1>
+                ${greeting}
                 <div style="padding:24px;border-radius:18px;background:#f8fafc;border:1px solid #e5e7eb;text-align:center;">
                   <div style="font-size:64px;line-height:1;font-weight:900;color:#111827;letter-spacing:-.04em;">${escapeHtml(result.overall)}</div>
                   <div style="margin-top:10px;font-size:18px;line-height:1.35;font-weight:800;color:#374151;">${escapeHtml(result.band)}</div>

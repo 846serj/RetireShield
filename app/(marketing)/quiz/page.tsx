@@ -26,6 +26,7 @@ export default function Quiz() {
     null,
   );
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [subscribeNewsletter, setSubscribeNewsletter] = useState(true);
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,6 +45,7 @@ export default function Quiz() {
     [done, answers],
   );
   const displayResult = serverResult ?? result;
+  const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   useEffect(() => {
     if (!introComplete || done) return;
@@ -109,6 +111,7 @@ export default function Quiz() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: normalizedEmail,
+          firstName: firstName.trim(),
           answers,
           result,
           source: params.get("utm_source") || "direct",
@@ -347,6 +350,20 @@ export default function Quiz() {
               ) : (
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                   <div className="flex-1 text-left">
+                    <label htmlFor="results-first-name" className="sr-only">
+                      First name for unlocking full results
+                    </label>
+                    <input
+                      id="results-first-name"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="First name"
+                      autoComplete="given-name"
+                      className="rg-input"
+                    />
+                  </div>
+                  <div className="flex-1 text-left">
                     <label htmlFor="results-email" className="sr-only">
                       Email address for unlocking full results
                     </label>
@@ -364,7 +381,7 @@ export default function Quiz() {
                     />
                   </div>
                   <Button
-                    disabled={!email.trim().includes("@") || submitting}
+                    disabled={!firstName.trim() || !emailIsValid || submitting}
                     onClick={submitEmail}
                     className="disabled:opacity-50"
                   >
@@ -407,11 +424,12 @@ export default function Quiz() {
               <p className="mx-auto mt-3 max-w-2xl text-lg leading-8 text-slate-700">
                 We just emailed your personalized Retirement Safety Score and
                 action plan to {email.trim()}. Check your inbox in the next few
-                minutes — peek in Promotions or Spam just in case, and drag it to
-                your main inbox so future emails land there too.
+                minutes — peek in Promotions or Spam just in case, and drag it
+                to your main inbox so future emails land there too.
               </p>
               <p className="mx-auto mt-4 max-w-2xl text-lg font-bold leading-7 text-ink">
-                Know someone who should check theirs? Send them retireshield.com.
+                Know someone who should check theirs? Send them
+                retireshield.com.
               </p>
             </div>
             {subscribeNewsletter && (
@@ -420,10 +438,10 @@ export default function Quiz() {
                   You&apos;re in — welcome to Retirement Shield
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-700">
-                  Twice a week — every Tuesday and Friday — you&apos;ll get our free
-                  email from Ellen Marsh: the money you may be owed, the scams
-                  to dodge, and the Social Security and Medicare changes that
-                  hit your check. Plain English, always something you can
+                  Twice a week — every Tuesday and Friday — you&apos;ll get our
+                  free email from Ellen Marsh: the money you may be owed, the
+                  scams to dodge, and the Social Security and Medicare changes
+                  that hit your check. Plain English, always something you can
                   actually use.
                 </p>
                 <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-brand/20 bg-white px-5 py-4 text-lg font-bold leading-7 text-ink shadow-sm">
