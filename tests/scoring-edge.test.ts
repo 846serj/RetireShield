@@ -22,10 +22,12 @@ test("zero essential expenses max income, withdrawal, and inflation sub-scores",
   assert.ok(score.overall >= 85);
 });
 
-test("full guaranteed-income coverage maxes withdrawal even with no savings", () => {
-  const score = computeScores({ ...base, guaranteedIncome: 4500, essentialExpenses: 3000, savings: 0 });
-  assert.equal(score.sub.income, 100);
-  assert.equal(score.sub.withdrawal, 100);
+test("full guaranteed-income coverage still depends on savings for withdrawal", () => {
+  const noSavings = computeScores({ ...base, guaranteedIncome: 4500, essentialExpenses: 3000, savings: 0 });
+  const ampleSavings = computeScores({ ...base, guaranteedIncome: 4500, essentialExpenses: 3000, savings: 750000 });
+  assert.equal(noSavings.sub.income, 100);
+  assert.ok(noSavings.sub.withdrawal < 100, "covered essentials should not auto-max withdrawal");
+  assert.ok(ampleSavings.sub.withdrawal > noSavings.sub.withdrawal, "withdrawal should reward savings even when income covers essentials");
 });
 
 test("extreme ages remain bounded and age-appropriate market risk changes", () => {

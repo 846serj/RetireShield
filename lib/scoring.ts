@@ -69,21 +69,46 @@ function yearsToHorizon(a: Answers): number {
   return Math.max(0, planningHorizonAge(a) - Math.floor(a.age));
 }
 
-// Guaranteed income as a share of essentials, capped at 100%.
-export function incomeStability(a: Answers): number {
-  if (a.essentialExpenses <= 0) return 100;
-  return clamp((a.guaranteedIncome / a.essentialExpenses) * 100);
+function coverageScore(coverage: number): number {
+  if (!Number.isFinite(coverage)) return 0;
+  return coverage < 1 ? coverage * 65 : 65 + ((coverage - 1) / 0.5) * 35;
 }
 
-// Projection-based sustainability: how long real savings cover the real monthly gap.
-export function withdrawalSustainability(a: Answers): number {
-  const gap = Math.max(0, a.essentialExpenses - a.guaranteedIncome);
-  if (gap <= 0) return 100;
+function socialSecurityChecks(a: Answers): [number, number] {
+  return [Math.max(0, a.ssaBenefitEstimate ?? 0), Math.max(0, a.spouseSsaBenefitEstimate ?? 0)];
+}
 
+function pensionSurvivorPercent(a: Answers): number {
+  if (!Number.isFinite(a.pensionSurvivorPct)) return 50;
+  return clamp(Number(a.pensionSurvivorPct), 0, 100);
+}
+
+function survivorGuaranteedIncome(a: Answers): number {
+  const [ownSs, spouseSs] = socialSecurityChecks(a);
+  const knownHouseholdSs = ownSs + spouseSs;
+  const lostSocialSecurity = ownSs > 0 && spouseSs > 0 ? Math.min(ownSs, spouseSs) : 0;
+  const explicitPension = Math.max(0, a.pensionAmount ?? 0);
+  const inferredPension = Math.max(0, a.guaranteedIncome - knownHouseholdSs);
+  const pension = explicitPension > 0 ? Math.min(explicitPension, a.guaranteedIncome) : inferredPension;
+  const lostPension = pension * (1 - pensionSurvivorPercent(a) / 100);
+  return Math.max(0, a.guaranteedIncome - lostSocialSecurity - lostPension);
+}
+
+// Guaranteed income covering essentials is a passing floor; buffers and survivor resilience earn higher scores.
+export function incomeStability(a: Answers): number {
+  if (a.essentialExpenses <= 0) return 100;
+  const currentScore = clamp(coverageScore(a.guaranteedIncome / a.essentialExpenses));
+  if (a.maritalStatus !== "married") return currentScore;
+
+  const survivorScore = clamp(coverageScore(survivorGuaranteedIncome(a) / a.essentialExpenses));
+  return clamp(currentScore * 0.7 + survivorScore * 0.3);
+}
+
+function projectionWithdrawalScore(a: Answers, monthlyGap: number, stressedSavings: number): number {
   const projection = projectDepletion({
     currentAge: a.age,
-    realSavings: realSavings(a),
-    monthlyGap: gap,
+    realSavings: stressedSavings,
+    monthlyGap,
     horizonAge: planningHorizonAge(a),
     stockPct: a.stockPct,
     bondPct: 100 - a.stockPct,
@@ -93,10 +118,27 @@ export function withdrawalSustainability(a: Answers): number {
     monthlySocialSecurity: Math.min(a.guaranteedIncome, Math.max(0, a.ssaBenefitEstimate ?? 0)),
   });
 
-  if (projection.depletionAge === null) return 100;
-  const runway = Math.max(0, projection.depletionAge - Math.floor(a.age));
   const horizonYears = Math.max(1, yearsToHorizon(a));
+  if (projection.depletionAge === null) {
+    const endingBalanceYears = projection.realEndingBalance / Math.max(monthlyGap * 12, 1);
+    return clamp((92 + Math.min(8, endingBalanceYears * 2)) * costOfLivingMultiplier(a.state));
+  }
+  const runway = Math.max(0, projection.depletionAge - Math.floor(a.age));
   return clamp((runway / horizonYears) * 90 * costOfLivingMultiplier(a.state));
+}
+
+// Projection-based sustainability: stressed savings, runway to horizon, and no automatic 100 for covered essentials.
+export function withdrawalSustainability(a: Answers): number {
+  if (a.essentialExpenses <= 0) return 100;
+  const stressedSavings = realSavings(a) * 0.85;
+  const gap = Math.max(0, a.essentialExpenses - a.guaranteedIncome);
+  if (gap > 0) return projectionWithdrawalScore(a, gap, stressedSavings);
+
+  const coverage = a.guaranteedIncome / a.essentialExpenses;
+  const surplusScore = clamp(65 + Math.min(15, Math.max(0, coverage - 1) / 0.5 * 15));
+  const savingsYearsOfEssentials = stressedSavings / Math.max(a.essentialExpenses * 12, 1);
+  const savingsScore = clamp(Math.min(20, savingsYearsOfEssentials * 4));
+  return clamp((surplusScore + savingsScore) * costOfLivingMultiplier(a.state));
 }
 
 // Distinct inflation signal: future real purchasing power of COLA and non-COLA income vs today's essentials.

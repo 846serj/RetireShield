@@ -60,10 +60,10 @@ test("inflation and income sub-scores can diverge for high-coverage users", () =
   const fixed = computeScores(fixedPension);
   const cola = computeScores(colaBacked);
 
-  assert.equal(fixed.sub.income, 100, "high guaranteed-income coverage should max income stability");
+  assert.equal(fixed.sub.income, 100, "1.5x guaranteed-income coverage should max income stability");
   assert.ok(fixed.sub.inflation < fixed.sub.income, `fixed-income inflation score should diverge: ${fixed.sub.inflation}`);
   assert.ok(cola.sub.inflation > fixed.sub.inflation, "COLA-backed income should improve inflation resilience without changing income score");
-  assert.equal(cola.sub.income, fixed.sub.income, "income score should remain coverage-only");
+  assert.equal(cola.sub.income, fixed.sub.income, "income score should remain based on current coverage when not married");
 });
 
 test("withdrawal score uses real savings instead of legacy bucket midpoint", () => {
@@ -76,4 +76,31 @@ test("withdrawal score uses real savings instead of legacy bucket midpoint", () 
 
   assert.ok(lowSavings.sub.withdrawal < 15, `low real savings should score low, got ${lowSavings.sub.withdrawal}`);
   assert.ok(highSavings.sub.withdrawal > lowSavings.sub.withdrawal + 50, "higher real savings should drive projection sustainability");
+});
+
+
+test("covering essentials is passing but not perfect for income or withdrawal", () => {
+  const breakEven: Answers = {
+    age: 68, status: "retired", guaranteedIncome: 3000, essentialExpenses: 3000,
+    savings: 0, stockPct: 50, emergencyFund: "3-6", debt: "none", worry: "running_out",
+  };
+  const buffered = computeScores({ ...breakEven, guaranteedIncome: 4500, savings: 500000 });
+  const current = computeScores(breakEven);
+
+  assert.equal(current.sub.income, 65, "100% essential coverage should be a passing floor, not perfection");
+  assert.ok(current.sub.withdrawal < buffered.sub.withdrawal, "withdrawal score should still reflect savings and surplus");
+  assert.ok(buffered.sub.income > current.sub.income, "income score should reward buffer above essentials");
+});
+
+test("married income score reflects survivor-risk exposure", () => {
+  const household: Answers = {
+    age: 68, maritalStatus: "married", status: "retired", guaranteedIncome: 5200, essentialExpenses: 4000,
+    ssaBenefitEstimate: 2600, spouseSsaBenefitEstimate: 1800, pensionAmount: 800, pensionSurvivorPct: 0,
+    savings: 400000, stockPct: 50, emergencyFund: "6+", debt: "none", worry: "running_out",
+  };
+  const exposed = computeScores(household);
+  const singleEquivalent = computeScores({ ...household, maritalStatus: "single" });
+
+  assert.ok(exposed.sub.income < singleEquivalent.sub.income, "survivor case should ding exposed married households");
+  assert.ok(exposed.sub.income < 90, `survivor-risk blend should avoid inflated income scores, got ${exposed.sub.income}`);
 });
