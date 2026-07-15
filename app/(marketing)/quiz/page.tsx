@@ -1,14 +1,35 @@
 "use client";
 
+import Link from "next/link";
 import posthog from "posthog-js";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { QUESTIONS } from "@/lib/questions";
+import { CORE_KEYS, QUESTIONS } from "@/lib/questions";
 import { US_STATES } from "@/lib/usStates";
 import { computeScores, type Answers, type Result } from "@/lib/scoring";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { Button, Eyebrow } from "@/components/ui";
 
 type State = Record<string, string | number | undefined>;
+
+const SAFE_NEUTRAL_DEFAULTS: Partial<Answers> = {
+  emergencyFund: "1-3",
+  debt: "some",
+  worry: "skip",
+  planning_horizon_age: 95,
+};
+
+function withSafeNeutralDefaults(answers: State): Answers {
+  const answered = Object.fromEntries(
+    Object.entries(answers).filter(([, value]) => value !== undefined),
+  );
+
+  return {
+    ...SAFE_NEUTRAL_DEFAULTS,
+    ...answered,
+  } as Answers;
+}
+
+const CORE_ORDER = new Map(CORE_KEYS.map((key, index) => [key, index]));
 
 function captureQuizEvent(
   event: string,
@@ -30,21 +51,39 @@ export default function Quiz() {
   const [subscribeNewsletter, setSubscribeNewsletter] = useState(true);
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [optionalStep, setOptionalStep] = useState(0);
+  const [updatingOptional, setUpdatingOptional] = useState(false);
   const [serverResult, setServerResult] = useState<Result | null>(null);
   const [emailError, setEmailError] = useState("");
   const lastViewedQuestionRef = useRef<string | null>(null);
   const completedCapturedRef = useRef(false);
 
-  const visible = useMemo(
-    () => QUESTIONS.filter((q) => !q.when || q.when(answers)),
+  const visible = useMemo(() => {
+    const active = QUESTIONS.filter((q) => !q.when || q.when(answers));
+    const core = active
+      .filter((q) => q.core)
+      .sort(
+        (a, b) =>
+          (CORE_ORDER.get(a.key) ?? 0) - (CORE_ORDER.get(b.key) ?? 0),
+      );
+    return [...core, ...active.filter((q) => !q.core)];
+  }, [answers]);
+  const coreQuestions = useMemo(() => visible.filter((q) => q.core), [visible]);
+  const optionalQuestions = useMemo(
+    () => visible.filter((q) => !q.core),
+    [visible],
+  );
+  const done =
+    introComplete && CORE_KEYS.every((key) => answers[key] !== undefined);
+  const scoringAnswers = useMemo(
+    () => withSafeNeutralDefaults(answers),
     [answers],
   );
-  const done = introComplete && step >= visible.length;
   const result = useMemo(
-    () => (done ? computeScores(answers as unknown as Answers) : null),
-    [done, answers],
+    () => (done ? computeScores(scoringAnswers) : null),
+    [done, scoringAnswers],
   );
-  const displayResult = serverResult ?? result;
+  const displayResult = result ?? serverResult;
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   useEffect(() => {
@@ -112,7 +151,7 @@ export default function Quiz() {
         body: JSON.stringify({
           email: normalizedEmail,
           firstName: firstName.trim(),
-          answers,
+          answers: scoringAnswers,
           result,
           source: params.get("utm_source") || "direct",
           campaign: params.get("utm_campaign") || "",
@@ -134,7 +173,7 @@ export default function Quiz() {
       try {
         localStorage.setItem(
           "rg_score",
-          JSON.stringify({ answers, result: returnedResult }),
+          JSON.stringify({ answers: scoringAnswers, result: returnedResult }),
         );
       } catch {
         /* ignore */
@@ -147,6 +186,43 @@ export default function Quiz() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function submitOptionalAnswers(nextAnswers: State) {
+    if (!emailIsValid || !firstName.trim()) return;
+
+    const fullerAnswers = withSafeNeutralDefaults(nextAnswers);
+    const fullerResult = computeScores(fullerAnswers);
+    setUpdatingOptional(true);
+    setServerResult(fullerResult);
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const res = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          firstName: firstName.trim(),
+          answers: fullerAnswers,
+          result: fullerResult,
+          source: params.get("utm_source") || "direct",
+          campaign: params.get("utm_campaign") || "",
+          subscribeNewsletter,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (payload?.result) setServerResult(payload.result as Result);
+    } finally {
+      setUpdatingOptional(false);
+    }
+  }
+
+  function answerOptional(key: string, value: string | number | undefined) {
+    const nextAnswers = { ...answers, [key]: value };
+    setAnswers(nextAnswers);
+    setOptionalStep((current) => current + 1);
+    void submitOptionalAnswers(nextAnswers);
   }
 
   // ---- Quiz intro ----
@@ -165,9 +241,9 @@ export default function Quiz() {
                 Let&apos;s see where your retirement stands.
               </h1>
               <p className="mt-5 text-xl font-semibold leading-8 text-slate-700">
-                About 5 minutes. The more you share, the more accurate and
-                personal your Safety Score and action steps. Every answer stays
-                private.
+                Answer 6 quick questions to see your Safety Score, then add
+                optional details only if you want a sharper result. Every answer
+                stays private.
               </p>
             </div>
             <Button
@@ -180,9 +256,21 @@ export default function Quiz() {
             >
               Start — question 1
             </Button>
-            <p className="mt-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600">
-              ⏱ ~5 minutes · 🆓 Always free to see your score
+            <p className="mt-5 text-base font-bold leading-7 text-slate-700">
+              Plus you&apos;ll get the free Retirement Shield newsletter —
+              practical money help every Tuesday & Friday from Ellen Marsh.
             </p>
+            <div className="mt-6 space-y-3">
+              <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600">
+                ⏱ ~2 minutes · 🆓 Always free to see your score
+              </p>
+              <Link
+                href="/newsletter"
+                className="inline-flex text-sm font-bold text-brand underline transition hover:text-brandDark motion-reduce:transition-none"
+              >
+                Just want the free newsletter? Sign up here →
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -199,7 +287,7 @@ export default function Quiz() {
       return <div key={`quiz-step-${step}`} className="rg-page-shell" />;
     }
 
-    const progressPct = Math.round(((step + 1) / visible.length) * 100);
+    const progressPct = Math.round(((step + 1) / coreQuestions.length) * 100);
     return (
       <div key={`quiz-step-${step}`} className="rg-page-shell">
         <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
@@ -207,7 +295,7 @@ export default function Quiz() {
             <Eyebrow>Retirement Safety Score</Eyebrow>
             <div className="mb-3 mt-5 flex items-center justify-between gap-4 text-sm font-bold text-slate-500">
               <span>
-                Question {step + 1} of {visible.length}
+                Question {step + 1} of {coreQuestions.length}
               </span>
               <span>{progressPct}%</span>
             </div>
@@ -403,10 +491,10 @@ export default function Quiz() {
                       Yes — send me the free Retirement Shield newsletter
                     </span>
                     <span className="mt-1 block text-sm leading-6 text-slate-600">
-                      Twice a week (Tuesday and Friday), editor Ellen Marsh
-                      sends the money you may be owed, the scams to dodge, and
-                      the Social Security and Medicare changes that hit your
-                      check. Plain English, always something you can use.
+                      Twice a week (Tuesday & Friday), Ellen Marsh sends the
+                      money you may be owed, the scams to dodge, and the Social
+                      Security and Medicare changes that hit your check. Plain
+                      English, always something you can use.
                     </span>
                   </span>
                 </label>
@@ -442,14 +530,110 @@ export default function Quiz() {
                 retireshield.com.
               </p>
             </div>
+
+            <ScoreGauge
+              value={displayResult!.overall}
+              band={displayResult!.band}
+              subScores={[]}
+              subtitle="Updated score"
+              badge="Optional details"
+            />
+            <div className="rg-card mt-6">
+              <Eyebrow>Want a sharper score?</Eyebrow>
+              <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-ink">
+                Want a sharper score? Answer a few more (optional)
+              </h2>
+              <p className="mt-3 text-lg leading-8 text-slate-700">
+                These details are optional. Answer what you know, or skip any
+                question and keep your core score.
+              </p>
+              {optionalStep < optionalQuestions.length ? (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+                  {(() => {
+                    const q = optionalQuestions[optionalStep];
+                    if (!q) return null;
+                    return (
+                      <>
+                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
+                          Optional question {optionalStep + 1} of{" "}
+                          {optionalQuestions.length}
+                        </p>
+                        <h3 className="mt-3 text-2xl font-bold text-ink">
+                          {q.prompt}
+                        </h3>
+                        {q.help && (
+                          <p className="mt-2 text-base leading-7 text-slate-600">
+                            {q.help}
+                          </p>
+                        )}
+                        {q.kind === "state" ? (
+                          <div className="mt-5">
+                            <select
+                              defaultValue={(answers[q.key] as string) ?? ""}
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  answerOptional(q.key, e.target.value);
+                                }
+                              }}
+                              className="rg-input min-h-16 text-xl"
+                            >
+                              <option value="" disabled>
+                                Select your state…
+                              </option>
+                              {US_STATES.map((state) => (
+                                <option key={state.code} value={state.code}>
+                                  {state.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="mt-5 grid gap-3">
+                            {q.choices.map((choice) => (
+                              <button
+                                key={String(choice.value)}
+                                type="button"
+                                onClick={() =>
+                                  answerOptional(q.key, choice.value)
+                                }
+                                className="min-h-14 rounded-2xl border-2 border-slate-200 bg-white px-5 py-3 text-left text-lg font-bold text-ink shadow-sm transition hover:border-brand hover:bg-band focus-visible:ring-brand/20 motion-reduce:transition-none"
+                              >
+                                {choice.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => answerOptional(q.key, undefined)}
+                          className="mt-5 font-bold text-slate-500 underline transition hover:text-brand motion-reduce:transition-none"
+                        >
+                          Skip this one
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <p className="mt-6 rounded-2xl border border-brand/20 bg-band p-5 text-lg font-bold text-ink">
+                  You&apos;re all set — we&apos;ll keep your latest score on screen.
+                </p>
+              )}
+              {updatingOptional && (
+                <p className="mt-4 text-sm font-bold text-slate-500">
+                  Updating your report with the latest answers…
+                </p>
+              )}
+            </div>
             {subscribeNewsletter && (
               <div className="rg-card-highlight mt-6 text-center">
                 <h2 className="font-serif text-3xl font-semibold leading-tight text-ink sm:text-4xl">
                   You&apos;re in — welcome to Retirement Shield
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-700">
-                  Twice a week — every Tuesday and Friday — you&apos;ll get our
-                  free email from Ellen Marsh: the money you may be owed, the
+                  Twice a week — every Tuesday & Friday — you&apos;ll get our
+                  free email from Ellen Marsh — Retirement Shield: the money you
+                  may be owed, the
                   scams to dodge, and the Social Security and Medicare changes
                   that hit your check. Plain English, always something you can
                   actually use.

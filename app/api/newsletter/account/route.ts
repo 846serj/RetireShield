@@ -17,9 +17,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "invalid email" }, { status: 400 });
   }
 
+  const firstName =
+    typeof body?.firstName === "string" ? body.firstName.trim() : "";
+
   await addBeehiivSubscriber(body.email.trim().toLowerCase(), {
     utmSource: body?.utmSource ?? "direct_signup",
     tier: "free",
+    firstName,
   });
 
   return NextResponse.json({ ok: true });
