@@ -30,7 +30,9 @@ function withSafeNeutralDefaults(answers: State): Answers {
   } as Answers;
 }
 
-const CORE_ORDER = new Map(CORE_KEYS.map((key, index) => [key, index]));
+const CORE_ORDER: ReadonlyMap<string, number> = new Map(
+  CORE_KEYS.map((key, index) => [key, index]),
+);
 
 function captureQuizEvent(
   event: string,
