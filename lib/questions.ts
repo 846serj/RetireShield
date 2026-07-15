@@ -5,6 +5,7 @@ type Conditional = { when?: (answers: AnswerMap) => boolean };
 
 export type Choice = { value: string | number; label: string };
 export type Question = Conditional &
+  { core?: boolean } &
   (
     | {
         key: string;
@@ -112,9 +113,19 @@ const ACCOUNT_BALANCE_CHOICES: Choice[] = [
   { value: 0, label: "Not sure" },
 ];
 
+export const CORE_KEYS = [
+  "age",
+  "maritalStatus",
+  "guaranteedIncome",
+  "essentialExpenses",
+  "savings",
+  "stockPct",
+] as const;
+
 export const QUESTIONS: Question[] = [
   {
     key: "age",
+    core: true,
     kind: "choice",
     prompt: "What's your age?",
     help: "Choose the range that includes your current age; we use the midpoint for scoring.",
@@ -122,6 +133,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "maritalStatus",
+    core: true,
     kind: "choice",
     prompt: "What's your marital status?",
     help: "This helps us ask only the household questions that apply to you.",
@@ -145,6 +157,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "savings",
+    core: true,
     kind: "choice",
     prompt: "Roughly how much do you have in retirement savings?",
     help: "Choose the range that best matches your total retirement savings; we use a representative dollar estimate.",
@@ -152,6 +165,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "guaranteedIncome",
+    core: true,
     kind: "choice",
     prompt:
       "Your guaranteed monthly income (Social Security + pension + annuity)?",
@@ -160,6 +174,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "essentialExpenses",
+    core: true,
     kind: "choice",
     prompt:
       "Your essential monthly expenses (housing, food, utilities, insurance, meds)?",
@@ -281,6 +296,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "stockPct",
+    core: true,
     kind: "choice",
     prompt: "About what share of your savings is in stocks?",
     help: "A best guess is enough. Include stock funds inside retirement accounts if you know them.",

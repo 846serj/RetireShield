@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { LEADGEN_ONLY } from "@/lib/flags";
 import { withPersistentAuthCookie } from "@/lib/supabase/cookies";
 
-const LEADGEN_ALLOWLIST_EXACT_PATHS = new Set(["/quiz", "/privacy", "/terms", "/refund-policy"]);
+const LEADGEN_ALLOWLIST_EXACT_PATHS = new Set(["/quiz", "/newsletter", "/privacy", "/terms", "/refund-policy"]);
 const LEADGEN_ALLOWLIST_PREFIXES = ["/api/lead", "/api/newsletter", "/auth", "/_next", "/favicon", "/robots", "/sitemap", "/manifest"];
 const STATIC_ASSET_PATH = /\.[^/]+$/;
 
