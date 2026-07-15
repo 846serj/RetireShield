@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CORE_KEYS, QUESTIONS } from "@/lib/questions";
 import { US_STATES } from "@/lib/usStates";
 import { computeScores, type Answers, type Result } from "@/lib/scoring";
+import { scoreBandToSlug } from "@/lib/shareBands";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { Button, Eyebrow } from "@/components/ui";
 
@@ -55,6 +56,7 @@ export default function Quiz() {
   const [updatingOptional, setUpdatingOptional] = useState(false);
   const [serverResult, setServerResult] = useState<Result | null>(null);
   const [emailError, setEmailError] = useState("");
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
   const lastViewedQuestionRef = useRef<string | null>(null);
   const completedCapturedRef = useRef(false);
 
@@ -215,6 +217,59 @@ export default function Quiz() {
       if (payload?.result) setServerResult(payload.result as Result);
     } finally {
       setUpdatingOptional(false);
+    }
+  }
+
+
+  function getShareUrl() {
+    if (!displayResult) return "";
+    const bandSlug = scoreBandToSlug(displayResult.band);
+    const url = new URL(`/s/${bandSlug}`, window.location.origin);
+    url.searchParams.set("utm_source", "fb_share");
+    url.searchParams.set("utm_medium", "score_share");
+    url.searchParams.set("utm_campaign", "quiz");
+    return url.toString();
+  }
+
+  async function shareResult() {
+    if (!displayResult) return;
+    const shareUrl = getShareUrl();
+    const band = displayResult.band;
+    if (navigator.share) {
+      captureQuizEvent("score_share_clicked", { band, method: "web_share" });
+      try {
+        await navigator.share({
+          title: "My Retirement Safety Score",
+          text: "I checked how solid my retirement really is.",
+          url: shareUrl,
+        });
+      } catch {
+        /* User canceled or sharing was unavailable. */
+      }
+      return;
+    }
+
+    captureQuizEvent("score_share_clicked", { band, method: "facebook" });
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+      "fb-share",
+      "width=600,height=500,noopener,noreferrer",
+    );
+  }
+
+  async function copyShareLink() {
+    if (!displayResult) return;
+    const shareUrl = getShareUrl();
+    captureQuizEvent("score_share_clicked", {
+      band: displayResult.band,
+      method: "copy",
+    });
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedShareLink(true);
+      window.setTimeout(() => setCopiedShareLink(false), 2000);
+    } catch {
+      setCopiedShareLink(false);
     }
   }
 
@@ -525,10 +580,25 @@ export default function Quiz() {
                 minutes — peek in Promotions or Spam just in case, and drag it
                 to your main inbox so future emails land there too.
               </p>
-              <p className="mx-auto mt-4 max-w-2xl text-lg font-bold leading-7 text-ink">
-                Know someone who should check theirs? Send them
-                retireshield.com.
+            </div>
+
+            <div className="rg-card-highlight mt-6 text-center">
+              <Eyebrow>Share your result</Eyebrow>
+              <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-ink">
+                Know someone who should check theirs?
+              </h2>
+              <p className="mx-auto mt-3 max-w-2xl text-lg leading-8 text-slate-700">
+                Share your result — they&apos;ll get their own free score. Your
+                private numbers, name, email, and exact score are not included.
               </p>
+              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                <Button type="button" onClick={shareResult}>
+                  Share on Facebook
+                </Button>
+                <Button type="button" variant="secondary" onClick={copyShareLink}>
+                  {copiedShareLink ? "Copied!" : "Copy link"}
+                </Button>
+              </div>
             </div>
 
             <ScoreGauge

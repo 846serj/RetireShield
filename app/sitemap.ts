@@ -2,7 +2,9 @@ import type { MetadataRoute } from "next";
 import { getPublicBaseUrl } from "@/lib/siteUrl";
 import { resourceArticles } from "@/content/resources";
 
-const leadgenOnlyRoutes = ["", "/quiz", "/privacy", "/terms", "/refund-policy"];
+const shareRoutes = ["/s/secure", "/s/mostly-secure", "/s/at-risk", "/s/vulnerable"];
+
+const leadgenOnlyRoutes = ["", "/quiz", "/privacy", "/terms", "/refund-policy", ...shareRoutes];
 
 const staticRoutes = [
   "",
@@ -20,6 +22,7 @@ const staticRoutes = [
   "/privacy",
   "/terms",
   "/refund-policy",
+  ...shareRoutes,
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
