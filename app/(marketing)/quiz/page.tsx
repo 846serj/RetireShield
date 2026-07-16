@@ -3,125 +3,125 @@
 import Link from "next/link";
 import posthog from "posthog-js";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CORE_KEYS, QUESTIONS } from "@/lib/questions";
+import { QUESTIONS, QUESTION_SECTIONS } from "@/lib/questions";
 import { US_STATES } from "@/lib/usStates";
-import { computeScores, type Answers, type Result } from "@/lib/scoring";
+import { ACTION_LIB, computeScores, type Answers, type Result, type SubScores } from "@/lib/scoring";
 import { scoreBandToSlug } from "@/lib/shareBands";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { Button, Eyebrow } from "@/components/ui";
 
 type State = Record<string, string | number | undefined>;
+type EmailMode = "inline" | "modal";
+type WeakArea = { key: keyof SubScores; name: string; score: number; action: string };
 
-const SAFE_NEUTRAL_DEFAULTS: Partial<Answers> = {
-  emergencyFund: "1-3",
-  debt: "some",
-  worry: "skip",
-  planning_horizon_age: 95,
+const BASELINE_KEYS = ["age", "maritalStatus", "guaranteedIncome", "essentialExpenses"] as const;
+const AREA_NAMES: Record<keyof SubScores, string> = {
+  income: "Guaranteed income vs. your monthly bills",
+  withdrawal: "Making your savings last",
+  inflation: "Keeping up with rising costs",
+  market: "Your investment risk and cash cushion",
 };
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+function answeredValue(value: string | number | undefined) {
+  return value !== undefined && value !== "";
+}
+
 function withSafeNeutralDefaults(answers: State): Answers {
-  const answered = Object.fromEntries(
-    Object.entries(answers).filter(([, value]) => value !== undefined),
-  );
+  const age = Number(answers.age ?? 67);
+  const answered = Object.fromEntries(Object.entries(answers).filter(([, value]) => answeredValue(value)));
 
   return {
-    ...SAFE_NEUTRAL_DEFAULTS,
+    status: "retired",
+    savings: 100000,
+    stockPct: clamp(110 - age, 20, 90) as Answers["stockPct"],
+    emergencyFund: "1-3",
+    debt: "some",
+    worry: "skip",
+    planning_horizon_age: 95,
     ...answered,
   } as Answers;
 }
 
-const CORE_ORDER: ReadonlyMap<string, number> = new Map(
-  CORE_KEYS.map((key, index) => [key, index]),
-);
-
-function captureQuizEvent(
-  event: string,
-  properties?: Record<string, string | number | boolean>,
-) {
+function captureQuizEvent(event: string, properties?: Record<string, string | number | boolean>) {
   if (!posthog.__loaded) return;
   posthog.capture(event, properties);
+}
+
+function weakestAreas(result: Result | null): WeakArea[] {
+  if (!result) return [];
+  return (Object.entries(result.sub) as [keyof SubScores, number][]) 
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 2)
+    .map(([key, score]) => ({ key, score, name: AREA_NAMES[key], action: ACTION_LIB[key] }));
+}
+
+function PersonalizedGapSummary({ result }: { result: Result | null }) {
+  const areas = weakestAreas(result);
+  if (!areas.length) return null;
+  const [weakest, second] = areas;
+  return (
+    <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
+      <p className="text-base font-bold leading-7 text-ink">
+        Your biggest gap: {weakest.name} — {weakest.score}/100.
+      </p>
+      <p className="mt-2 text-sm leading-6 text-slate-700">{weakest.action}</p>
+      {second && (
+        <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
+          Also worth a look: {second.name} ({second.score}/100).
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function Quiz() {
   const [step, setStep] = useState(0);
   const [introComplete, setIntroComplete] = useState(false);
   const [answers, setAnswers] = useState<State>({});
-  const [selectedChoice, setSelectedChoice] = useState<string | number | null>(
-    null,
-  );
+  const [selectedChoice, setSelectedChoice] = useState<string | number | null>(null);
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [subscribeNewsletter, setSubscribeNewsletter] = useState(true);
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [optionalStep, setOptionalStep] = useState(0);
-  const [updatingOptional, setUpdatingOptional] = useState(false);
   const [serverResult, setServerResult] = useState<Result | null>(null);
   const [emailError, setEmailError] = useState("");
   const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const [emailMode, setEmailMode] = useState<EmailMode>("inline");
   const lastViewedQuestionRef = useRef<string | null>(null);
   const completedCapturedRef = useRef(false);
 
-  const visible = useMemo(() => {
-    const active = QUESTIONS.filter((q) => !q.when || q.when(answers));
-    const core = active
-      .filter((q) => q.core)
-      .sort(
-        (a, b) =>
-          (CORE_ORDER.get(a.key) ?? 0) - (CORE_ORDER.get(b.key) ?? 0),
-      );
-    return [...core, ...active.filter((q) => !q.core)];
-  }, [answers]);
-  const coreQuestions = useMemo(() => visible.filter((q) => q.core), [visible]);
-  const optionalQuestions = useMemo(
-    () => visible.filter((q) => !q.core),
-    [visible],
-  );
-  const done =
-    introComplete && CORE_KEYS.every((key) => answers[key] !== undefined);
-  const scoringAnswers = useMemo(
-    () => withSafeNeutralDefaults(answers),
-    [answers],
-  );
-  const result = useMemo(
-    () => (done ? computeScores(scoringAnswers) : null),
-    [done, scoringAnswers],
-  );
+  const visible = useMemo(() => QUESTIONS.filter((q) => !q.when || q.when(answers)), [answers]);
+  const totalApplicable = visible.length;
+  const answeredCount = useMemo(() => visible.filter((q) => answeredValue(answers[q.key])).length, [answers, visible]);
+  const baselineMet = introComplete && BASELINE_KEYS.every((key) => answeredValue(answers[key]));
+  const scoringAnswers = useMemo(() => withSafeNeutralDefaults(answers), [answers]);
+  const result = useMemo(() => (baselineMet ? computeScores(scoringAnswers) : null), [baselineMet, scoringAnswers]);
   const displayResult = result ?? serverResult;
+  const weakAreas = weakestAreas(displayResult);
+  const weakestAreaName = weakAreas[0]?.name ?? "your retirement plan";
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const finished = introComplete && step >= totalApplicable;
+  const currentQuestion = visible[Math.min(step, Math.max(totalApplicable - 1, 0))];
+  const currentSectionIndex = currentQuestion ? QUESTION_SECTIONS.findIndex((section) => (section.keys as readonly string[]).includes(currentQuestion.key)) : 0;
+  const currentSection = QUESTION_SECTIONS[Math.max(0, currentSectionIndex)] ?? QUESTION_SECTIONS[0];
+  const progressPct = totalApplicable ? Math.round((Math.min(step, totalApplicable) / totalApplicable) * 100) : 0;
 
   useEffect(() => {
-    if (!introComplete || done) return;
-    const question = visible[step];
-    if (!question) return;
-
-    const questionKind = (question as { kind: string }).kind;
-    if (questionKind !== "choice" && questionKind !== "state") {
-      trackStepAnswered(step, question.key);
-      goToStep(step + 1);
-    }
-  }, [done, introComplete, step, visible]);
-
-  useEffect(() => {
-    if (!introComplete || done) return;
-    const question = visible[step];
-    if (!question) return;
-
-    const viewedKey = `${step}:${question.key}`;
+    if (!introComplete || finished || !currentQuestion) return;
+    const viewedKey = `${step}:${currentQuestion.key}`;
     if (lastViewedQuestionRef.current === viewedKey) return;
-
     lastViewedQuestionRef.current = viewedKey;
-    captureQuizEvent("quiz_step_viewed", { index: step, key: question.key });
-  }, [done, introComplete, step, visible]);
+    captureQuizEvent("quiz_step_viewed", { index: step, key: currentQuestion.key });
+  }, [currentQuestion, finished, introComplete, step]);
 
   useEffect(() => {
-    if (!done || !displayResult || completedCapturedRef.current) return;
+    if (!finished || !displayResult || completedCapturedRef.current) return;
     completedCapturedRef.current = true;
-    captureQuizEvent("quiz_completed", {
-      overall: displayResult.overall,
-      band: displayResult.band,
-    });
-  }, [displayResult, done]);
+    captureQuizEvent("quiz_completed", { overall: displayResult.overall, band: displayResult.band });
+  }, [displayResult, finished]);
 
   function trackStepAnswered(index: number, key: string) {
     captureQuizEvent("quiz_step_answered", { index, key });
@@ -133,7 +133,7 @@ export default function Quiz() {
 
   function goToStep(nextStep: number) {
     setSelectedChoice(null);
-    setStep(nextStep);
+    setStep(Math.max(0, Math.min(nextStep, totalApplicable)));
   }
 
   function selectChoice(key: string, value: string | number) {
@@ -143,8 +143,16 @@ export default function Quiz() {
     window.setTimeout(() => goToStep(step + 1), 180);
   }
 
+  function openEmailCapture(mode: EmailMode = "modal") {
+    if (!displayResult) return;
+    setEmailMode(mode);
+    setRevealed(false);
+  }
+
   async function submitEmail() {
+    if (!displayResult) return;
     const normalizedEmail = email.trim();
+    const isEarlyExit = !finished;
     setSubmitting(true);
     setEmailError("");
     try {
@@ -156,33 +164,27 @@ export default function Quiz() {
           email: normalizedEmail,
           firstName: firstName.trim(),
           answers: scoringAnswers,
-          result,
+          result: displayResult,
           source: params.get("utm_source") || "direct",
           campaign: params.get("utm_campaign") || "",
           subscribeNewsletter,
+          answeredCount,
+          totalApplicable,
+          isComplete: finished,
         }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload.ok) {
-        setEmailError(
-          "We could not save your email. Please check it and try again.",
-        );
+        setEmailError("We could not save your email. Please check it and try again.");
         return;
       }
-      const returnedResult = payload.result
-        ? (payload.result as Result)
-        : result;
+      const returnedResult = payload.result ? (payload.result as Result) : displayResult;
       if (returnedResult) setServerResult(returnedResult);
-      // Cache so ScoreHydrator can restore this score after sign-up elsewhere.
       try {
-        localStorage.setItem(
-          "rg_score",
-          JSON.stringify({ answers: scoringAnswers, result: returnedResult }),
-        );
-      } catch {
-        /* ignore */
-      }
+        localStorage.setItem("rg_score", JSON.stringify({ answers: scoringAnswers, result: returnedResult }));
+      } catch {}
       captureQuizEvent("quiz_email_submitted", { subscribeNewsletter });
+      if (isEarlyExit) captureQuizEvent("quiz_email_exit", { answeredCount });
       captureQuizEvent("report_generated");
       setRevealed(true);
     } catch {
@@ -191,37 +193,6 @@ export default function Quiz() {
       setSubmitting(false);
     }
   }
-
-  async function submitOptionalAnswers(nextAnswers: State) {
-    if (!emailIsValid || !firstName.trim()) return;
-
-    const fullerAnswers = withSafeNeutralDefaults(nextAnswers);
-    const fullerResult = computeScores(fullerAnswers);
-    setUpdatingOptional(true);
-    setServerResult(fullerResult);
-
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const res = await fetch("/api/lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          firstName: firstName.trim(),
-          answers: fullerAnswers,
-          result: fullerResult,
-          source: params.get("utm_source") || "direct",
-          campaign: params.get("utm_campaign") || "",
-          subscribeNewsletter,
-        }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (payload?.result) setServerResult(payload.result as Result);
-    } finally {
-      setUpdatingOptional(false);
-    }
-  }
-
 
   function getShareUrl() {
     if (!displayResult) return "";
@@ -240,32 +211,18 @@ export default function Quiz() {
     if (navigator.share) {
       captureQuizEvent("score_share_clicked", { band, method: "web_share" });
       try {
-        await navigator.share({
-          title: "My Retirement Safety Score",
-          text: "I checked how solid my retirement really is.",
-          url: shareUrl,
-        });
-      } catch {
-        /* User canceled or sharing was unavailable. */
-      }
+        await navigator.share({ title: "My Retirement Safety Score", text: "I checked how solid my retirement really is.", url: shareUrl });
+      } catch {}
       return;
     }
-
     captureQuizEvent("score_share_clicked", { band, method: "facebook" });
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-      "fb-share",
-      "width=600,height=500,noopener,noreferrer",
-    );
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "fb-share", "width=600,height=500,noopener,noreferrer");
   }
 
   async function copyShareLink() {
     if (!displayResult) return;
     const shareUrl = getShareUrl();
-    captureQuizEvent("score_share_clicked", {
-      band: displayResult.band,
-      method: "copy",
-    });
+    captureQuizEvent("score_share_clicked", { band: displayResult.band, method: "copy" });
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopiedShareLink(true);
@@ -275,461 +232,133 @@ export default function Quiz() {
     }
   }
 
-  function answerOptional(key: string, value: string | number | undefined) {
-    const nextAnswers = { ...answers, [key]: value };
-    setAnswers(nextAnswers);
-    setOptionalStep((current) => current + 1);
-    void submitOptionalAnswers(nextAnswers);
-  }
+  const EmailCapture = (
+    <div className="rg-card-highlight mt-6 text-center">
+      <h2 className="text-2xl font-bold">Email me my score + full details</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-slate-700">
+        Your score found gaps in {weakestAreaName}. The free Retirement Shield newsletter is how you close them — every Tuesday and Friday, Ellen Marsh walks you through practical steps to strengthen exactly these areas. Enter your email to get your full action plan and start raising your score.
+      </p>
+      <PersonalizedGapSummary result={displayResult} />
+      {submitting ? (
+        <div className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl border border-brand/20 bg-white p-5 text-left shadow-sm">
+          <span className="size-5 animate-spin rounded-full border-2 border-brand/30 border-t-brand" aria-hidden="true" />
+          <p className="text-lg font-bold text-ink">Building your personalized report. This usually takes just a few seconds.</p>
+        </div>
+      ) : (
+        <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" autoComplete="given-name" className="rg-input" />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" autoComplete="email" className="rg-input" aria-describedby={emailError ? "results-email-error" : undefined} />
+          <Button disabled={!firstName.trim() || !emailIsValid || submitting} onClick={submitEmail} className="disabled:opacity-50">Send my plan</Button>
+        </div>
+      )}
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-band p-4 text-left">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input type="checkbox" checked={subscribeNewsletter} onChange={(e) => setSubscribeNewsletter(e.target.checked)} className="mt-1 size-5 shrink-0 accent-brand" />
+          <span>
+            <span className="block text-base font-bold text-ink">Yes — send me the free Retirement Shield newsletter</span>
+            <span className="mt-1 block text-sm leading-6 text-slate-600">Every Tuesday and Friday, Ellen Marsh sends practical, plain-English steps to strengthen the weak areas your score found.</span>
+          </span>
+        </label>
+      </div>
+      {emailError && <p id="results-email-error" className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-bad">{emailError}</p>}
+      <p className="mt-3 text-xs text-slate-500">We email your report either way. We never sell your email — unsubscribe anytime.</p>
+    </div>
+  );
 
-  // ---- Quiz intro ----
   if (!introComplete) {
     return (
       <div className="rg-page-shell">
         <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center px-4 py-6 sm:py-10">
           <section className="w-full overflow-hidden rounded-[2rem] bg-brand-dark px-5 py-8 text-center text-white shadow-2xl shadow-brand-dark/20 sm:px-10 sm:py-12">
-            <Eyebrow className="text-[#8FB3D9]">
-              FOR ANYONE THINKING ABOUT RETIREMENT
-            </Eyebrow>
-
-            <h1 className="mx-auto mt-6 max-w-2xl font-serif text-[2.75rem] font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">
-              Take the{" "}
-              <span className="text-[#7BD3A8]">2-Minute Quiz</span> and See{" "}
-              <span className="text-[#7BD3A8]">How Solid</span> Your Retirement Really Is.
-            </h1>
-
-            <p className="mx-auto mt-6 max-w-xl text-center text-lg font-semibold leading-8 text-white/90 sm:text-xl">
-              <span
-                className="mr-2 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#2E9E6A] align-middle"
-                aria-hidden="true"
-              >
-                <svg viewBox="0 0 20 20" className="size-3" fill="none">
-                  <path d="M5 10.5l3.5 3.5L15 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-              Real numbers, no sales pitch — just a clear picture of where you stand.
-            </p>
-
-            <Button
-              type="button"
-              onClick={() => {
-                captureQuizEvent("quiz_started");
-                setIntroComplete(true);
-              }}
-              style={{ backgroundColor: "#2E9E6A", borderColor: "#2E9E6A" }}
-              className="mx-auto mt-8 min-h-16 w-full px-6 py-4 text-white shadow-[0_18px_45px_rgba(46,158,106,0.4)] hover:!bg-[#278a5c] hover:!border-[#278a5c] sm:max-w-md"
-            >
-              <span className="flex flex-col items-center gap-1">
-                <span className="text-xl font-extrabold tracking-[0.02em] sm:text-2xl">
-                  GET MY FREE SCORE →
-                </span>
-                <span className="text-sm font-bold text-white/85 sm:text-base">
-                  6 quick questions · free · no account needed
-                </span>
-              </span>
-            </Button>
-
-            <div className="mx-auto mt-5 max-w-2xl space-y-2 text-sm font-semibold leading-6 text-[#9FBBDA] sm:text-base">
-              <p>
-                Your answers stay private. Based on Social Security, Medicare,
-                and IRS figures. Free — no payment, ever.
-              </p>
-              {process.env.NEXT_PUBLIC_SOCIAL_PROOF ? (
-                <p>{process.env.NEXT_PUBLIC_SOCIAL_PROOF}</p>
-              ) : null}
-            </div>
+            <Eyebrow className="text-[#8FB3D9]">FOR ANYONE THINKING ABOUT RETIREMENT</Eyebrow>
+            <h1 className="mx-auto mt-6 max-w-2xl font-serif text-[2.75rem] font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">Take the <span className="text-[#7BD3A8]">Retirement Quiz</span> and See <span className="text-[#7BD3A8]">How Solid</span> Your Plan Really Is.</h1>
+            <p className="mx-auto mt-6 max-w-xl text-center text-lg font-semibold leading-8 text-white/90 sm:text-xl">Education-only, no brokerage linking, no sales pitch — just a clear picture that sharpens as you answer.</p>
+            <Button type="button" onClick={() => { captureQuizEvent("quiz_started"); setIntroComplete(true); }} style={{ backgroundColor: "#2E9E6A", borderColor: "#2E9E6A" }} className="mx-auto mt-8 min-h-16 w-full px-6 py-4 text-white shadow-[0_18px_45px_rgba(46,158,106,0.4)] hover:!bg-[#278a5c] hover:!border-[#278a5c] sm:max-w-md">Start my score</Button>
           </section>
         </div>
       </div>
     );
   }
 
-  // ---- Quiz steps ----
-  if (!done) {
-    const q = visible[step];
-    if (!q) return null;
-
-    const qKind = (q as { kind: string }).kind;
-    if (qKind !== "choice" && qKind !== "state") {
-      return <div key={`quiz-step-${step}`} className="rg-page-shell" />;
-    }
-
-    const progressPct = Math.round(((step + 1) / coreQuestions.length) * 100);
+  if (revealed) {
     return (
-      <div key={`quiz-step-${step}`} className="rg-page-shell">
-        <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
-          <div className="rg-card">
-            <Eyebrow>Retirement Safety Score</Eyebrow>
-            <div className="mb-3 mt-5 flex items-center justify-between gap-4 text-sm font-bold text-slate-500">
-              <span>
-                Question {step + 1} of {coreQuestions.length}
-              </span>
-              <span>{progressPct}%</span>
-            </div>
-            <div
-              className="mb-8 h-5 w-full overflow-hidden rounded-full bg-slate-200"
-              role="progressbar"
-              aria-label="Quiz progress"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={progressPct}
-            >
-              <div
-                className="h-full rounded-full bg-brand transition-all duration-500 ease-out motion-reduce:transition-none"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            <h1 className="font-serif text-[1.625rem] font-semibold leading-tight text-ink sm:text-3xl">
-              {q.prompt}
-            </h1>
-            {q.help && (
-              <p className="mb-8 mt-3 text-lg leading-7 text-slate-600">
-                {q.help}
-              </p>
-            )}
-
-            {q.kind === "state" && (
-              <div>
-                <label
-                  htmlFor={`quiz-${q.key}`}
-                  className="mb-2 block text-base font-bold text-ink"
-                >
-                  Select your state
-                </label>
-                <select
-                  id={`quiz-${q.key}`}
-                  defaultValue={(answers[q.key] as string) ?? ""}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setAnswer(q.key, e.target.value);
-                      trackStepAnswered(step, q.key);
-                      window.setTimeout(() => goToStep(step + 1), 120);
-                    }
-                  }}
-                  className="rg-input min-h-16 text-xl"
-                >
-                  <option value="" disabled>
-                    Select your state…
-                  </option>
-                  {US_STATES.map((s) => (
-                    <option key={s.code} value={s.code}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAnswer(q.key, undefined);
-                    trackStepAnswered(step, q.key);
-                    goToStep(step + 1);
-                  }}
-                  className="mt-4 min-h-14 w-full rounded-xl border-2 border-slate-200 bg-white px-6 py-3 text-lg font-bold text-slate-600 transition hover:border-brand hover:bg-band sm:w-auto motion-reduce:transition-none"
-                >
-                  Skip for now
-                </button>
-              </div>
-            )}
-
-            {q.kind === "choice" && (
-              <div className="grid gap-3">
-                {q.choices.map((c) => {
-                  const currentValue = answers[q.key] ?? q.defaultValue;
-                  const isSelected =
-                    selectedChoice === c.value || currentValue === c.value;
-                  return (
-                    <button
-                      key={String(c.value)}
-                      onClick={() => selectChoice(q.key, c.value)}
-                      aria-pressed={isSelected}
-                      className={`min-h-16 rounded-2xl border-2 px-5 py-4 text-left text-xl font-bold text-ink shadow-sm transition hover:border-brand hover:bg-band focus-visible:ring-brand/20 motion-reduce:transition-none ${
-                        isSelected
-                          ? "border-brand bg-band shadow-brand/10"
-                          : "border-slate-200 bg-white"
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            <button
-              onClick={() =>
-                step > 0 ? goToStep(step - 1) : setIntroComplete(false)
-              }
-              className="mt-8 font-bold text-slate-500 underline transition hover:text-brand motion-reduce:transition-none"
-            >
-              ← Back
-            </button>
+      <div className="rg-page-shell"><div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
+        <div className="rg-card mt-8 text-center">
+          <h2 className="text-2xl font-bold text-ink">Your action plan is on its way.</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-lg leading-8 text-slate-700">Watch for Retirement Shield from Ellen Marsh every Tuesday and Friday — it&apos;s your step-by-step plan to raise this score.</p>
+          {!finished && <p className="mx-auto mt-3 max-w-2xl text-base font-semibold leading-7 text-slate-600">You can keep answering to sharpen your score anytime.</p>}
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+            {!finished && <Button type="button" onClick={() => setRevealed(false)}>Keep answering</Button>}
+            <Button type="button" variant="secondary" onClick={shareResult}>Share on Facebook</Button>
+            <Button type="button" variant="secondary" onClick={copyShareLink}>{copiedShareLink ? "Copied!" : "Copy link"}</Button>
           </div>
         </div>
-      </div>
+      </div></div>
     );
   }
 
-  // ---- Result ----
   return (
     <div className="rg-page-shell">
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
-        {!revealed ? (
-          <>
-            <ScoreGauge
-              value={displayResult!.overall}
-              band={displayResult!.band}
-              subScores={[]}
-              subtitle="Your result"
-              badge="Visible now"
-            />
-            <div className="rg-card-highlight mt-8 text-center">
-              <h2 className="text-2xl font-bold">
-                See exactly what&apos;s behind your score — and your 3 next
-                steps.
-              </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-slate-600">
-                Enter your name and email to unlock your four sub-scores and 3
-                next steps, get your full report by email, and join the free
-                Retirement Shield newsletter.
-              </p>
-              {submitting ? (
-                <div className="mt-5 flex w-full items-center justify-center gap-3 rounded-2xl border border-brand/20 bg-white p-5 text-left shadow-sm">
-                  <span
-                    className="size-5 animate-spin rounded-full border-2 border-brand/30 border-t-brand"
-                    aria-hidden="true"
-                  />
-                  <p className="text-lg font-bold text-ink">
-                    Building your personalized report… This usually takes just a
-                    few seconds.
-                  </p>
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <main>
+          {finished ? (
+            <div className="rg-card">
+              <Eyebrow>Quiz complete</Eyebrow>
+              <h1 className="mt-3 font-serif text-3xl font-semibold leading-tight text-ink">Your score is ready, and your answers made it sharper.</h1>
+              <p className="mt-3 text-lg leading-8 text-slate-700">Email yourself the full action plan now, or share the score privately without exposing your personal answers.</p>
+              <PersonalizedGapSummary result={displayResult} />
+              {emailMode === "inline" && EmailCapture}
+            </div>
+          ) : currentQuestion ? (
+            <div className="rg-card">
+              <Eyebrow>Retirement Safety Score</Eyebrow>
+              <div className="mb-3 mt-5 flex items-center justify-between gap-4 text-sm font-bold text-slate-500"><span>Section {currentSectionIndex + 1} of {QUESTION_SECTIONS.length}: {currentSection.label}</span><span>{progressPct}%</span></div>
+              <div className="mb-4 h-4 w-full overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-label="Quiz progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPct}><div className="h-full rounded-full bg-brand transition-all duration-500 ease-out motion-reduce:transition-none" style={{ width: `${progressPct}%` }} /></div>
+              <p className="mb-6 text-sm font-semibold text-slate-600">{currentSection.lead}</p>
+              <h1 className="font-serif text-[1.625rem] font-semibold leading-tight text-ink sm:text-3xl">{currentQuestion.prompt}</h1>
+              {currentQuestion.help && <p className="mb-8 mt-3 text-lg leading-7 text-slate-600">{currentQuestion.help}</p>}
+              {currentQuestion.kind === "state" ? (
+                <div>
+                  <label htmlFor={`quiz-${currentQuestion.key}`} className="mb-2 block text-base font-bold text-ink">Select your state</label>
+                  <select id={`quiz-${currentQuestion.key}`} value={(answers[currentQuestion.key] as string) ?? ""} onChange={(e) => { if (e.target.value) { setAnswer(currentQuestion.key, e.target.value); trackStepAnswered(step, currentQuestion.key); window.setTimeout(() => goToStep(step + 1), 120); } }} className="rg-input min-h-16 text-xl">
+                    <option value="" disabled>Select your state…</option>
+                    {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+                  </select>
+                  <button type="button" onClick={() => { setAnswer(currentQuestion.key, undefined); trackStepAnswered(step, currentQuestion.key); goToStep(step + 1); }} className="mt-4 min-h-14 w-full rounded-xl border-2 border-slate-200 bg-white px-6 py-3 text-lg font-bold text-slate-600 transition hover:border-brand hover:bg-band sm:w-auto motion-reduce:transition-none">Skip for now</button>
                 </div>
               ) : (
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                  <div className="flex-1 text-left">
-                    <label htmlFor="results-first-name" className="sr-only">
-                      First name for unlocking full results
-                    </label>
-                    <input
-                      id="results-first-name"
-                      type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="First name"
-                      autoComplete="given-name"
-                      className="rg-input"
-                    />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <label htmlFor="results-email" className="sr-only">
-                      Email address for unlocking full results
-                    </label>
-                    <input
-                      id="results-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@email.com"
-                      autoComplete="email"
-                      className="rg-input"
-                      aria-describedby={
-                        emailError ? "results-email-error" : undefined
-                      }
-                    />
-                  </div>
-                  <Button
-                    disabled={!firstName.trim() || !emailIsValid || submitting}
-                    onClick={submitEmail}
-                    className="disabled:opacity-50"
-                  >
-                    Show my full results
-                  </Button>
+                <div className="grid gap-3">
+                  {currentQuestion.choices.map((choice) => {
+                    const currentValue = answers[currentQuestion.key] ?? currentQuestion.defaultValue;
+                    const isSelected = selectedChoice === choice.value || currentValue === choice.value;
+                    return <button key={String(choice.value)} type="button" onClick={() => selectChoice(currentQuestion.key, choice.value)} aria-pressed={isSelected} className={`min-h-16 rounded-2xl border-2 px-5 py-4 text-left text-xl font-bold text-ink shadow-sm transition hover:border-brand hover:bg-band focus-visible:ring-brand/20 motion-reduce:transition-none ${isSelected ? "border-brand bg-band shadow-brand/10" : "border-slate-200 bg-white"}`}>{choice.label}</button>;
+                  })}
                 </div>
               )}
-              <div className="mt-6 rounded-2xl border border-slate-200 bg-band p-4 text-left">
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={subscribeNewsletter}
-                    onChange={(e) => setSubscribeNewsletter(e.target.checked)}
-                    className="mt-1 size-5 shrink-0 accent-brand"
-                  />
-                  <span>
-                    <span className="block text-base font-bold text-ink">
-                      Yes — send me the free Retirement Shield newsletter
-                    </span>
-                    <span className="mt-1 block text-sm leading-6 text-slate-600">
-                      Twice a week (Tuesday & Friday), Ellen Marsh sends the
-                      money you may be owed, the scams to dodge, and the Social
-                      Security and Medicare changes that hit your check. Plain
-                      English, always something you can use.
-                    </span>
-                  </span>
-                </label>
-              </div>
-              {emailError && (
-                <p
-                  id="results-email-error"
-                  className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-bad"
-                >
-                  {emailError}
-                </p>
-              )}
-              <p className="mt-3 text-xs text-slate-500">
-                We email your report either way. We never sell your email —
-                unsubscribe anytime.
-              </p>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="rg-card mt-8 text-center">
-              <h2 className="text-2xl font-bold text-ink">
-                Your report is on its way
-              </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-lg leading-8 text-slate-700">
-                We just emailed your personalized Retirement Safety Score and
-                action plan to {email.trim()}. Check your inbox in the next few
-                minutes — peek in Promotions or Spam just in case, and drag it
-                to your main inbox so future emails land there too.
-              </p>
-            </div>
-
-            <div className="rg-card-highlight mt-6 text-center">
-              <Eyebrow>Share your result</Eyebrow>
-              <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-ink">
-                Know someone who should check theirs?
-              </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-lg leading-8 text-slate-700">
-                Share your result — they&apos;ll get their own free score. Your
-                private numbers, name, email, and exact score are not included.
-              </p>
-              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-                <Button type="button" onClick={shareResult}>
-                  Share on Facebook
-                </Button>
-                <Button type="button" variant="secondary" onClick={copyShareLink}>
-                  {copiedShareLink ? "Copied!" : "Copy link"}
-                </Button>
+              <div className="mt-8 flex items-center justify-between gap-3">
+                <button type="button" onClick={() => (step > 0 ? goToStep(step - 1) : setIntroComplete(false))} className="font-bold text-slate-500 underline transition hover:text-brand motion-reduce:transition-none">Back</button>
+                <button type="button" onClick={() => goToStep(step + 1)} className="font-bold text-slate-500 underline transition hover:text-brand motion-reduce:transition-none">Skip</button>
               </div>
             </div>
-
-            <ScoreGauge
-              value={displayResult!.overall}
-              band={displayResult!.band}
-              subScores={[]}
-              subtitle="Updated score"
-              badge="Optional details"
-            />
-            <div className="rg-card mt-6">
-              <Eyebrow>Want a sharper score?</Eyebrow>
-              <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-ink">
-                Want a sharper score? Answer a few more (optional)
-              </h2>
-              <p className="mt-3 text-lg leading-8 text-slate-700">
-                These details are optional. Answer what you know, or skip any
-                question and keep your core score.
-              </p>
-              {optionalStep < optionalQuestions.length ? (
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-                  {(() => {
-                    const q = optionalQuestions[optionalStep];
-                    if (!q) return null;
-                    return (
-                      <>
-                        <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
-                          Optional question {optionalStep + 1} of{" "}
-                          {optionalQuestions.length}
-                        </p>
-                        <h3 className="mt-3 text-2xl font-bold text-ink">
-                          {q.prompt}
-                        </h3>
-                        {q.help && (
-                          <p className="mt-2 text-base leading-7 text-slate-600">
-                            {q.help}
-                          </p>
-                        )}
-                        {q.kind === "state" ? (
-                          <div className="mt-5">
-                            <select
-                              defaultValue={(answers[q.key] as string) ?? ""}
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  answerOptional(q.key, e.target.value);
-                                }
-                              }}
-                              className="rg-input min-h-16 text-xl"
-                            >
-                              <option value="" disabled>
-                                Select your state…
-                              </option>
-                              {US_STATES.map((state) => (
-                                <option key={state.code} value={state.code}>
-                                  {state.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        ) : (
-                          <div className="mt-5 grid gap-3">
-                            {q.choices.map((choice) => (
-                              <button
-                                key={String(choice.value)}
-                                type="button"
-                                onClick={() =>
-                                  answerOptional(q.key, choice.value)
-                                }
-                                className="min-h-14 rounded-2xl border-2 border-slate-200 bg-white px-5 py-3 text-left text-lg font-bold text-ink shadow-sm transition hover:border-brand hover:bg-band focus-visible:ring-brand/20 motion-reduce:transition-none"
-                              >
-                                {choice.label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => answerOptional(q.key, undefined)}
-                          className="mt-5 font-bold text-slate-500 underline transition hover:text-brand motion-reduce:transition-none"
-                        >
-                          Skip this one
-                        </button>
-                      </>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <p className="mt-6 rounded-2xl border border-brand/20 bg-band p-5 text-lg font-bold text-ink">
-                  You&apos;re all set — we&apos;ll keep your latest score on screen.
-                </p>
-              )}
-              {updatingOptional && (
-                <p className="mt-4 text-sm font-bold text-slate-500">
-                  Updating your report with the latest answers…
-                </p>
-              )}
-            </div>
-            {subscribeNewsletter && (
-              <div className="rg-card-highlight mt-6 text-center">
-                <h2 className="font-serif text-3xl font-semibold leading-tight text-ink sm:text-4xl">
-                  You&apos;re in — welcome to Retirement Shield
-                </h2>
-                <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-700">
-                  Twice a week — every Tuesday & Friday — you&apos;ll get our
-                  free email from Ellen Marsh — Retirement Shield: the money you
-                  may be owed, the
-                  scams to dodge, and the Social Security and Medicare changes
-                  that hit your check. Plain English, always something you can
-                  actually use.
-                </p>
-                <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-brand/20 bg-white px-5 py-4 text-lg font-bold leading-7 text-ink shadow-sm">
-                  Watch for an email from Ellen Marsh — Retirement Shield. Add
-                  us to your contacts and drag our emails to your main inbox so
-                  you never miss one.
-                </p>
-              </div>
+          ) : null}
+        </main>
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <div className="rg-card">
+            {displayResult ? (
+              <>
+                <ScoreGauge value={displayResult.overall} band={displayResult.band} subScores={[]} subtitle="Live estimate" badge="Updates as you answer" />
+                <p className="mt-4 text-center text-sm font-semibold leading-6 text-slate-600">Estimate — based on {answeredCount} of {totalApplicable} answers. Keep going to sharpen it.</p>
+                <PersonalizedGapSummary result={displayResult} />
+                <Button type="button" onClick={() => openEmailCapture("modal")} className="mt-5 w-full">Email me my score + full details</Button>
+              </>
+            ) : (
+              <div className="rounded-2xl border border-slate-200 bg-band p-5 text-center"><h2 className="text-xl font-bold text-ink">Answer a few basics to see your score.</h2><p className="mt-2 text-sm leading-6 text-slate-600">Once age, marital status, guaranteed income, and essential bills are answered, your live score appears here.</p></div>
             )}
-          </>
-        )}
+          </div>
+          {displayResult && emailMode === "modal" && EmailCapture}
+        </aside>
       </div>
+      <div className="mx-auto max-w-6xl px-4 pb-8 text-center text-sm text-slate-500"><Link href="/privacy" className="underline">Privacy</Link> · Educational information only, not financial, tax, or legal advice.</div>
     </div>
   );
 }

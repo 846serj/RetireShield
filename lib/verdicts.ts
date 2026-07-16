@@ -7,7 +7,7 @@ const BAND_VERDICTS: Record<ScoreBandKey, string> = {
   secure: "Your retirement picture looks steady, with several strengths already working in your favor.",
   mostlySecure: "You have a solid foundation, and a few focused checkups can help make the plan feel steadier.",
   atRisk: "There are some pressure points to review, but small planning steps can make the next move clearer.",
-  vulnerable: "This score highlights areas to look at first, so you can prioritize support without feeling overwhelmed.",
+  vulnerable: "Your weakest sub-scores point to the first planning topics to review, starting with the lowest gap area shown in your results.",
 };
 
 const normalizeBand = (band: ScoreBand): ScoreBandKey => {

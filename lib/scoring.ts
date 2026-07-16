@@ -202,7 +202,7 @@ export function computeScores(a: Answers): Result {
   return { overall, band, sub };
 }
 
-const ACTION_LIB: Record<keyof SubScores, string> = {
+export const ACTION_LIB: Record<keyof SubScores, string> = {
   income:
     "Your guaranteed income covers only part of your essentials. Before claiming Social Security, ask a fiduciary whether delaying raises your lifetime guaranteed income.",
   withdrawal:

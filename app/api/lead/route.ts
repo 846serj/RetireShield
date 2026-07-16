@@ -7,12 +7,32 @@ import {
   type AIReport,
 } from "@/lib/ai/report";
 import { addBeehiivSubscriber } from "@/lib/beehiiv";
-import { renderReportHtml } from "@/lib/reportEmail";
+import { renderReportHtml, type ReportCompleteness } from "@/lib/reportEmail";
 import { sendTransactionalEmail } from "@/lib/resend";
-import { computeScores, type Answers, type Result } from "@/lib/scoring";
+import { ACTION_LIB, computeScores, type Answers, type Result, type SubScores } from "@/lib/scoring";
 
 const REPORT_FOOTER_DISCLAIMER =
   "Educational information only - not financial, tax, or legal advice. We will never ask you for an account number, Social Security number, password, or payment. American Signal Media, LLC, 598 West Interstate 30, Royse City, TX 75189.";
+
+
+const weakAreaLabels: Record<keyof SubScores, string> = {
+  income: "Guaranteed income vs. your monthly bills",
+  withdrawal: "Making your savings last",
+  inflation: "Keeping up with rising costs",
+  market: "Your investment risk and cash cushion",
+};
+
+function personalizedWeakAreaLines(result: Result): string[] {
+  const ranked = (Object.entries(result.sub) as [keyof SubScores, number][])
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 2);
+  const [weakest, second] = ranked;
+  const lines = [
+    `Your biggest gap: ${weakAreaLabels[weakest[0]]} — ${weakest[1]}/100. ${ACTION_LIB[weakest[0]]}`,
+  ];
+  if (second) lines.push(`Also worth a look: ${weakAreaLabels[second[0]]} (${second[1]}/100). ${ACTION_LIB[second[0]]}`);
+  return lines;
+}
 
 const subScoreLabels = {
   income: "Income Stability",
@@ -25,6 +45,7 @@ function renderReportText(
   result: Result,
   report: AIReport,
   firstName = "",
+  completeness?: ReportCompleteness,
 ): string {
   const greeting = firstName ? [`Hi ${firstName},`, ""] : [];
   const subScores = (
@@ -47,16 +68,23 @@ function renderReportText(
     .map((question) => `- ${question}`)
     .join("\n");
 
+  const completenessLines = completeness ? [completeness.isComplete ? `Based on ${completeness.answeredCount} of your answers.` : `Based on ${completeness.answeredCount} of your answers — come back anytime for a sharper score and a fuller plan.`, ""] : [];
+  const weakAreaLines = personalizedWeakAreaLines(result);
+
   return [
     "Your Retirement Safety Score",
     ...greeting,
     `${result.overall} (${result.band})`,
     "",
+    ...completenessLines,
     "What this means for you",
     report.narrative,
     "",
     "Your sub-scores",
     subScores,
+    "",
+    "Your biggest gaps",
+    weakAreaLines.join("\n\n"),
     "",
     "Your action plan",
     actionPlan,
@@ -88,6 +116,11 @@ export async function POST(req: NextRequest) {
   }
 
   const { email, answers, source, campaign } = body ?? {};
+  const answeredCount = Number.isFinite(Number(body?.answeredCount)) ? Number(body.answeredCount) : undefined;
+  const totalApplicable = Number.isFinite(Number(body?.totalApplicable)) ? Number(body.totalApplicable) : undefined;
+  const completeness: ReportCompleteness | undefined = answeredCount && totalApplicable
+    ? { answeredCount, totalApplicable, isComplete: body?.isComplete === true || answeredCount >= totalApplicable }
+    : undefined;
   const firstName =
     typeof body?.firstName === "string" ? body.firstName.trim() : "";
   const subscribeNewsletter = body?.subscribeNewsletter ?? true;
@@ -160,8 +193,8 @@ export async function POST(req: NextRequest) {
     await sendTransactionalEmail({
       to: normalizedEmail,
       subject: "Your Retirement Safety Score",
-      html: renderReportHtml(result, report, firstName),
-      text: renderReportText(result, report, firstName),
+      html: renderReportHtml(result, report, firstName, completeness),
+      text: renderReportText(result, report, firstName, completeness),
     });
   } catch (error) {
     console.error("lead AI report email failed:", error);
