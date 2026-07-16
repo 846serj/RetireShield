@@ -286,49 +286,59 @@ export default function Quiz() {
   if (!introComplete) {
     return (
       <div className="rg-page-shell">
-        <div className="mx-auto max-w-3xl px-4 py-10 sm:py-16">
-          <div className="rg-card overflow-hidden">
-            <Eyebrow>Retirement Safety Score</Eyebrow>
-            <div className="mt-8 rounded-[2rem] bg-band p-5 sm:p-8">
-              <p className="text-2xl font-extrabold leading-tight text-ink sm:text-4xl">
-                Are you on track to run out of money in retirement? Find out in
-                5 minutes.
-              </p>
-              <h1 className="mt-4 font-serif text-[2rem] font-semibold leading-tight text-ink sm:text-5xl">
-                Let&apos;s see where your retirement stands.
-              </h1>
-              <p className="mt-5 text-xl font-semibold leading-8 text-slate-700">
-                Answer 6 quick questions to see your Safety Score, then add
-                optional details only if you want a sharper result. Every answer
-                stays private.
-              </p>
-            </div>
+        <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center px-4 py-6 sm:py-10">
+          <section className="w-full overflow-hidden rounded-[2rem] bg-brandDark px-5 py-8 text-center text-white shadow-2xl shadow-brandDark/20 sm:px-10 sm:py-12">
+            <Eyebrow className="text-white/70">
+              FOR ANYONE OVER 55 WITH RETIREMENT SAVINGS
+            </Eyebrow>
+
+            <h1 className="mx-auto mt-6 max-w-2xl font-serif text-[2.75rem] font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">
+              Take the {" "}
+              <span className="text-[#2E7D5B]">2-Minute Quiz</span> and See {" "}
+              <span className="text-[#2E7D5B]">How Solid</span> Your Retirement Really Is.
+            </h1>
+
+            <p className="mx-auto mt-5 flex max-w-2xl items-start justify-center gap-3 text-left text-lg font-semibold leading-7 text-white/90 sm:items-center sm:text-center sm:text-xl">
+              <span
+                className="mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2E7D5B] text-sm font-extrabold text-white sm:mt-0"
+                aria-hidden="true"
+              >
+                ✓
+              </span>
+              <span>
+                Real numbers, no sales pitch — just a clear picture of where
+                you stand.
+              </span>
+            </p>
+
             <Button
               type="button"
               onClick={() => {
                 captureQuizEvent("quiz_started");
                 setIntroComplete(true);
               }}
-              className="mt-8 w-full sm:w-auto"
+              className="mx-auto mt-8 min-h-16 w-full border-[#2E7D5B] bg-[#2E7D5B] px-6 py-4 text-white shadow-[0_18px_45px_rgba(46,125,91,0.38)] hover:border-[#276b4e] hover:bg-[#276b4e] sm:max-w-md"
             >
-              Start — question 1
+              <span className="flex flex-col items-center gap-1">
+                <span className="text-xl font-extrabold tracking-[0.02em] sm:text-2xl">
+                  GET MY FREE SCORE →
+                </span>
+                <span className="text-sm font-bold text-white/85 sm:text-base">
+                  6 quick questions · free · no account needed
+                </span>
+              </span>
             </Button>
-            <p className="mt-5 text-base font-bold leading-7 text-slate-700">
-              Plus you&apos;ll get the free Retirement Shield newsletter —
-              practical money help every Tuesday & Friday from Ellen Marsh.
-            </p>
-            <div className="mt-6 space-y-3">
-              <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600">
-                ⏱ ~2 minutes · 🆓 Always free to see your score
+
+            <div className="mx-auto mt-5 max-w-2xl space-y-2 text-sm font-semibold leading-6 text-white/70 sm:text-base">
+              <p>
+                Your answers stay private. Based on Social Security, Medicare,
+                and IRS figures. Free — no payment, ever.
               </p>
-              <Link
-                href="/newsletter"
-                className="inline-flex text-sm font-bold text-brand underline transition hover:text-brandDark motion-reduce:transition-none"
-              >
-                Just want the free newsletter? Sign up here →
-              </Link>
+              {process.env.NEXT_PUBLIC_SOCIAL_PROOF ? (
+                <p>{process.env.NEXT_PUBLIC_SOCIAL_PROOF}</p>
+              ) : null}
             </div>
-          </div>
+          </section>
         </div>
       </div>
     );
