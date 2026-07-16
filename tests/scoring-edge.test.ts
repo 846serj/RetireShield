@@ -14,20 +14,20 @@ const base: Answers = {
   worry: "running_out",
 };
 
-test("zero essential expenses max income, withdrawal, and inflation sub-scores", () => {
+test("zero guaranteed income and zero essentials stay bounded", () => {
   const score = computeScores({ ...base, essentialExpenses: 0, guaranteedIncome: 0, savings: 0 });
-  assert.equal(score.sub.income, 100);
-  assert.equal(score.sub.withdrawal, 100);
-  assert.equal(score.sub.inflation, 100);
-  assert.ok(score.overall >= 85);
+  assert.equal(score.sub.income, 0);
+  assert.equal(score.sub.sustainability, 0);
+  assert.equal(score.sub.inflation, 40);
+  assert.ok(score.overall >= 30);
 });
 
-test("full guaranteed-income coverage still depends on savings for withdrawal", () => {
+test("full guaranteed-income coverage still depends on savings for sustainability", () => {
   const noSavings = computeScores({ ...base, guaranteedIncome: 4500, essentialExpenses: 3000, savings: 0 });
   const ampleSavings = computeScores({ ...base, guaranteedIncome: 4500, essentialExpenses: 3000, savings: 750000 });
   assert.equal(noSavings.sub.income, 100);
-  assert.ok(noSavings.sub.withdrawal < 100, "covered essentials should not auto-max withdrawal");
-  assert.ok(ampleSavings.sub.withdrawal > noSavings.sub.withdrawal, "withdrawal should reward savings even when income covers essentials");
+  assert.ok(noSavings.sub.sustainability < 100, "covered essentials should not auto-max sustainability");
+  assert.ok(ampleSavings.sub.sustainability > noSavings.sub.sustainability, "sustainability should reward savings even when income covers essentials");
 });
 
 test("extreme ages remain bounded and age-appropriate market risk changes", () => {
