@@ -300,10 +300,12 @@ export default function Quiz() {
 
             <p className="mx-auto mt-5 flex max-w-2xl items-start justify-center gap-3 text-left text-lg font-semibold leading-7 text-white/90 sm:items-center sm:text-center sm:text-xl">
               <span
-                className="mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#7BD3A8] text-sm font-extrabold text-brand-dark sm:mt-0"
+                className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2E9E6A] sm:mt-0"
                 aria-hidden="true"
               >
-                ✓
+                <svg viewBox="0 0 20 20" className="size-4" fill="none">
+                  <path d="M5 10.5l3.5 3.5L15 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </span>
               <span>
                 Real numbers, no sales pitch — just a clear picture of where
