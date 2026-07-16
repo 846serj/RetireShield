@@ -63,7 +63,7 @@ export default function StyleguidePage() {
             </p>
             <div className="mt-7 space-y-5">
               <SubScoreBar label="Guaranteed income" value={86} scoreKey="income" />
-              <SubScoreBar label="Spending sustainability" value={58} scoreKey="withdrawal" caption="Optional captions can replace the default education blurb." />
+              <SubScoreBar label="Spending sustainability" value={58} scoreKey="sustainability" caption="Optional captions can replace the default education blurb." />
               <SubScoreBar label="Inflation exposure" value={42} scoreKey="inflation" />
               <SubScoreBar label="Market-drop cushion" value={28} scoreKey="market" />
             </div>

@@ -7,9 +7,12 @@ export type AIReport = {
   narrative: string;
   subScoreNotes: {
     income: string;
-    withdrawal: string;
+    sustainability: string;
     inflation: string;
     market: string;
+    timing: string;
+    reserves: string;
+    taxes: string;
   };
   plan: PlanItem[];
   fiduciaryQuestions: string[];
@@ -118,7 +121,7 @@ function contextualFacts(answers: Answers): string[] {
 function isAIReport(value: unknown): value is AIReport {
   const report = value as AIReport;
   return !!report && typeof report.narrative === "string" && report.narrative.trim().length > 0 &&
-    !!report.subScoreNotes && ["income", "withdrawal", "inflation", "market"].every((key) => typeof report.subScoreNotes[key as keyof AIReport["subScoreNotes"]] === "string" && report.subScoreNotes[key as keyof AIReport["subScoreNotes"]].trim().length > 0) &&
+    !!report.subScoreNotes && ["income", "sustainability", "inflation", "market", "timing", "reserves", "taxes"].every((key) => typeof report.subScoreNotes[key as keyof AIReport["subScoreNotes"]] === "string" && report.subScoreNotes[key as keyof AIReport["subScoreNotes"]].trim().length > 0) &&
     Array.isArray(report.plan) && report.plan.length > 0 && report.plan.every(isPlanItem) &&
     Array.isArray(report.fiduciaryQuestions) && report.fiduciaryQuestions.length > 0 && report.fiduciaryQuestions.every((q) => typeof q === "string" && q.trim().length > 0) &&
     typeof report.scamNote === "string" && report.scamNote.trim().length > 0;
@@ -135,9 +138,12 @@ export function buildFallbackReport(answers: Answers, result: Result, rulePlan: 
     narrative: `At age ${answers.age}, ${retirementStage(answers)}${answers.maritalStatus ? ` and ${answers.maritalStatus}` : ""}, your guaranteed income covers about ${pct(coverage)} of your ${dollars(answers.essentialExpenses)}/month essentials, leaving an exact monthly gap of ${dollars(gap)}. You reported ${dollars(answers.savings)} in savings, ${answers.stockPct}% in stocks versus an age-based reference level near ${targetEquity}%, ${EMERGENCY_FUND_LABELS[answers.emergencyFund]}, and ${DEBT_LABELS[answers.debt]}${stateText}; your #1 worry is ${worry}. This report is education only and is meant to help you prepare better questions for a fiduciary.`,
     subScoreNotes: {
       income: `Income scored ${result.sub.income} because guaranteed income covers about ${pct(coverage)} of essentials, leaving ${gap > 0 ? `${dollars(gap)} per month to cover from savings or other sources` : "no monthly essentials gap"}.`,
-      withdrawal: `Withdrawal scored ${result.sub.withdrawal} because your ${dollars(answers.savings)} in savings must be viewed against the ${dollars(gap)} monthly gap and your planning horizon.`,
+      sustainability: `Sustainability scored ${result.sub.sustainability} because your ${dollars(answers.savings)} in savings must be viewed against the ${dollars(gap)} monthly gap and your planning horizon.`,
       inflation: `Inflation scored ${result.sub.inflation} because fixed income and essentials${answers.state ? ` in ${answers.state.toUpperCase()}` : ""} can lose buying power over time, especially when your main worry is ${worry}.`,
       market: `Market scored ${result.sub.market} because you reported ${answers.stockPct}% in stocks versus an age-based reference near ${targetEquity}%, plus ${EMERGENCY_FUND_LABELS[answers.emergencyFund]} and ${DEBT_LABELS[answers.debt]}.`,
+      timing: `Timing scored ${result.sub.timing} because Social Security claiming, retirement stage, target dates, and planning horizon can change guaranteed-income tradeoffs.`,
+      reserves: `Reserves scored ${result.sub.reserves} because emergency savings, home flexibility, debt, and work status affect how much room you have when surprises hit.`,
+      taxes: `Taxes scored ${result.sub.taxes} because taxable, tax-deferred, and Roth balances shape flexibility around taxes and Medicare surcharge thresholds.`,
     },
     plan: rulePlan,
     fiduciaryQuestions: [
@@ -162,7 +168,7 @@ export async function generateAIReport(answers: Answers, result: Result, rulePla
       system: SAFETY_SYSTEM,
       messages: [{
         role: "user",
-        content: `Create a personalized AIReport for this user. Return ONLY strict JSON matching this exact TypeScript shape and no markdown: {"narrative": string, "subScoreNotes": {"income": string, "withdrawal": string, "inflation": string, "market": string}, "plan": {"area": string, "priority": "High"|"Medium"|"Low", "title": string, "why": string, "steps": string[]}[], "fiduciaryQuestions": string[], "scamNote": string}.
+        content: `Create a personalized AIReport for this user. Return ONLY strict JSON matching this exact TypeScript shape and no markdown: {"narrative": string, "subScoreNotes": {"income": string, "sustainability": string, "inflation": string, "market": string, "timing": string, "reserves": string, "taxes": string}, "plan": {"area": string, "priority": "High"|"Medium"|"Low", "title": string, "why": string, "steps": string[]}[], "fiduciaryQuestions": string[], "scamNote": string}.
 
 Ground EVERYTHING in the user's actual numbers and facts below. The narrative and every subScoreNotes sentence must read as written FOR THEM, not generic. Explicitly reference their age, marital status, retirement stage, guaranteed-income-vs-essentials coverage percentage, exact monthly gap, savings, stock percentage versus the age-appropriate reference level, emergency fund, debt, state cost-of-living context, pension/home/Social Security details when present, and their stated #1 worry.
 
