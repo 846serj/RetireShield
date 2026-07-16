@@ -33,7 +33,7 @@ test("scores are bounded 0-100", () => {
   }
 });
 
-test("state adjusts projection-based withdrawal score in expected directions", () => {
+test("state adjusts projection-based sustainability score in expected directions", () => {
   const baseline: Answers = {
     age: 62, status: "near", guaranteedIncome: 1500, essentialExpenses: 3500,
     savings: 325000, stockPct: 50, emergencyFund: "3-6", debt: "none", worry: "scams", state: "TX",
@@ -43,10 +43,10 @@ test("state adjusts projection-based withdrawal score in expected directions", (
   const lowCost = computeScores({ ...baseline, state: "MS" });
   const highCost = computeScores({ ...baseline, state: "CA" });
 
-  assert.ok(lowCost.sub.withdrawal > neutral.sub.withdrawal, "low-COL state should improve withdrawal score");
+  assert.ok(lowCost.sub.sustainability > neutral.sub.sustainability, "low-COL state should improve sustainability score");
   assert.ok(lowCost.overall > neutral.overall, "low-COL profile should improve overall score");
 
-  assert.ok(highCost.sub.withdrawal < neutral.sub.withdrawal, "high-COL state should reduce withdrawal score");
+  assert.ok(highCost.sub.sustainability < neutral.sub.sustainability, "high-COL state should reduce sustainability score");
   assert.ok(highCost.overall < neutral.overall, "high-COL profile should reduce overall score");
 });
 
@@ -66,7 +66,7 @@ test("inflation and income sub-scores can diverge for high-coverage users", () =
   assert.equal(cola.sub.income, fixed.sub.income, "income score should remain based on current coverage when not married");
 });
 
-test("withdrawal score uses real savings instead of legacy bucket midpoint", () => {
+test("sustainability score uses real savings instead of legacy bucket midpoint", () => {
   const baseline: Answers = {
     age: 65, status: "retired", guaranteedIncome: 2000, essentialExpenses: 5000,
     savings: 10000, savingsBucket: "1M+", stockPct: 50, emergencyFund: "3-6", debt: "none", worry: "running_out",
@@ -74,12 +74,12 @@ test("withdrawal score uses real savings instead of legacy bucket midpoint", () 
   const lowSavings = computeScores(baseline);
   const highSavings = computeScores({ ...baseline, savings: 1500000, savingsBucket: "<50k" });
 
-  assert.ok(lowSavings.sub.withdrawal < 15, `low real savings should score low, got ${lowSavings.sub.withdrawal}`);
-  assert.ok(highSavings.sub.withdrawal > lowSavings.sub.withdrawal + 50, "higher real savings should drive projection sustainability");
+  assert.ok(lowSavings.sub.sustainability < 15, `low real savings should score low, got ${lowSavings.sub.sustainability}`);
+  assert.ok(highSavings.sub.sustainability > lowSavings.sub.sustainability + 50, "higher real savings should drive projection sustainability");
 });
 
 
-test("covering essentials is passing but not perfect for income or withdrawal", () => {
+test("covering essentials is passing but not perfect for income or sustainability", () => {
   const breakEven: Answers = {
     age: 68, status: "retired", guaranteedIncome: 3000, essentialExpenses: 3000,
     savings: 0, stockPct: 50, emergencyFund: "3-6", debt: "none", worry: "running_out",
@@ -88,7 +88,7 @@ test("covering essentials is passing but not perfect for income or withdrawal", 
   const current = computeScores(breakEven);
 
   assert.equal(current.sub.income, 65, "100% essential coverage should be a passing floor, not perfection");
-  assert.ok(current.sub.withdrawal < buffered.sub.withdrawal, "withdrawal score should still reflect savings and surplus");
+  assert.ok(current.sub.sustainability < buffered.sub.sustainability, "sustainability score should still reflect savings and surplus");
   assert.ok(buffered.sub.income > current.sub.income, "income score should reward buffer above essentials");
 });
 
@@ -103,4 +103,48 @@ test("married income score reflects survivor-risk exposure", () => {
 
   assert.ok(exposed.sub.income < singleEquivalent.sub.income, "survivor case should ding exposed married households");
   assert.ok(exposed.sub.income < 90, `survivor-risk blend should avoid inflated income scores, got ${exposed.sub.income}`);
+});
+
+const personas: Array<[string, Answers, string[]]> = [
+  ["well-prepared", {
+    age: 68, maritalStatus: "married", status: "retired", guaranteedIncome: 6000, essentialExpenses: 4000,
+    desiredLifestyleSpending: 6000, savings: 900000, ssaBenefitEstimate: 2800, spouseSsaBenefitEstimate: 1400,
+    pensionAmount: 1500, pensionHasCola: "yes", pensionSurvivorPct: 100, stockPct: 50, emergencyFund: "6+",
+    debt: "none", ownsHome: "yes", homeEquity: 350000, balance_taxable: 200000, balance_tax_deferred: 500000,
+    balance_roth: 200000, claimedSocialSecurity: "yes", worry: "skip", state: "TX",
+  }, ["Secure"]],
+  ["comfortable", {
+    age: 63, maritalStatus: "married", status: "near", guaranteedIncome: 3500, essentialExpenses: 3800,
+    desiredLifestyleSpending: 5000, savings: 400000, ssaBenefitEstimate: 2200, spouseSsaBenefitEstimate: 1000,
+    stockPct: 50, emergencyFund: "3-6", debt: "some", ownsHome: "yes", homeEquity: 150000,
+    balance_tax_deferred: 350000, balance_roth: 50000, claimedSocialSecurity: "no", targetRetirementAge: 66,
+    worry: "running_out", state: "OH",
+  }, ["Secure"]],
+  ["average", {
+    age: 66, maritalStatus: "single", status: "retired", guaranteedIncome: 2100, essentialExpenses: 2600,
+    desiredLifestyleSpending: 3500, savings: 180000, ssaBenefitEstimate: 2100, stockPct: 50,
+    emergencyFund: "1-3", debt: "some", ownsHome: "no", balance_tax_deferred: 180000,
+    claimedSocialSecurity: "yes", worry: "skip",
+  }, ["At Risk"]],
+  ["behind pre-retiree", {
+    age: 60, maritalStatus: "married", status: "working", guaranteedIncome: 0, essentialExpenses: 3500,
+    desiredLifestyleSpending: 5500, savings: 120000, ssaBenefitEstimate: 1800, spouseSsaBenefitEstimate: 900,
+    stockPct: 75, emergencyFund: "0", debt: "heavy", ownsHome: "no", balance_tax_deferred: 120000,
+    claimedSocialSecurity: "no", targetRetirementAge: 67, worry: "skip", state: "CA",
+  }, ["At Risk"]],
+  ["vulnerable", {
+    age: 72, maritalStatus: "widowed", status: "retired", guaranteedIncome: 1500, essentialExpenses: 2800,
+    desiredLifestyleSpending: 3200, savings: 25000, ssaBenefitEstimate: 1500, stockPct: 25,
+    emergencyFund: "0", debt: "heavy", ownsHome: "no", claimedSocialSecurity: "yes", worry: "skip",
+  }, ["Vulnerable", "At Risk"]],
+];
+
+test("persona calibration bands", () => {
+  for (const [name, answers, expectedBands] of personas) {
+    const result = computeScores(answers);
+    assert.ok(
+      expectedBands.includes(result.band),
+      `${name} expected ${expectedBands.join(" or ")}, got ${result.band} (${result.overall}) with ${JSON.stringify(result.sub)}`,
+    );
+  }
 });
