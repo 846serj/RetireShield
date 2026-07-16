@@ -1,7 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import posthog from "posthog-js";
+import { useEffect, useState } from "react";
 import { Button, Eyebrow } from "@/components/ui";
+
+function capture(
+  event: string,
+  properties?: Record<string, string | number | boolean>,
+) {
+  if (!posthog.__loaded) return;
+  posthog.capture(event, properties);
+}
 
 export default function NewsletterPage() {
   const [firstName, setFirstName] = useState("");
@@ -10,6 +19,10 @@ export default function NewsletterPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  useEffect(() => {
+    capture("newsletter_page_viewed");
+  }, []);
 
   async function submitNewsletter() {
     setSubmitting(true);
@@ -27,11 +40,14 @@ export default function NewsletterPage() {
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload.ok) {
         setError("We couldn't add you. Please check your email and try again.");
+        capture("newsletter_signup_failed");
         return;
       }
+      capture("newsletter_signup_submitted", { utmSource: "newsletter_page" });
       setSubmitted(true);
     } catch {
       setError("We couldn't reach the server. Please try again.");
+      capture("newsletter_signup_failed");
     } finally {
       setSubmitting(false);
     }
