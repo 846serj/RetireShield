@@ -298,19 +298,16 @@ export default function Quiz() {
               <span className="text-[#7BD3A8]">How Solid</span> Your Retirement Really Is.
             </h1>
 
-            <p className="mx-auto mt-5 flex max-w-2xl items-start justify-center gap-3 text-left text-lg font-semibold leading-7 text-white/90 sm:items-center sm:text-center sm:text-xl">
+            <p className="mx-auto mt-6 max-w-xl text-center text-lg font-semibold leading-8 text-white/90 sm:text-xl">
               <span
-                className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2E9E6A] sm:mt-0"
+                className="mr-2 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#2E9E6A] align-middle"
                 aria-hidden="true"
               >
-                <svg viewBox="0 0 20 20" className="size-4" fill="none">
+                <svg viewBox="0 0 20 20" className="size-3" fill="none">
                   <path d="M5 10.5l3.5 3.5L15 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
-              <span>
-                Real numbers, no sales pitch — just a clear picture of where
-                you stand.
-              </span>
+              Real numbers, no sales pitch — just a clear picture of where you stand.
             </p>
 
             <Button
@@ -319,7 +316,8 @@ export default function Quiz() {
                 captureQuizEvent("quiz_started");
                 setIntroComplete(true);
               }}
-              className="mx-auto mt-8 min-h-16 w-full !border-[#2E9E6A] !bg-[#2E9E6A] px-6 py-4 text-white shadow-[0_18px_45px_rgba(46,158,106,0.4)] hover:!border-[#278a5c] hover:!bg-[#278a5c] sm:max-w-md"
+              style={{ backgroundColor: "#2E9E6A", borderColor: "#2E9E6A" }}
+              className="mx-auto mt-8 min-h-16 w-full px-6 py-4 text-white shadow-[0_18px_45px_rgba(46,158,106,0.4)] hover:!bg-[#278a5c] hover:!border-[#278a5c] sm:max-w-md"
             >
               <span className="flex flex-col items-center gap-1">
                 <span className="text-xl font-extrabold tracking-[0.02em] sm:text-2xl">
