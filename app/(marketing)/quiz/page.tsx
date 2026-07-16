@@ -331,7 +331,7 @@ export default function Quiz() {
   if (!introComplete) {
     return (
       <div className="rg-page-shell">
-        <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center px-4 py-6 sm:py-10">
+        <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center px-4 py-6 sm:py-10 lg:max-w-4xl">
           <section className="w-full overflow-hidden rounded-[2rem] bg-brand-dark px-5 py-8 text-center text-white shadow-2xl shadow-brand-dark/20 sm:px-10 sm:py-12">
             <Eyebrow className="text-[#8FB3D9]">FOR ANYONE THINKING ABOUT RETIREMENT</Eyebrow>
             <h1 className="mx-auto mt-6 max-w-2xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl">Take the <span className="text-[#7BD3A8]">free quiz</span> and see <span className="text-[#7BD3A8]">how solid</span> your retirement really is.</h1>
