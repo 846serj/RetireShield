@@ -288,19 +288,19 @@ export default function Quiz() {
       <div className="rg-page-shell">
         <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center px-4 py-6 sm:py-10">
           <section className="w-full overflow-hidden rounded-[2rem] bg-brand-dark px-5 py-8 text-center text-white shadow-2xl shadow-brand-dark/20 sm:px-10 sm:py-12">
-            <Eyebrow className="text-white/70">
-              FOR ANYONE OVER 55 WITH RETIREMENT SAVINGS
+            <Eyebrow className="text-[#8FB3D9]">
+              FOR ANYONE THINKING ABOUT RETIREMENT
             </Eyebrow>
 
             <h1 className="mx-auto mt-6 max-w-2xl font-serif text-[2.75rem] font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-6xl">
-              Take the {" "}
-              <span className="text-[#2E7D5B]">2-Minute Quiz</span> and See {" "}
-              <span className="text-[#2E7D5B]">How Solid</span> Your Retirement Really Is.
+              Take the{" "}
+              <span className="text-[#7BD3A8]">2-Minute Quiz</span> and See{" "}
+              <span className="text-[#7BD3A8]">How Solid</span> Your Retirement Really Is.
             </h1>
 
             <p className="mx-auto mt-5 flex max-w-2xl items-start justify-center gap-3 text-left text-lg font-semibold leading-7 text-white/90 sm:items-center sm:text-center sm:text-xl">
               <span
-                className="mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2E7D5B] text-sm font-extrabold text-white sm:mt-0"
+                className="mt-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-[#7BD3A8] text-sm font-extrabold text-brand-dark sm:mt-0"
                 aria-hidden="true"
               >
                 ✓
@@ -317,7 +317,7 @@ export default function Quiz() {
                 captureQuizEvent("quiz_started");
                 setIntroComplete(true);
               }}
-              className="mx-auto mt-8 min-h-16 w-full border-[#2E7D5B] bg-[#2E7D5B] px-6 py-4 text-white shadow-[0_18px_45px_rgba(46,125,91,0.38)] hover:border-[#276b4e] hover:bg-[#276b4e] sm:max-w-md"
+              className="mx-auto mt-8 min-h-16 w-full !border-[#2E9E6A] !bg-[#2E9E6A] px-6 py-4 text-white shadow-[0_18px_45px_rgba(46,158,106,0.4)] hover:!border-[#278a5c] hover:!bg-[#278a5c] sm:max-w-md"
             >
               <span className="flex flex-col items-center gap-1">
                 <span className="text-xl font-extrabold tracking-[0.02em] sm:text-2xl">
@@ -329,7 +329,7 @@ export default function Quiz() {
               </span>
             </Button>
 
-            <div className="mx-auto mt-5 max-w-2xl space-y-2 text-sm font-semibold leading-6 text-white/70 sm:text-base">
+            <div className="mx-auto mt-5 max-w-2xl space-y-2 text-sm font-semibold leading-6 text-[#9FBBDA] sm:text-base">
               <p>
                 Your answers stay private. Based on Social Security, Medicare,
                 and IRS figures. Free — no payment, ever.
