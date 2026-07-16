@@ -11,6 +11,7 @@ export type Answers = {
   status: "working" | "near" | "retired";
   guaranteedIncome: number; // monthly $ from SS + pension + annuity
   essentialExpenses: number; // monthly $ essentials
+  desiredLifestyleSpending?: number; // monthly $ the person WANTS to spend to enjoy retirement
   savings: number; // exact retirement savings estimate collected by the quiz
   savingsBucket?: "<50k" | "50-150k" | "150-500k" | "500k-1M" | "1M+"; // legacy saved scores, ignored by current scoring
   filingStatus?: "single" | "married_joint" | "married_separate" | "head_of_household" | "skip";
@@ -71,7 +72,7 @@ function yearsToHorizon(a: Answers): number {
 
 function coverageScore(coverage: number): number {
   if (!Number.isFinite(coverage)) return 0;
-  return coverage < 1 ? coverage * 65 : 65 + ((coverage - 1) / 0.5) * 35;
+  return coverage < 1 ? coverage * 70 : 70 + ((coverage - 1) / 0.5) * 30;
 }
 
 function socialSecurityChecks(a: Answers): [number, number] {
@@ -135,7 +136,7 @@ export function withdrawalSustainability(a: Answers): number {
   if (gap > 0) return projectionWithdrawalScore(a, gap, stressedSavings);
 
   const coverage = a.guaranteedIncome / a.essentialExpenses;
-  const surplusScore = clamp(65 + Math.min(15, Math.max(0, coverage - 1) / 0.5 * 15));
+  const surplusScore = clamp(70 + Math.min(15, Math.max(0, coverage - 1) / 0.5 * 15));
   const savingsYearsOfEssentials = stressedSavings / Math.max(a.essentialExpenses * 12, 1);
   const savingsScore = clamp(Math.min(20, savingsYearsOfEssentials * 4));
   return clamp((surplusScore + savingsScore) * costOfLivingMultiplier(a.state));
@@ -153,14 +154,14 @@ export function inflationImpact(a: Answers): number {
   const realFixedIncomeAtHorizon = fixedIncome / (1 + inflation) ** years;
   const horizonRealCoverage = (realColaIncomeAtHorizon + realFixedIncomeAtHorizon) / a.essentialExpenses;
 
-  return clamp(25 + horizonRealCoverage * 75);
+  return clamp(40 + horizonRealCoverage * 60);
 }
 
 // Over-exposure-for-age + cash cushion − debt drag. Conservative allocations are not penalized.
 export function marketRiskBuffer(a: Answers): number {
   const maxAgeAppropriateEquity = clamp(110 - a.age, 20, 90);
   const overExposure = Math.max(0, a.stockPct - maxAgeAppropriateEquity);
-  let score = 65 - overExposure * 0.9;
+  let score = 72 - overExposure * 0.9;
   score += Math.min(EFUND_MONTHS[a.emergencyFund] ?? 0, 6) * 5;
   if (a.debt === "some") score -= 10;
   if (a.debt === "heavy") score -= 24;
@@ -192,12 +193,21 @@ export function computeScores(a: Answers): Result {
     market: Math.round(marketRiskBuffer(a)),
   };
   const weights = worryAdjustedWeights(a.worry);
-  const overall = Math.round(
+  const weightedRaw =
     sub.income * weights.income +
-      sub.withdrawal * weights.withdrawal +
-      sub.inflation * weights.inflation +
-      sub.market * weights.market
-  );
+    sub.withdrawal * weights.withdrawal +
+    sub.inflation * weights.inflation +
+    sub.market * weights.market;
+  const essentials = Math.max(0, a.essentialExpenses);
+  const desired =
+    Number.isFinite(a.desiredLifestyleSpending) && (a.desiredLifestyleSpending ?? 0) > 0
+      ? Math.max(a.desiredLifestyleSpending as number, essentials)
+      : essentials; // unknown / "Not sure" => no penalty
+  const sustainableDraw = realSavings(a) * 0.04 / 12; // ~4% annual, monthly
+  const supportable = a.guaranteedIncome + sustainableDraw;
+  const lifestyleCoverage = desired > 0 ? clamp(supportable / desired, 0, 1) : 1;
+  const lifestyleFactor = 0.85 + 0.15 * lifestyleCoverage; // 0.85 (can't fund wants) .. 1.0 (funds them)
+  const overall = Math.round(weightedRaw * lifestyleFactor);
   const band: ScoreBandLabel = overall >= 80 ? "Secure" : overall >= 60 ? "Mostly Secure" : overall >= 40 ? "At Risk" : "Vulnerable";
   return { overall, band, sub };
 }
