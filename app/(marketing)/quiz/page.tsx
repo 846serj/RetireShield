@@ -287,7 +287,7 @@ export default function Quiz() {
     return (
       <div className="rg-page-shell">
         <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center px-4 py-6 sm:py-10">
-          <section className="w-full overflow-hidden rounded-[2rem] bg-brandDark px-5 py-8 text-center text-white shadow-2xl shadow-brandDark/20 sm:px-10 sm:py-12">
+          <section className="w-full overflow-hidden rounded-[2rem] bg-brand-dark px-5 py-8 text-center text-white shadow-2xl shadow-brand-dark/20 sm:px-10 sm:py-12">
             <Eyebrow className="text-white/70">
               FOR ANYONE OVER 55 WITH RETIREMENT SAVINGS
             </Eyebrow>
