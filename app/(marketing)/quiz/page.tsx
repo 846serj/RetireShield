@@ -92,6 +92,7 @@ export default function Quiz() {
   const [emailMode, setEmailMode] = useState<EmailMode>("inline");
   const lastViewedQuestionRef = useRef<string | null>(null);
   const completedCapturedRef = useRef(false);
+  const advanceTimerRef = useRef<number | null>(null);
 
   const visible = useMemo(() => QUESTIONS.filter((q) => !q.when || q.when(answers)), [answers]);
   const totalApplicable = visible.length;
@@ -131,16 +132,47 @@ export default function Quiz() {
     setAnswers((p) => ({ ...p, [key]: value }));
   }
 
+  useEffect(() => {
+    setSelectedChoice(null);
+  }, [currentQuestion?.key]);
+
+  useEffect(() => {
+    if (step <= totalApplicable) return;
+    setStep(totalApplicable);
+  }, [step, totalApplicable]);
+
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current !== null) {
+        window.clearTimeout(advanceTimerRef.current);
+      }
+    };
+  }, []);
+
   function goToStep(nextStep: number) {
+    if (advanceTimerRef.current !== null) {
+      window.clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
     setSelectedChoice(null);
     setStep(Math.max(0, Math.min(nextStep, totalApplicable)));
+  }
+
+  function queueAdvance(nextStep: number, delayMs: number) {
+    if (advanceTimerRef.current !== null) {
+      window.clearTimeout(advanceTimerRef.current);
+    }
+    advanceTimerRef.current = window.setTimeout(() => {
+      advanceTimerRef.current = null;
+      goToStep(nextStep);
+    }, delayMs);
   }
 
   function selectChoice(key: string, value: string | number) {
     setSelectedChoice(value);
     setAnswer(key, value);
     trackStepAnswered(step, key);
-    window.setTimeout(() => goToStep(step + 1), 180);
+    queueAdvance(step + 1, 180);
   }
 
   function openEmailCapture(mode: EmailMode = "modal") {
@@ -362,7 +394,7 @@ export default function Quiz() {
               {currentQuestion.kind === "state" ? (
                 <div>
                   <label htmlFor={`quiz-${currentQuestion.key}`} className="mb-2 block text-base font-bold text-ink">Select your state</label>
-                  <select id={`quiz-${currentQuestion.key}`} value={(answers[currentQuestion.key] as string) ?? ""} onChange={(e) => { if (e.target.value) { setAnswer(currentQuestion.key, e.target.value); trackStepAnswered(step, currentQuestion.key); window.setTimeout(() => goToStep(step + 1), 120); } }} className="rg-input min-h-16 text-xl">
+                  <select id={`quiz-${currentQuestion.key}`} value={(answers[currentQuestion.key] as string) ?? ""} onChange={(e) => { if (e.target.value) { setAnswer(currentQuestion.key, e.target.value); trackStepAnswered(step, currentQuestion.key); queueAdvance(step + 1, 120); } }} className="rg-input min-h-16 text-xl">
                     <option value="" disabled>Select your state…</option>
                     {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
                   </select>
@@ -370,10 +402,10 @@ export default function Quiz() {
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {currentQuestion.choices.map((choice) => {
+                  {currentQuestion.choices.map((choice, choiceIndex) => {
                     const currentValue = answers[currentQuestion.key] ?? currentQuestion.defaultValue;
                     const isSelected = selectedChoice === choice.value || currentValue === choice.value;
-                    return <button key={String(choice.value)} type="button" onClick={() => selectChoice(currentQuestion.key, choice.value)} aria-pressed={isSelected} className={`min-h-16 rounded-2xl border-2 px-5 py-4 text-left text-xl font-bold text-ink shadow-sm transition hover:border-brand hover:bg-band focus-visible:ring-brand/20 motion-reduce:transition-none ${isSelected ? "border-brand bg-band shadow-brand/10" : "border-slate-200 bg-white"}`}>{choice.label}</button>;
+                    return <button key={`${currentQuestion.key}-${choiceIndex}-${String(choice.value)}`} type="button" onClick={() => selectChoice(currentQuestion.key, choice.value)} aria-pressed={isSelected} className={`min-h-16 rounded-2xl border-2 px-5 py-4 text-left text-xl font-bold text-ink shadow-sm transition hover:border-brand hover:bg-band focus-visible:ring-brand/20 motion-reduce:transition-none ${isSelected ? "border-brand bg-band shadow-brand/10" : "border-slate-200 bg-white"}`}>{choice.label}</button>;
                   })}
                 </div>
               )}
