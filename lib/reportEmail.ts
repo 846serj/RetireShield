@@ -1,5 +1,14 @@
 import type { AIReport } from "@/lib/ai/report";
-import type { Result, SubScores } from "@/lib/scoring";
+import { ACTION_LIB, type Result, type SubScores } from "@/lib/scoring";
+
+export type ReportCompleteness = { answeredCount: number; totalApplicable: number; isComplete: boolean };
+
+const weakAreaLabels: Record<keyof SubScores, string> = {
+  income: "Guaranteed income vs. your monthly bills",
+  withdrawal: "Making your savings last",
+  inflation: "Keeping up with rising costs",
+  market: "Your investment risk and cash cushion",
+};
 
 const subScoreLabels: Record<keyof SubScores, string> = {
   income: "Income Stability",
@@ -21,6 +30,25 @@ function renderParagraph(text: string): string {
   return `<p style="margin:0;color:#1f2937;font-size:16px;line-height:1.65;">${escapeHtml(text).replace(/\n\n+/g, '</p><p style="margin:16px 0 0;color:#1f2937;font-size:16px;line-height:1.65;">').replace(/\n/g, "<br>")}</p>`;
 }
 
+
+function personalizedWeakAreaHtml(result: Result): string {
+  const ranked = (Object.entries(result.sub) as [keyof SubScores, number][])
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 2);
+  const [weakest, second] = ranked;
+  return `
+    <p style="margin:0;color:#1f2937;font-size:16px;line-height:1.65;"><strong>Your biggest gap: ${escapeHtml(weakAreaLabels[weakest[0]])} — ${escapeHtml(weakest[1])}/100.</strong> ${escapeHtml(ACTION_LIB[weakest[0]])}</p>
+    ${second ? `<p style="margin:12px 0 0;color:#4b5563;font-size:15px;line-height:1.6;"><strong>Also worth a look:</strong> ${escapeHtml(weakAreaLabels[second[0]])} (${escapeHtml(second[1])}/100). ${escapeHtml(ACTION_LIB[second[0]])}</p>` : ""}`;
+}
+
+function completenessHtml(completeness?: ReportCompleteness): string {
+  if (!completeness) return "";
+  const text = completeness.isComplete
+    ? `Based on ${completeness.answeredCount} of your answers.`
+    : `Based on ${completeness.answeredCount} of your answers — come back anytime for a sharper score and a fuller plan.`;
+  return `<p style="margin:18px 0 0;color:#4b5563;font-size:15px;line-height:1.6;font-weight:700;">${escapeHtml(text)}</p>`;
+}
+
 function priorityColor(priority: string): string {
   if (priority === "High") return "#b91c1c";
   if (priority === "Medium") return "#92400e";
@@ -31,6 +59,7 @@ export function renderReportHtml(
   result: Result,
   report: AIReport,
   firstName = "",
+  completeness?: ReportCompleteness,
 ): string {
   const greeting = firstName.trim()
     ? `<p style="margin:0 0 20px;color:#1f2937;font-size:16px;line-height:1.65;">Hi ${escapeHtml(firstName.trim())},</p>`
@@ -93,10 +122,12 @@ export function renderReportHtml(
                 <div style="padding:24px;border-radius:18px;background:#f8fafc;border:1px solid #e5e7eb;text-align:center;">
                   <div style="font-size:64px;line-height:1;font-weight:900;color:#111827;letter-spacing:-.04em;">${escapeHtml(result.overall)}</div>
                   <div style="margin-top:10px;font-size:18px;line-height:1.35;font-weight:800;color:#374151;">${escapeHtml(result.band)}</div>
+                  ${completenessHtml(completeness)}
                 </div>
               </td>
             </tr>
             <tr><td style="padding:0 24px 28px;"><h2 style="margin:0 0 12px;color:#111827;font-size:20px;line-height:1.3;font-weight:800;">What this means for you</h2>${renderParagraph(report.narrative)}</td></tr>
+            <tr><td style="padding:0 24px 28px;"><h2 style="margin:0 0 12px;color:#111827;font-size:20px;line-height:1.3;font-weight:800;">Your biggest gaps</h2>${personalizedWeakAreaHtml(result)}</td></tr>
             <tr><td style="padding:0 24px 28px;"><h2 style="margin:0 0 8px;color:#111827;font-size:20px;line-height:1.3;font-weight:800;">Your sub-scores</h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">${subScores}</table></td></tr>
             <tr><td style="padding:0 24px 28px;"><h2 style="margin:0 0 12px;color:#111827;font-size:20px;line-height:1.3;font-weight:800;">Your action plan</h2><ol style="margin:0;padding-left:22px;color:#111827;">${actionPlan}</ol></td></tr>
             <tr><td style="padding:0 24px 28px;"><h2 style="margin:0 0 12px;color:#111827;font-size:20px;line-height:1.3;font-weight:800;">Questions to ask a fiduciary</h2><ul style="margin:0;padding-left:22px;">${fiduciaryQuestions}</ul></td></tr>
