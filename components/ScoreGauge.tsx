@@ -23,9 +23,12 @@ type ScoreBandMeta = {
 
 const DEFAULT_SUB_SCORES: SubScore[] = [
   { label: "Guaranteed income", value: 86, scoreKey: "income" },
-  { label: "Spending sustainability", value: 74, scoreKey: "withdrawal" },
+  { label: "Spending sustainability", value: 74, scoreKey: "sustainability" },
   { label: "Inflation exposure", value: 68, scoreKey: "inflation" },
   { label: "Market-drop cushion", value: 79, scoreKey: "market" },
+  { label: "Social Security timing", value: 72, scoreKey: "timing" },
+  { label: "Emergency reserves", value: 70, scoreKey: "reserves" },
+  { label: "Tax diversification", value: 64, scoreKey: "taxes" },
 ];
 
 const SCORE_BANDS: Record<ScoreBandKey, ScoreBandMeta> = {

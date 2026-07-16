@@ -5,16 +5,22 @@ export type ReportCompleteness = { answeredCount: number; totalApplicable: numbe
 
 const weakAreaLabels: Record<keyof SubScores, string> = {
   income: "Guaranteed income vs. your monthly bills",
-  withdrawal: "Making your savings last",
+  sustainability: "Making your savings last",
   inflation: "Keeping up with rising costs",
-  market: "Your investment risk and cash cushion",
+  market: "Investment risk and cash cushion",
+  timing: "Social Security and retirement timing",
+  reserves: "Emergency backstops and flexibility",
+  taxes: "Tax diversification of your savings",
 };
 
 const subScoreLabels: Record<keyof SubScores, string> = {
   income: "Income Stability",
-  withdrawal: "Withdrawal Sustainability",
+  sustainability: "Savings Sustainability",
   inflation: "Inflation Impact",
   market: "Market-Risk Buffer",
+  timing: "Social Security Timing",
+  reserves: "Emergency Reserves",
+  taxes: "Tax Diversification",
 };
 
 function escapeHtml(value: string | number): string {

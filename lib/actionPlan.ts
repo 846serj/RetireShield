@@ -40,10 +40,10 @@ export function buildActionPlan(a: Answers, r: Result): PlanItem[] {
   }
 
   // 2. Withdrawal sustainability
-  if (r.sub.withdrawal < 80 && gap > 0) {
+  if (r.sub.sustainability < 80 && gap > 0) {
     items.push({
       area: "Withdrawals",
-      priority: r.sub.withdrawal < 50 ? "High" : "Medium",
+      priority: r.sub.sustainability < 50 ? "High" : "Medium",
       title: "Make your savings last the gap",
       why: "Your savings may be stretched to cover the gap between income and expenses at a safe withdrawal pace.",
       steps: [

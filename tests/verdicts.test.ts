@@ -13,7 +13,7 @@ test("bandVerdict returns one reassuring sentence for each band", () => {
 
 test("subScoreBlurb explains known sub-score keys in plain English", () => {
   assert.match(subScoreBlurb("income", 92), /Guaranteed income looks strong/);
-  assert.match(subScoreBlurb("withdrawal", 66), /Spending sustainability has a useful base/);
+  assert.match(subScoreBlurb("sustainability", 66), /Spending sustainability has a useful base/);
   assert.match(subScoreBlurb("inflation", 45), /Inflation exposure may need a closer look/);
   assert.match(subScoreBlurb("market", 12), /Market-drop cushion is a good place to start learning/);
 });

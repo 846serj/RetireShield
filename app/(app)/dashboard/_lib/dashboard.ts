@@ -8,9 +8,12 @@ import type { Answers } from "@/lib/scoring";
 
 export const SUB_SCORE_LABELS = {
   income: "Guaranteed income",
-  withdrawal: "Spending sustainability",
+  sustainability: "Spending sustainability",
   inflation: "Inflation exposure",
   market: "Market-drop cushion",
+  timing: "Social Security timing",
+  reserves: "Emergency reserves",
+  taxes: "Tax diversification",
 } as const;
 
 export const TOOL_CARDS = [
