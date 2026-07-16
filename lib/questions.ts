@@ -59,6 +59,15 @@ const MONTHLY_EXPENSE_CHOICES: Choice[] = [
   { value: 9000, label: "$8,000+/mo" },
 ];
 
+const DESIRED_LIFESTYLE_SPENDING_CHOICES: Choice[] = [
+  { value: 2500, label: "Under $3,000/mo" },
+  { value: 4000, label: "$3,000–$4,999/mo" },
+  { value: 6000, label: "$5,000–$6,999/mo" },
+  { value: 8500, label: "$7,000–$9,999/mo" },
+  { value: 11000, label: "$10,000+/mo" },
+  { value: 5000, label: "Not sure" },
+];
+
 const SAVINGS_CHOICES: Choice[] = [
   { value: 25000, label: "Under $50k" },
   { value: 100000, label: "$50k–$150k" },
@@ -113,37 +122,15 @@ const ACCOUNT_BALANCE_CHOICES: Choice[] = [
   { value: 0, label: "Not sure" },
 ];
 
-export const QUESTION_SECTIONS = [
-  {
-    label: "About you",
-    lead: "First, a few basics so your estimate has the right household context.",
-    keys: ["age", "maritalStatus", "status", "targetRetirementAge"],
-  },
-  {
-    label: "Income vs. your bills",
-    lead: "Next, compare steady income with the bills you need covered each month.",
-    keys: ["guaranteedIncome", "essentialExpenses", "claimedSocialSecurity", "ssaBenefitEstimate"],
-  },
-  {
-    label: "Savings & investments",
-    lead: "Now add the savings and investment details that sharpen your risk picture.",
-    keys: ["savings", "balance_taxable", "balance_tax_deferred", "balance_roth", "stockPct"],
-  },
-  {
-    label: "Pension & spouse",
-    lead: "These household details can change income resilience and survivor risk.",
-    keys: ["hasPension", "pensionAmount", "pensionHasCola", "pensionSurvivorPct", "spouseAge", "spouseSsaBenefitEstimate"],
-  },
-  {
-    label: "Home & safety net",
-    lead: "Your home, cash cushion, and debt help explain how much flexibility you have.",
-    keys: ["ownsHome", "homeEquity", "planToDownsize", "emergencyFund", "debt"],
-  },
-  {
-    label: "Outlook",
-    lead: "Last, add location, tax context, planning horizon, and your biggest concern.",
-    keys: ["state", "filingStatus", "planning_horizon_age", "worry"],
-  },
+export const CORE_KEYS = [
+  "age",
+  "maritalStatus",
+  "status",
+  "guaranteedIncome",
+  "essentialExpenses",
+  "desiredLifestyleSpending",
+  "savings",
+  "stockPct",
 ] as const;
 
 export const QUESTIONS: Question[] = [
@@ -170,6 +157,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "status",
+    core: true,
     kind: "choice",
     prompt: "Where are you with retirement?",
     help: "Pick the answer that feels closest — this just sets context for your score.",
@@ -204,6 +192,15 @@ export const QUESTIONS: Question[] = [
       "Your essential monthly expenses (housing, food, utilities, insurance, meds)?",
     help: "Choose the range that best matches monthly basics: housing, food, utilities, insurance, prescriptions, and regular bills.",
     choices: MONTHLY_EXPENSE_CHOICES,
+  },
+  {
+    key: "desiredLifestyleSpending",
+    core: true,
+    kind: "choice",
+    prompt:
+      "Beyond the basics, about how much would you like to spend each month to truly enjoy retirement — travel, hobbies, time with family, dining out?",
+    help: "Your best guess for the total monthly spending that would make retirement feel comfortable, not just covered.",
+    choices: DESIRED_LIFESTYLE_SPENDING_CHOICES,
   },
   {
     key: "spouseAge",
