@@ -18,8 +18,8 @@ test("zero guaranteed income and zero essentials stay bounded", () => {
   const score = computeScores({ ...base, essentialExpenses: 0, guaranteedIncome: 0, savings: 0 });
   assert.equal(score.sub.income, 0);
   assert.equal(score.sub.sustainability, 0);
-  assert.equal(score.sub.inflation, 40);
-  assert.ok(score.overall >= 30);
+  assert.equal(score.sub.inflation, 0);
+  assert.ok(score.overall >= 20);
 });
 
 test("full guaranteed-income coverage still depends on savings for sustainability", () => {

@@ -87,7 +87,7 @@ test("covering essentials is passing but not perfect for income or sustainabilit
   const buffered = computeScores({ ...breakEven, guaranteedIncome: 4500, savings: 500000 });
   const current = computeScores(breakEven);
 
-  assert.equal(current.sub.income, 65, "100% essential coverage should be a passing floor, not perfection");
+  assert.equal(current.sub.income, 70, "100% essential coverage should be a passing floor, not perfection");
   assert.ok(current.sub.sustainability < buffered.sub.sustainability, "sustainability score should still reflect savings and surplus");
   assert.ok(buffered.sub.income > current.sub.income, "income score should reward buffer above essentials");
 });
@@ -119,7 +119,7 @@ const personas: Array<[string, Answers, string[]]> = [
     stockPct: 50, emergencyFund: "3-6", debt: "some", ownsHome: "yes", homeEquity: 150000,
     balance_tax_deferred: 350000, balance_roth: 50000, claimedSocialSecurity: "no", targetRetirementAge: 66,
     worry: "running_out", state: "OH",
-  }, ["Secure"]],
+  }, ["Mostly Secure"]],
   ["average", {
     age: 66, maritalStatus: "single", status: "retired", guaranteedIncome: 2100, essentialExpenses: 2600,
     desiredLifestyleSpending: 3500, savings: 180000, ssaBenefitEstimate: 2100, stockPct: 50,

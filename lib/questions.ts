@@ -38,7 +38,7 @@ const RETIREMENT_AGE_CHOICES: Choice[] = [
   { value: 67, label: "65–69" },
   { value: 72, label: "70–74" },
   { value: 75, label: "75+" },
-  { value: 67, label: "Not sure" },
+  { value: 67.001, label: "Not sure" },
 ];
 
 const MONTHLY_INCOME_CHOICES: Choice[] = [
@@ -47,7 +47,9 @@ const MONTHLY_INCOME_CHOICES: Choice[] = [
   { value: 2500, label: "$2,000–$2,999/mo" },
   { value: 3500, label: "$3,000–$3,999/mo" },
   { value: 5000, label: "$4,000–$5,999/mo" },
-  { value: 7000, label: "$6,000+/mo" },
+  { value: 7000, label: "$6,000–$7,999/mo" },
+  { value: 9000, label: "$8,000–$9,999/mo" },
+  { value: 12000, label: "$10,000+/mo" },
 ];
 
 const MONTHLY_EXPENSE_CHOICES: Choice[] = [
@@ -92,7 +94,7 @@ const PENSION_CHOICES: Choice[] = [
   { value: 1500, label: "$1,000–$1,999/mo" },
   { value: 2500, label: "$2,000–$2,999/mo" },
   { value: 3500, label: "$3,000+/mo" },
-  { value: 0, label: "Not sure" },
+  { value: 1000, label: "Not sure" },
 ];
 
 const SURVIVOR_PCT_CHOICES: Choice[] = [
@@ -100,7 +102,7 @@ const SURVIVOR_PCT_CHOICES: Choice[] = [
   { value: 50, label: "50%" },
   { value: 75, label: "75%" },
   { value: 100, label: "100%" },
-  { value: 50, label: "Not sure" },
+  { value: 50.001, label: "Not sure" },
 ];
 
 const HOME_EQUITY_CHOICES: Choice[] = [
@@ -180,8 +182,8 @@ export const QUESTIONS: Question[] = [
     core: true,
     kind: "choice",
     prompt:
-      "Your guaranteed monthly income (Social Security + pension + annuity)?",
-    help: "Choose the range that best matches monthly Social Security, pension, and annuity income.",
+      "In retirement, what guaranteed monthly income do you get — or expect to get — from Social Security, pension, or annuity?",
+    help: "If you're retired, use what you receive now. Still working? Use your best guess for what these will pay once you retire — your Social Security statement is a good source.",
     choices: MONTHLY_INCOME_CHOICES,
   },
   {
@@ -198,16 +200,33 @@ export const QUESTIONS: Question[] = [
     core: true,
     kind: "choice",
     prompt:
-      "Beyond the basics, about how much would you like to spend each month to truly enjoy retirement — travel, hobbies, time with family, dining out?",
-    help: "Your best guess for the total monthly spending that would make retirement feel comfortable, not just covered.",
+      "In total, about how much would you like to spend each month to truly enjoy retirement — the basics plus travel, hobbies, time with family, dining out?",
+    help: "Your best guess for your total monthly spending — essentials included — that would make retirement feel comfortable, not just covered.",
     choices: DESIRED_LIFESTYLE_SPENDING_CHOICES,
+  },
+  {
+    key: "ssaBenefitEstimate",
+    kind: "choice",
+    prompt: "Your estimated Social Security benefit ($/mo)?",
+    help: "Choose your latest SSA estimate or current check range, or Not sure for a conservative default.",
+    choices: SOCIAL_SECURITY_CHOICES,
+  },
+  {
+    key: "claimedSocialSecurity",
+    kind: "choice",
+    prompt: "Have you claimed Social Security yet?",
+    help: "Choose whether you have already started your own Social Security retirement benefit.",
+    choices: [
+      { value: "no", label: "Not yet" },
+      { value: "yes", label: "Yes" },
+    ],
   },
   {
     key: "spouseAge",
     kind: "choice",
     prompt: "How old is your spouse?",
     help: "Choose the range that includes your spouse's current age, or Not sure if you do not know.",
-    choices: [...AGE_CHOICES, { value: 67, label: "Not sure" }],
+    choices: [...AGE_CHOICES, { value: 67.001, label: "Not sure" }],
     when: isMarried,
   },
   {
@@ -382,23 +401,6 @@ export const QUESTIONS: Question[] = [
     kind: "state",
     prompt: "Which state do you live in?",
     help: "Your state helps us account for broad cost-of-living differences.",
-  },
-  {
-    key: "claimedSocialSecurity",
-    kind: "choice",
-    prompt: "Have you claimed Social Security yet?",
-    help: "Choose whether you have already started your own Social Security retirement benefit.",
-    choices: [
-      { value: "no", label: "Not yet" },
-      { value: "yes", label: "Yes" },
-    ],
-  },
-  {
-    key: "ssaBenefitEstimate",
-    kind: "choice",
-    prompt: "Your estimated Social Security benefit ($/mo)?",
-    help: "Choose your latest SSA estimate or current check range, or Not sure for a conservative default.",
-    choices: SOCIAL_SECURITY_CHOICES,
   },
   {
     key: "worry",

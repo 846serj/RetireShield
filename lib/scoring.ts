@@ -1,5 +1,5 @@
 // Retirement Safety Score — 7-pillar, reality-based scoring. Education only, NOT advice.
-import { DEFAULT_ASSUMPTIONS } from "@/lib/engine/params/2026";
+import { DEFAULT_ASSUMPTIONS, EXPECTED_RETURNS } from "@/lib/engine/params/2026";
 import { projectDepletion } from "@/lib/engine/projection";
 import type { ScoreBandLabel } from "@/lib/verdicts";
 
@@ -37,13 +37,13 @@ export type Answers = {
 };
 
 export type SubScores = {
-  income: number;
-  sustainability: number;
-  inflation: number;
-  market: number;
-  timing: number;
-  reserves: number;
-  taxes: number;
+  income: number;         // guaranteed income coverage
+  sustainability: number; // savings last through horizon at target spend
+  inflation: number;      // COLA vs fixed income over horizon
+  market: number;         // allocation / cushion / debt
+  timing: number;         // claiming + retirement timing + longevity
+  reserves: number;       // home equity, emergency fund, flexibility
+  taxes: number;          // taxable / tax-deferred / Roth diversification
 };
 export type Result = { overall: number; band: ScoreBandLabel; sub: SubScores };
 
@@ -55,9 +55,12 @@ const WEIGHT_BASE: ScoreWeights = {
 export const WEIGHTS = WEIGHT_BASE;
 
 const FRA = 67;
-const EFUND_MONTHS = { "0": 0, "1-3": 2, "3-6": 4.5, "6+": 7, skip: 0 } as const;
+// "skip" = unanswered, scored as a modest 2-month cushion rather than zero (never punish a skip).
+const EFUND_MONTHS = { "0": 0, "1-3": 2, "3-6": 4.5, "6+": 7, skip: 2 } as const;
 const HIGH_COL = new Set(["HI","CA","NY","MA","NJ","CT","WA","OR","MD","CO","RI","AK","VT","NH"]);
 const LOW_COL = new Set(["MS","AL","AR","OK","KS","MO","TN","KY","WV","IN","IA","OH","ND","SD","NE"]);
+// Conservative expected-SS credit for pre-retirees who skipped the SSA estimate (quiz "Not sure" uses the same figure).
+const IMPUTED_PRERETIREE_SS = 1800;
 
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 const num = (v: unknown, d = 0) => (Number.isFinite(v as number) ? Number(v) : d);
@@ -77,8 +80,16 @@ const ssTotal = (a: Answers) => Math.max(0, num(a.ssaBenefitEstimate)) + Math.ma
 const investable = (a: Answers) =>
   Math.max(Math.max(0, num(a.savings)), Math.max(0, num(a.balance_taxable)) + Math.max(0, num(a.balance_tax_deferred)) + Math.max(0, num(a.balance_roth)));
 
+// Pre-retirees get credit for expected Social Security (+ expected pension) coming online.
+// If they never reached the SSA-estimate question, impute a conservative benefit instead of scoring
+// their working-years guaranteed income as if it were their retirement income.
+const expectedRetirementIncome = (a: Answers) => {
+  const ss = ssTotal(a) > 0 ? ssTotal(a) : IMPUTED_PRERETIREE_SS;
+  const pension = a.hasPension === "yes" ? Math.max(0, num(a.pensionAmount)) : 0;
+  return ss + pension;
+};
 const effectiveGuaranteed = (a: Answers) =>
-  a.status !== "retired" ? Math.max(num(a.guaranteedIncome), ssTotal(a)) : num(a.guaranteedIncome);
+  a.status !== "retired" ? Math.max(num(a.guaranteedIncome), expectedRetirementIncome(a)) : num(a.guaranteedIncome);
 
 const coverageScore = (coverage: number): number => {
   if (!Number.isFinite(coverage)) return 0;
@@ -95,6 +106,7 @@ function survivorGuaranteedIncome(a: Answers): number {
   return Math.max(0, effectiveGuaranteed(a) - lostSs - lostPension);
 }
 
+// 1. Guaranteed income coverage
 function income(a: Answers): number {
   const essentials = Math.max(1, num(a.essentialExpenses));
   let s = coverageScore(effectiveGuaranteed(a) / essentials);
@@ -105,60 +117,81 @@ function income(a: Answers): number {
   return clamp(s * colMultiplier(a.state));
 }
 
+const realPortfolioReturn = (stockPct: number): number => {
+  const st = clamp(num(stockPct, 60), 0, 100) / 100;
+  const nominal = st * EXPECTED_RETURNS.stock + (1 - st) * EXPECTED_RETURNS.bond;
+  return (1 + nominal) / (1 + DEFAULT_ASSUMPTIONS.inflation) - 1;
+};
+
+// 2. Savings sustainability (survival floor = essentials; +60% of desired-lifestyle gap)
 function sustainability(a: Answers): number {
   const essentials = Math.max(1, num(a.essentialExpenses));
   const desired = num(a.desiredLifestyleSpending) > 0 ? Math.max(num(a.desiredLifestyleSpending), essentials) : essentials;
   const target = essentials + 0.6 * Math.max(0, desired - essentials);
-  const savings = investable(a) * 0.85;
-  const gap = Math.max(0, target - effectiveGuaranteed(a));
-  if (gap <= 0) {
-    const cov = effectiveGuaranteed(a) / target;
-    const surplus = 78 + Math.min(12, ((cov - 1) / 0.5) * 12);
-    const buffer = Math.min(10, (savings / (target * 12)) * 2);
-    return clamp((surplus + buffer) * colMultiplier(a.state));
-  }
+  const gi = effectiveGuaranteed(a);
+  const gap = Math.max(0, target - gi);
+  // Pre-retirees: drawdown starts at the target retirement age, not today. Savings compound
+  // (at the portfolio's real expected return, no new contributions assumed — still conservative) until then.
+  const age = Math.floor(num(a.age, 65));
+  const retAge = a.status !== "retired" ? clamp(Math.round(num(a.targetRetirementAge, 67)), age, 75) : age;
+  const growthYears = Math.max(0, retAge - age);
+  const savings = investable(a) * 0.85 * (1 + realPortfolioReturn(a.stockPct)) ** growthYears;
+  const horizonYears = Math.max(1, planningHorizonAge(a) - retAge);
+  const buffer = Math.min(10, (savings / (target * 12)) * 2);
+  const coveredScore = 78 + buffer + (gap <= 0 ? Math.min(12, ((gi / target - 1) / 0.5) * 12) : 0);
+  if (gap <= 0) return clamp(coveredScore * colMultiplier(a.state));
   const proj = projectDepletion({
-    currentAge: num(a.age, 65), realSavings: savings, monthlyGap: gap,
+    currentAge: retAge, realSavings: savings, monthlyGap: gap,
     horizonAge: planningHorizonAge(a), stockPct: num(a.stockPct, 60), bondPct: 100 - num(a.stockPct, 60), cashPct: 0,
     inflationRate: DEFAULT_ASSUMPTIONS.inflation, socialSecurityCola: DEFAULT_ASSUMPTIONS.socialSecurityCola,
-    monthlySocialSecurity: Math.min(effectiveGuaranteed(a), Math.max(0, num(a.ssaBenefitEstimate))),
+    monthlySocialSecurity: Math.min(gi, Math.max(0, ssTotal(a))),
   });
-  const horizonYears = Math.max(1, yearsToHorizon(a));
   let s: number;
   if (proj.depletionAge === null) {
     const endYears = proj.realEndingBalance / Math.max(gap * 12, 1);
     s = 88 + Math.min(12, endYears * 2);
   } else {
-    s = (Math.max(0, proj.depletionAge - Math.floor(num(a.age, 65))) / horizonYears) * 88;
+    s = (Math.max(0, proj.depletionAge - retAge) / horizonYears) * 88;
   }
+  // A plan that needs drawdown can never score above the same plan fully covered by income.
+  s = Math.min(s, coveredScore);
+  // Continuity: nearly-covered plans (gap < 10% of target) blend toward the covered score
+  // instead of cliff-dropping to zero when savings are thin.
+  const gapShare = gap / target;
+  if (gapShare < 0.1) s = coveredScore * (1 - gapShare / 0.1) + s * (gapShare / 0.1);
   return clamp(s * colMultiplier(a.state));
 }
 
+// 3. Inflation protection — real (inflation-adjusted) income coverage of essentials at the horizon,
+// on the same coverage curve as the income pillar (no artificial floor).
 function inflation(a: Answers): number {
   const essentials = Math.max(1, num(a.essentialExpenses));
   const years = yearsToHorizon(a);
   const inf = DEFAULT_ASSUMPTIONS.inflation;
   const cola = DEFAULT_ASSUMPTIONS.socialSecurityCola;
   const gi = effectiveGuaranteed(a);
-  const ss = ssTotal(a);
+  const ssKnown = ssTotal(a);
+  const ss = a.status !== "retired" && ssKnown <= 0 ? Math.min(gi, IMPUTED_PRERETIREE_SS) : ssKnown;
   const pensionCola = a.pensionHasCola === "yes" ? Math.max(0, num(a.pensionAmount)) : 0;
-  const colaIncome = ss > 0 || pensionCola > 0 ? Math.min(gi, ss + pensionCola) : gi * 0.6;
+  const colaIncome = ss > 0 || pensionCola > 0 ? Math.min(gi, ss + pensionCola) : gi * 0.6; // neutral default
   const fixed = Math.max(0, gi - colaIncome);
   const realCola = colaIncome * (((1 + cola) / (1 + inf)) ** years);
   const realFixed = fixed / ((1 + inf) ** years);
-  return clamp(40 + ((realCola + realFixed) / essentials) * 60);
+  return clamp(coverageScore((realCola + realFixed) / essentials));
 }
 
+// 4. Market & sequence risk
 function market(a: Answers): number {
   const maxEquity = clamp(110 - num(a.age, 65), 20, 90);
   const over = Math.max(0, num(a.stockPct, 60) - maxEquity);
   let s = 74 - over * 0.9;
-  s += Math.min(EFUND_MONTHS[a.emergencyFund] ?? 0, 6) * 4.5;
+  s += Math.min(EFUND_MONTHS[a.emergencyFund] ?? 2, 6) * 4.5;
   if (a.debt === "some") s -= 10;
   if (a.debt === "heavy") s -= 24;
   return clamp(s);
 }
 
+// 5. Longevity & claiming timing
 function timing(a: Answers): number {
   const age = num(a.age, 65);
   let s = 68;
@@ -174,14 +207,15 @@ function timing(a: Answers): number {
   return clamp(s);
 }
 
+// 6. Contingency reserves & flexibility
 function reserves(a: Answers): number {
   let s = 52;
   if (a.ownsHome === "yes") {
     const eq = Math.max(0, num(a.homeEquity));
-    s += eq >= 250000 ? 18 : eq >= 100000 ? 12 : eq > 0 ? 6 : 8;
+    s += eq >= 250000 ? 18 : eq >= 100000 ? 12 : 6; // unknown equity scores like small equity, never better
     if (a.planToDownsize === "yes") s += 6;
   }
-  s += Math.min(EFUND_MONTHS[a.emergencyFund] ?? 0, 6) * 3;
+  s += Math.min(EFUND_MONTHS[a.emergencyFund] ?? 2, 6) * 3;
   if (a.debt === "some") s -= 6;
   if (a.debt === "heavy") s -= 15;
   if (a.status === "working") s += 8;
@@ -189,12 +223,13 @@ function reserves(a: Answers): number {
   return clamp(s);
 }
 
+// 7. Tax diversification
 function taxes(a: Answers): number {
   const t = Math.max(0, num(a.balance_taxable));
   const d = Math.max(0, num(a.balance_tax_deferred));
   const r = Math.max(0, num(a.balance_roth));
   const total = t + d + r;
-  if (total <= 0) return 60;
+  if (total <= 0) return 60; // unknown => neutral, never penalize a skipped optional
   const buckets = [t, d, r].filter((x) => x / total > 0.05).length;
   let s = buckets >= 3 ? 90 : buckets === 2 ? 72 : 50;
   if (r / total > 0.05) s += 8;
@@ -232,15 +267,23 @@ export function computeScores(a: Answers): Result {
 }
 
 export const ACTION_LIB: Record<keyof SubScores, string> = {
-  income: "Your guaranteed income covers only part of your essentials. Before claiming Social Security, ask a fiduciary whether delaying raises your lifetime guaranteed income.",
-  sustainability: "Your savings may not last through your planning horizon at the spending you want. Map a withdrawal order and a sustainable spending plan to review with a fiduciary.",
-  inflation: "A large share of your income isn't inflation-adjusted. List which income sources have a cost-of-living adjustment and which are fixed, so you can plan for rising costs.",
-  market: "Your stock exposure, cash cushion, or debt may leave you exposed to a bad market year early in retirement. Have a 'what mix fits me' conversation — not a specific buy/sell call.",
-  timing: "Your Social Security and retirement timing may be leaving guaranteed income on the table. Compare claiming ages and target dates before you lock them in.",
-  reserves: "Your backstops are thin. Review your emergency fund, home-equity options, and debt so an unexpected cost doesn't force a bad decision.",
-  taxes: "Your savings sit mostly in one tax bucket. Knowing your taxable, tax-deferred, and Roth balances can lower lifetime taxes and IRMAA surprises — worth a fiduciary review.",
+  income:
+    "Your guaranteed income covers only part of your essentials. Before claiming Social Security, ask a fiduciary whether delaying raises your lifetime guaranteed income.",
+  sustainability:
+    "Your savings may not last through your planning horizon at the spending you want. Map a withdrawal order and a sustainable spending plan to review with a fiduciary.",
+  inflation:
+    "A large share of your income isn't inflation-adjusted. List which income sources have a cost-of-living adjustment and which are fixed, so you can plan for rising costs.",
+  market:
+    "Your stock exposure, cash cushion, or debt may leave you exposed to a bad market year early in retirement. Have a 'what mix fits me' conversation — not a specific buy/sell call.",
+  timing:
+    "Your Social Security and retirement timing may be leaving guaranteed income on the table. Compare claiming ages and target dates before you lock them in.",
+  reserves:
+    "Your backstops are thin. Review your emergency fund, home-equity options, and debt so an unexpected cost doesn't force a bad decision.",
+  taxes:
+    "Your savings sit mostly in one tax bucket. Knowing your taxable, tax-deferred, and Roth balances can lower lifetime taxes and IRMAA surprises — worth a fiduciary review.",
 };
 
+// Two weakest sub-scores + one universal scam-safety action.
 export function actions(_a: Answers, r: Result): string[] {
   const ranked = (Object.entries(r.sub) as [keyof SubScores, number][]).sort((x, y) => x[1] - y[1]);
   return [
