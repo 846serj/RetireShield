@@ -23,7 +23,8 @@ export async function sendTransactionalEmail({ to, subject, html, text }: Transa
 
   try {
     const resend = new Resend(apiKey);
-    const { error } = await resend.emails.send({ from, to, subject, html, text });
+    const replyTo = process.env.EMAIL_REPLY_TO || "ellen@retireshield.com";
+    const { error } = await resend.emails.send({ from, to, subject, html, text, replyTo });
     if (error) console.error("[Resend] transactional email failed", error);
   } catch (error) {
     console.error("[Resend] transactional email error", error);
