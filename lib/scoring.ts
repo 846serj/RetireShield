@@ -61,6 +61,10 @@ const HIGH_COL = new Set(["HI","CA","NY","MA","NJ","CT","WA","OR","MD","CO","RI"
 const LOW_COL = new Set(["MS","AL","AR","OK","KS","MO","TN","KY","WV","IN","IA","OH","ND","SD","NE"]);
 // Conservative expected-SS credit for pre-retirees who skipped the SSA estimate (quiz "Not sure" uses the same figure).
 const IMPUTED_PRERETIREE_SS = 1800;
+// When Social Security / pension composition is unknown for a retiree, assume 80% of guaranteed
+// income is COLA-protected: SS (which carries a COLA) is the dominant guaranteed-income source
+// for the large majority of retired households. Still conservative vs the SS-only household (100%).
+const UNKNOWN_COLA_SHARE = 0.8;
 
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 const num = (v: unknown, d = 0) => (Number.isFinite(v as number) ? Number(v) : d);
@@ -123,7 +127,10 @@ const realPortfolioReturn = (stockPct: number): number => {
   return (1 + nominal) / (1 + DEFAULT_ASSUMPTIONS.inflation) - 1;
 };
 
-// 2. Savings sustainability (survival floor = essentials; +60% of desired-lifestyle gap)
+// 2. Savings sustainability (survival floor = essentials; +60% of desired-lifestyle gap).
+// Continuous in savings: the covered score and the never-depletes score both scale with the
+// real cushion, so $150k and $1.5M no longer collapse onto one number (the old flat-88 wall
+// was the mechanical cause of the email-gate score pile-up).
 function sustainability(a: Answers): number {
   const essentials = Math.max(1, num(a.essentialExpenses));
   const desired = num(a.desiredLifestyleSpending) > 0 ? Math.max(num(a.desiredLifestyleSpending), essentials) : essentials;
@@ -137,8 +144,10 @@ function sustainability(a: Answers): number {
   const growthYears = Math.max(0, retAge - age);
   const savings = investable(a) * 0.85 * (1 + realPortfolioReturn(a.stockPct)) ** growthYears;
   const horizonYears = Math.max(1, planningHorizonAge(a) - retAge);
-  const buffer = Math.min(10, (savings / (target * 12)) * 2);
-  const coveredScore = 78 + buffer + (gap <= 0 ? Math.min(12, ((gi / target - 1) / 0.5) * 12) : 0);
+  const savYears = savings / (target * 12);
+  const surplus = gap <= 0 ? Math.min(10, ((gi / target - 1) / 0.5) * 10) : 0;
+  // Fully-covered plans: 80 base + up to 20 for real savings cushion + income surplus.
+  const coveredScore = 80 + Math.min(20, savYears * 1.6 + surplus);
   if (gap <= 0) return clamp(coveredScore * colMultiplier(a.state));
   const proj = projectDepletion({
     currentAge: retAge, realSavings: savings, monthlyGap: gap,
@@ -148,15 +157,16 @@ function sustainability(a: Answers): number {
   });
   let s: number;
   if (proj.depletionAge === null) {
-    const endYears = proj.realEndingBalance / Math.max(gap * 12, 1);
-    s = 88 + Math.min(12, endYears * 2);
+    // Lasts through the horizon: 80 base + up to 18 for how many years of target spending remain.
+    const endYears = proj.realEndingBalance / (target * 12);
+    s = 80 + Math.min(18, endYears * 1.5);
   } else {
-    s = (Math.max(0, proj.depletionAge - retAge) / horizonYears) * 88;
+    s = (Math.max(0, proj.depletionAge - retAge) / horizonYears) * 80;
   }
   // A plan that needs drawdown can never score above the same plan fully covered by income.
   s = Math.min(s, coveredScore);
   // Continuity: nearly-covered plans (gap < 10% of target) blend toward the covered score
-  // instead of cliff-dropping to zero when savings are thin.
+  // instead of cliff-dropping when savings are thin.
   const gapShare = gap / target;
   if (gapShare < 0.1) s = coveredScore * (1 - gapShare / 0.1) + s * (gapShare / 0.1);
   return clamp(s * colMultiplier(a.state));
@@ -173,7 +183,7 @@ function inflation(a: Answers): number {
   const ssKnown = ssTotal(a);
   const ss = a.status !== "retired" && ssKnown <= 0 ? Math.min(gi, IMPUTED_PRERETIREE_SS) : ssKnown;
   const pensionCola = a.pensionHasCola === "yes" ? Math.max(0, num(a.pensionAmount)) : 0;
-  const colaIncome = ss > 0 || pensionCola > 0 ? Math.min(gi, ss + pensionCola) : gi * 0.6; // neutral default
+  const colaIncome = ss > 0 || pensionCola > 0 ? Math.min(gi, ss + pensionCola) : gi * UNKNOWN_COLA_SHARE;
   const fixed = Math.max(0, gi - colaIncome);
   const realCola = colaIncome * (((1 + cola) / (1 + inf)) ** years);
   const realFixed = fixed / ((1 + inf) ** years);
