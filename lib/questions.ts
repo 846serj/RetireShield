@@ -67,7 +67,7 @@ const DESIRED_LIFESTYLE_SPENDING_CHOICES: Choice[] = [
   { value: 6000, label: "$5,000–$6,999/mo" },
   { value: 8500, label: "$7,000–$9,999/mo" },
   { value: 11000, label: "$10,000+/mo" },
-  { value: 5000, label: "Not sure" },
+  { value: 0, label: "Not sure" },
 ];
 
 const SAVINGS_CHOICES: Choice[] = [
@@ -133,6 +133,8 @@ export const CORE_KEYS = [
   "desiredLifestyleSpending",
   "savings",
   "stockPct",
+  "emergencyFund",
+  "debt",
 ] as const;
 
 export const QUESTIONS: Question[] = [
@@ -350,6 +352,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "emergencyFund",
+    core: true,
     kind: "choice",
     prompt: "How many months of expenses do you keep in cash?",
     help: "Cash means money you can reach without selling investments, like checking, savings, or money market funds.",
@@ -362,6 +365,7 @@ export const QUESTIONS: Question[] = [
   },
   {
     key: "debt",
+    core: true,
     kind: "choice",
     prompt: "How would you describe your debt?",
     help: "Consider monthly payments and stress level, not just the balance.",
