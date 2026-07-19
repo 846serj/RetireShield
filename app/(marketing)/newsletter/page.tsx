@@ -55,55 +55,35 @@ export default function NewsletterPage() {
 
   return (
     <div className="rg-page-shell">
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
-        <div className="rg-card overflow-hidden">
-          <Eyebrow>Retirement Shield newsletter</Eyebrow>
-          <div className="mt-8 rounded-[2rem] bg-band p-5 sm:p-8">
-            <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-brand">
-              Free, unsubscribe anytime
-            </p>
-            <h1 className="mt-4 font-serif text-[2.4rem] font-semibold leading-tight text-ink sm:text-5xl">
-              Practical retirement money help every Tuesday & Friday.
-            </h1>
-            <p className="mt-5 text-xl font-semibold leading-8 text-slate-700">
-              Join Ellen Marsh and the free Retirement Shield newsletter for
-              plain-English updates that help you protect your retirement.
-            </p>
-          </div>
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-3xl items-center px-4 py-6 sm:py-10">
+        <section className="w-full overflow-hidden rounded-[2rem] bg-brand-dark px-5 py-9 text-center text-white shadow-2xl shadow-brand-dark/20 sm:px-10 sm:py-12">
+          <Eyebrow className="text-[#8FB3D9]">FREE · EVERY TUESDAY & FRIDAY · NO ACCOUNT NEEDED</Eyebrow>
+
+          <h1 className="mx-auto mt-6 max-w-2xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl">
+            Get the <span className="text-[#7BD3A8]">straight answer</span> on your retirement — <span className="text-[#7BD3A8]">free</span>, twice a week.
+          </h1>
+
+          <p className="mx-auto mt-5 flex max-w-xl items-center justify-center gap-2 text-center text-lg font-semibold leading-8 text-white/90 sm:text-xl">
+            <svg viewBox="0 0 24 24" fill="none" className="size-5 shrink-0" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="#7BD3A8" strokeWidth="2" />
+              <path d="M8.5 12.5l2.5 2.5 4.5-5.5" stroke="#7BD3A8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Plain-English money help from Ellen Marsh — what to claim, what to dodge, and what's changing.</span>
+          </p>
 
           {submitted ? (
-            <div className="mt-8 rounded-3xl border border-brand/20 bg-white p-6 text-center shadow-sm">
-              <h2 className="text-2xl font-bold text-ink">
-                You&apos;re in — check your inbox
-              </h2>
-              <p className="mx-auto mt-3 max-w-2xl text-lg leading-8 text-slate-700">
-                Watch for Retirement Shield from Ellen Marsh every Tuesday &
-                Friday. Add Ellen Marsh — Retirement Shield to your contacts so
-                you don&apos;t miss it.
+            <div className="mx-auto mt-9 max-w-lg rounded-3xl bg-white/10 p-6 text-center">
+              <h2 className="text-2xl font-bold text-white">You're in — check your inbox.</h2>
+              <p className="mx-auto mt-3 text-base leading-7 text-[#D5E2F1]">
+                Watch for Retirement Shield from Ellen Marsh every Tuesday & Friday. Add
+                ellen@retireshield.com to your contacts so it doesn't get missed.
               </p>
             </div>
           ) : (
             <>
-              <div className="mt-8 grid gap-4 text-lg font-bold text-ink">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  Money you&apos;re owed — benefits, deadlines, and programs worth
-                  checking.
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  Scams to dodge — clear warnings before fraudsters reach your
-                  wallet.
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  Social Security &amp; Medicare changes — what may affect your
-                  check or coverage.
-                </div>
-              </div>
-
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <div className="flex-1">
-                  <label htmlFor="newsletter-first-name" className="sr-only">
-                    First name
-                  </label>
+              <div className="mx-auto mt-8 max-w-lg">
+                <div className="flex flex-col gap-3">
+                  <label htmlFor="newsletter-first-name" className="sr-only">First name</label>
                   <input
                     id="newsletter-first-name"
                     type="text"
@@ -111,13 +91,9 @@ export default function NewsletterPage() {
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="First name"
                     autoComplete="given-name"
-                    className="rg-input"
+                    className="rg-input text-center sm:text-left"
                   />
-                </div>
-                <div className="flex-1">
-                  <label htmlFor="newsletter-email" className="sr-only">
-                    Email address
-                  </label>
+                  <label htmlFor="newsletter-email" className="sr-only">Email address</label>
                   <input
                     id="newsletter-email"
                     type="email"
@@ -125,30 +101,44 @@ export default function NewsletterPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@email.com"
                     autoComplete="email"
-                    className="rg-input"
+                    className="rg-input text-center sm:text-left"
                     aria-describedby={error ? "newsletter-error" : undefined}
                   />
+                  <Button
+                    type="button"
+                    disabled={!firstName.trim() || !emailIsValid || submitting}
+                    onClick={submitNewsletter}
+                    style={{ backgroundColor: "#2E9E6A", borderColor: "#2E9E6A" }}
+                    className="min-h-16 w-full text-xl font-extrabold text-white shadow-[0_18px_45px_rgba(46,158,106,0.4)] hover:!bg-[#278a5c] hover:!border-[#278a5c] disabled:opacity-50"
+                  >
+                    {submitting ? "Sending…" : "Send me the free newsletter →"}
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  disabled={!firstName.trim() || !emailIsValid || submitting}
-                  onClick={submitNewsletter}
-                  className="disabled:opacity-50"
-                >
-                  {submitting ? "Sending…" : "Send me the free newsletter"}
-                </Button>
+                <p className="mt-3 text-sm font-bold text-white/70">Free · unsubscribe anytime · no account needed</p>
+                {error && (
+                  <p id="newsletter-error" className="mt-3 rounded-xl border border-red-300/40 bg-red-500/15 p-3 text-sm font-semibold text-red-100">
+                    {error}
+                  </p>
+                )}
               </div>
-              {error && (
-                <p
-                  id="newsletter-error"
-                  className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-bad"
-                >
-                  {error}
-                </p>
-              )}
+
+              <div className="mx-auto mt-10 grid max-w-2xl gap-3 text-left sm:grid-cols-3">
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <div className="text-sm font-bold text-white">Money you're owed</div>
+                  <div className="mt-1 text-xs leading-5 text-[#B9CCE4]">Benefits, deadlines, and programs worth checking.</div>
+                </div>
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <div className="text-sm font-bold text-white">Scams to dodge</div>
+                  <div className="mt-1 text-xs leading-5 text-[#B9CCE4]">Clear warnings before fraudsters reach your wallet.</div>
+                </div>
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <div className="text-sm font-bold text-white">Social Security & Medicare</div>
+                  <div className="mt-1 text-xs leading-5 text-[#B9CCE4]">What may change your check or your coverage.</div>
+                </div>
+              </div>
             </>
           )}
-        </div>
+        </section>
       </div>
     </div>
   );
