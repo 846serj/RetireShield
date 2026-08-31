@@ -53,8 +53,13 @@ export async function POST(req: Request) {
   const firstName =
     typeof body?.firstName === "string" ? body.firstName.trim() : "";
 
+  const str = (v: unknown) =>
+    typeof v === "string" && v.trim() ? v.trim().slice(0, 120) : undefined;
+
   await addBeehiivSubscriber(body.email.trim().toLowerCase(), {
     utmSource: body?.utmSource ?? "direct_signup",
+    utmMedium: str(body?.utmMedium),
+    utmCampaign: str(body?.utmCampaign),
     tier: "free",
     firstName,
   });
