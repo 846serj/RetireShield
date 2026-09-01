@@ -1,5 +1,7 @@
 type BeehiivSubscriberOptions = {
   utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
   tier?: string;
   firstName?: string;
 };
@@ -40,6 +42,11 @@ export async function addBeehiivSubscriber(
           reactivate_existing: true,
           send_welcome_email: true,
           utm_source: opts?.utmSource ?? "retireshield",
+          // Which surface (sidebar / sticky / popup / article) and which copy
+          // variant produced the signup. Without these the on-site capture
+          // surfaces are indistinguishable from each other in Beehiiv.
+          ...(opts?.utmMedium ? { utm_medium: opts.utmMedium } : {}),
+          ...(opts?.utmCampaign ? { utm_campaign: opts.utmCampaign } : {}),
           custom_fields: customFields.length ? customFields : undefined,
         }),
       },

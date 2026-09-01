@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LEADGEN_ONLY } from "@/lib/flags";
 import { Button } from "./ui";
@@ -34,9 +35,9 @@ const footerColumns = [
   { title: "Legal", links: [{ label: "Privacy", href: "/privacy" }, { label: "Terms", href: "/terms" }, { label: "Refund Policy", href: "/refund-policy" }, { label: "Disclosures", href: "/about#trust-heading" }] },
 ];
 
-function Logo({ compact = false }: { compact?: boolean }) {
+function Logo({ compact = false, href }: { compact?: boolean; href?: string }) {
   return (
-    <Link href={LEADGEN_ONLY ? "/quiz" : "/"} className={`flex shrink-0 items-center ${compact ? "gap-2.5" : "gap-3"} text-ink no-underline hover:text-brand-dark`} aria-label="RetireShield home">
+    <Link href={href ?? (LEADGEN_ONLY ? "/quiz" : "/")} className={`flex shrink-0 items-center ${compact ? "gap-2.5" : "gap-3"} text-ink no-underline hover:text-brand-dark`} aria-label="RetireShield home">
       <span className={`flex items-center justify-center bg-brand-dark text-white shadow-sm ${compact ? "h-[34px] w-[34px] rounded-xl" : "h-11 w-11 rounded-2xl"}`} aria-hidden="true">
         <svg viewBox="0 0 24 24" className={compact ? "h-5 w-5" : "h-7 w-7"} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 3 5 6v5c0 4.5 2.9 8.5 7 10 4.1-1.5 7-5.5 7-10V6l-7-3Z" />
@@ -49,6 +50,9 @@ function Logo({ compact = false }: { compact?: boolean }) {
 }
 
 export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
+  const pathname = usePathname();
+  // Dedicated conversion page: strip every off-ramp so visitors only see the signup form.
+  const distractionFree = pathname === "/newsletter";
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const featuresRef = useRef<HTMLDivElement>(null);
@@ -79,8 +83,10 @@ export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
     return (
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex min-h-16 max-w-container items-center justify-between gap-4 px-4 py-2 sm:px-6 lg:px-8">
-          <Logo compact />
-          <Button href="/quiz" className="min-h-11 whitespace-nowrap px-5 py-2.5 text-[15px]">Free Safety Score</Button>
+          <Logo compact href={distractionFree ? "/newsletter" : undefined} />
+          {!distractionFree && (
+            <Button href="/quiz" className="min-h-11 whitespace-nowrap px-5 py-2.5 text-[15px]">Free Safety Score</Button>
+          )}
         </div>
       </header>
     );
