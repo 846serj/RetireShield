@@ -55,6 +55,10 @@ export async function POST(req: Request) {
 
   const str = (v: unknown) =>
     typeof v === "string" && v.trim() ? v.trim().slice(0, 120) : undefined;
+  const trustedFormCertUrl =
+    typeof body?.xxTrustedFormCertUrl === "string" && body.xxTrustedFormCertUrl.trim()
+      ? body.xxTrustedFormCertUrl.trim()
+      : undefined;
 
   await addBeehiivSubscriber(body.email.trim().toLowerCase(), {
     utmSource: body?.utmSource ?? "direct_signup",
@@ -62,6 +66,7 @@ export async function POST(req: Request) {
     utmCampaign: str(body?.utmCampaign),
     tier: "free",
     firstName,
+    xxTrustedFormCertUrl: trustedFormCertUrl,
   });
 
   return NextResponse.json({ ok: true }, { headers: cors });

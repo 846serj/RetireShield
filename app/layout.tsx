@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Source_Serif_4 } from "next/font/google";
+import Script from "next/script";
 import { getPublicBaseUrl } from "@/lib/siteUrl";
 import { defaultOgImage } from "@/lib/seo";
 import { PostHogProvider } from "@/components/PostHogProvider";
@@ -38,6 +39,21 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${sourceSerif.variable}`}>
+      <head>
+        <Script id="trustedform" type="text/javascript" strategy="afterInteractive">
+          {`(function() {
+  var tf = document.createElement('script');
+  tf.type = 'text/javascript';
+  tf.async = true;
+  tf.src = ("https:" == document.location.protocol ? 'https' : 'http') +
+    '://api.trustedform.com/trustedform.js?field=xxTrustedFormCertUrl&use_tagged_consent=true&l=' +
+    new Date().getTime() + Math.random();
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(tf, s);
+})();`}
+        </Script>
+        <noscript><img src="https://api.trustedform.com/ns.gif" alt="" /></noscript>
+      </head>
       <body className="min-h-screen font-sans"><PostHogProvider>{children}</PostHogProvider></body>
     </html>
   );
