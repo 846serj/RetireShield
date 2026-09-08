@@ -19,16 +19,21 @@ export default function NewsletterPage() {
   const [error, setError] = useState("");
   const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-  async function submitNewsletter() {
+  async function submitNewsletter(form: HTMLFormElement) {
     setSubmitting(true);
     setError("");
     try {
+      const trustedFormCertUrl = form.elements.namedItem("xxTrustedFormCertUrl");
       const res = await fetch("/api/newsletter/account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim(),
           utmSource: "newsletter_page",
+          xxTrustedFormCertUrl:
+            trustedFormCertUrl instanceof HTMLInputElement
+              ? trustedFormCertUrl.value
+              : "",
         }),
       });
       const payload = await res.json().catch(() => ({}));
@@ -68,7 +73,13 @@ export default function NewsletterPage() {
           ) : (
             <>
               <div className="mx-auto mt-6 max-w-lg">
-                <div className="flex flex-col gap-3">
+                <form
+                  className="flex flex-col gap-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (emailIsValid && !submitting) submitNewsletter(event.currentTarget);
+                  }}
+                >
                   <label htmlFor="newsletter-email" className="sr-only">Email address</label>
                   <input
                     id="newsletter-email"
@@ -79,22 +90,24 @@ export default function NewsletterPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && emailIsValid && !submitting) submitNewsletter();
+                      if (e.key === "Enter" && emailIsValid && !submitting) {
+                        e.preventDefault();
+                        e.currentTarget.form?.requestSubmit();
+                      }
                     }}
                     placeholder="you@email.com"
                     className="rg-input text-center sm:text-left"
                     aria-describedby={error ? "newsletter-error" : undefined}
                   />
                   <Button
-                    type="button"
+                    type="submit"
                     disabled={!emailIsValid || submitting}
-                    onClick={submitNewsletter}
                     style={{ backgroundColor: "#2E9E6A", borderColor: "#2E9E6A" }}
                     className="min-h-16 w-full text-xl font-extrabold text-white shadow-[0_18px_45px_rgba(46,158,106,0.4)] hover:!bg-[#278a5c] hover:!border-[#278a5c] disabled:opacity-50"
                   >
                     {submitting ? "Sending…" : "Send me the free newsletter →"}
                   </Button>
-                </div>
+                </form>
                 <p className="mt-3 text-sm font-bold text-white/70">Free · unsubscribe anytime · no account needed</p>
                 {error && (
                   <p id="newsletter-error" className="mt-3 rounded-xl border border-red-300/40 bg-red-500/15 p-3 text-sm font-semibold text-red-100">

@@ -4,6 +4,7 @@ type BeehiivSubscriberOptions = {
   utmCampaign?: string;
   tier?: string;
   firstName?: string;
+  xxTrustedFormCertUrl?: string;
 };
 
 export async function addBeehiivSubscriber(
@@ -26,6 +27,9 @@ export async function addBeehiivSubscriber(
       // The "First Name" custom field must already exist in Beehiiv or Beehiiv discards it.
       ...(opts?.firstName?.trim()
         ? [{ name: "First Name", value: opts.firstName.trim() }]
+        : []),
+      ...(opts?.xxTrustedFormCertUrl?.trim()
+        ? [{ name: "xxTrustedFormCertUrl", value: opts.xxTrustedFormCertUrl.trim() }]
         : []),
     ];
 
