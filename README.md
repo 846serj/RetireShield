@@ -90,6 +90,21 @@ Stripe Dashboard checklist before live launch:
 **Hard gate (Phase 6):** a lawyer must review the `/upgrade` copy, the consent checkbox, the trial-ending
 reminder, the one-click cancel, and the three legal pages **before you switch Stripe to live mode.**
 
+### Native Benefits Checklist checkout
+
+The Benefits Checklist page uses an on-page Stripe Payment Element and returns buyers to a RetireShield thank-you page with private download links. Paid PDFs must never be committed to this public repository.
+
+Before enabling the checkout:
+
+1. Set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in Render. The Stripe publishable and secret keys must be from the same account.
+2. Ensure the Stripe webhook for `/api/stripe/webhook` receives `payment_intent.succeeded` in addition to the existing subscription events.
+3. Upload the current guide, tracker, and settlements PDFs to the private Supabase bucket:
+
+   `npm run benefits:upload -- /absolute/path/guide.pdf /absolute/path/tracker.pdf /absolute/path/settlements.pdf`
+
+4. Run one test-mode purchase end to end. Confirm the RetireShield thank-you links and email downloads work.
+5. Only then set `BENEFITS_CHECKLIST_DOWNLOADS_READY=true`. The payment-intent endpoint returns 503 while this flag is false, so the site cannot charge a buyer before fulfillment is ready.
+
 Known TODO: the quiz is anonymous (email-gated), so a freshly created account starts with no saved score —
 add a step that links the just-taken Score to the new `scores` row on signup. Noted in the runbook.
 

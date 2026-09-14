@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Check, ShieldCheck } from "lucide-react";
+import { BenefitsChecklistCheckout } from "@/components/BenefitsChecklistCheckout";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -26,24 +27,20 @@ function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function purchaseUrl(searchParams: SearchParams) {
-  const url = new URL("https://themoneyoverview.com/benefits-checklist/");
-
+function attributionFrom(searchParams: SearchParams) {
+  const attribution: Record<string, string> = {};
   for (const key of trackedKeys) {
     const value = first(searchParams[key]);
-    if (value) url.searchParams.set(key, value.slice(0, 160));
+    if (value) attribution[key] = value.slice(0, 160);
   }
-
-  if (!url.searchParams.has("utm_source")) url.searchParams.set("utm_source", "rs");
-  if (!url.searchParams.has("utm_medium")) url.searchParams.set("utm_medium", "email-button");
-  if (!url.searchParams.has("utm_campaign")) url.searchParams.set("utm_campaign", "checklist");
-  if (!url.searchParams.has("utm_content")) url.searchParams.set("utm_content", "rs1_launch");
-  if (!url.searchParams.has("utm_term")) url.searchParams.set("utm_term", "slot-1");
-  if (!url.searchParams.has("aid")) url.searchParams.set("aid", "retirement-shield-benefits-checklist");
-  if (!url.searchParams.has("plat")) url.searchParams.set("plat", "web");
-
-  url.hash = "rgc-checkout";
-  return url.toString();
+  attribution.utm_source ||= "rs";
+  attribution.utm_medium ||= "web";
+  attribution.utm_campaign ||= "checklist";
+  attribution.utm_content ||= "benefits-page";
+  attribution.utm_term ||= "native-checkout";
+  attribution.aid ||= "retirement-shield-benefits-checklist";
+  attribution.plat ||= "web";
+  return attribution;
 }
 
 const programs = [
@@ -61,7 +58,7 @@ const programs = [
 ];
 
 export default function BenefitsChecklistPage({ searchParams }: { searchParams: SearchParams }) {
-  const buyHref = purchaseUrl(searchParams);
+  const attribution = attributionFrom(searchParams);
 
   return (
     <div className="bg-white">
@@ -78,10 +75,10 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
 
             <div className="mt-6 flex flex-col items-start gap-4 sm:mt-8 sm:flex-row sm:items-center">
               <a
-                href={buyHref}
+                href="#benefits-checkout"
                 className="inline-flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-[0_18px_45px_rgba(46,158,106,0.28)] hover:bg-[#278A5C] hover:text-white sm:w-auto sm:flex-row sm:gap-3"
               >
-                <span>Get The Benefits Checklist</span>
+                <span>Get the guide on RetireShield</span>
                 <span className="whitespace-nowrap"><s className="mr-2 opacity-70">$97</s>$47</span>
               </a>
               <div className="max-w-xs text-left text-sm leading-6 text-[#B9CCE4]">One payment · instant PDF download · 30-day refund</div>
@@ -160,6 +157,8 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
         </div>
       </section>
 
+      <BenefitsChecklistCheckout attribution={attribution} />
+
       <section className="mx-auto max-w-4xl px-4 py-14 text-center sm:px-6 sm:py-20">
         <ShieldCheck className="mx-auto h-12 w-12 text-accent" aria-hidden="true" />
         <p className="mt-5 text-sm font-extrabold uppercase tracking-[0.18em] text-accent">30-day money-back guarantee</p>
@@ -168,13 +167,13 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
           The regular price is $97. The launch price is $47 right now. If the guide is not useful, reply to the receipt within 30 days for a refund.
         </p>
         <a
-          href={buyHref}
+          href="#benefits-checkout"
           className="mt-8 inline-flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-lg hover:bg-[#278A5C] hover:text-white sm:w-auto sm:flex-row sm:gap-3"
         >
-          <span>Get instant access</span>
+          <span>Get the guide here</span>
           <span className="whitespace-nowrap"><s className="mr-2 opacity-70">$97</s>$47</span>
         </a>
-        <p className="mt-4 text-sm text-slate-500">Secure checkout and digital delivery are handled by our sister publication, The Money Overview.</p>
+        <p className="mt-4 text-sm text-slate-500">Checkout, payment confirmation, and private downloads all stay on RetireShield.</p>
       </section>
 
       <section className="border-t border-slate-200 bg-surface">
