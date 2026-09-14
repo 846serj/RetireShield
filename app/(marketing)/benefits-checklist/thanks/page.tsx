@@ -4,6 +4,7 @@ import { CheckCircle2, Download, Mail } from "lucide-react";
 import { BENEFITS_CHECKLIST_PRODUCT, benefitsDownloadsForOrder, money } from "@/lib/benefitsChecklist";
 import { BENEFITS_REPORT_PRICE, reportCredit, reportPrice } from "@/lib/benefitsReport";
 import { stripe } from "@/lib/stripe";
+import { CommerceThanksAnalytics } from "@/components/CommerceAnalytics";
 
 export const dynamic = "force-dynamic";
 
@@ -59,9 +60,15 @@ export default async function BenefitsChecklistThanks({ searchParams }: { search
   const downloads = benefitsDownloadsForOrder(intent.metadata.buyer_state || "", hasStatePack);
   const credit = reportCredit(hasStatePack);
   const upgradePrice = reportPrice(credit);
+  const attribution = Object.fromEntries(
+    ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "cid", "plat", "first_aid", "first_cid", "first_plat", "click_count", "page_variant", "source_site"]
+      .filter((key) => Boolean(intent.metadata[key]))
+      .map((key) => [key, intent.metadata[key]]),
+  );
 
   return (
     <section className="bg-surface py-12 sm:py-20">
+      <CommerceThanksAnalytics product={BENEFITS_CHECKLIST_PRODUCT} status="paid" attribution={attribution} />
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/10 sm:p-10">
           <div className="flex items-center gap-3 text-sm font-extrabold uppercase tracking-[0.12em] text-[#167A4A]"><CheckCircle2 className="h-6 w-6" />Payment complete</div>
@@ -71,7 +78,7 @@ export default async function BenefitsChecklistThanks({ searchParams }: { search
             {downloads.map((file) => {
               const href = `/api/benefits-checklist/download/${file.key}?payment_intent=${encodeURIComponent(intent.id)}&token=${encodeURIComponent(token)}`;
               return (
-                <a key={file.key} href={href} className="flex min-h-16 items-center justify-between gap-4 rounded-xl border-2 border-brand-dark bg-white px-5 py-4 text-left font-extrabold text-brand-dark no-underline transition hover:bg-band hover:text-brand-dark">
+                <a key={file.key} href={href} data-rgc-download="single" className="flex min-h-16 items-center justify-between gap-4 rounded-xl border-2 border-brand-dark bg-white px-5 py-4 text-left font-extrabold text-brand-dark no-underline transition hover:bg-band hover:text-brand-dark">
                   <span>{file.label}</span><Download className="h-5 w-5 shrink-0" />
                 </a>
               );

@@ -4,6 +4,8 @@ import Script from "next/script";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Check, LockKeyhole } from "lucide-react";
 import { US_STATES } from "@/lib/usStates";
+import { captureCommerce, commerceAnalyticsId, commerceAttribution } from "@/lib/commerceAnalytics";
+const BENEFITS_CHECKLIST_PRODUCT = "benefits-checklist";
 
 type StripeError = { message?: string };
 type StripeElementEvent = {
@@ -77,6 +79,7 @@ export function BenefitsChecklistCheckout({
   const expressElement = useRef<StripeElement | null>(null);
   const checkoutState = useRef({ form, statePack, attribution });
   const payingNow = useRef(false);
+  const checkoutStarted = useRef(false);
   const stateName = US_STATES.find((item) => item.code === form.state)?.name || "your state";
   const shownSubtotal = 4_700 + (statePack ? 2_700 : 0);
   const quoteKey = `${form.zip.trim()}|${form.state}|${statePack ? 1 : 0}`;
@@ -191,6 +194,7 @@ export function BenefitsChecklistCheckout({
     setStatePack(checked);
     setIntent(null);
     setError("");
+    captureCommerce("rgc_bump_changed", BENEFITS_CHECKLIST_PRODUCT, { accepted: checked }, attribution);
   }
 
   async function runPayment(expressEvent?: StripeElementEvent) {
@@ -208,6 +212,8 @@ export function BenefitsChecklistCheckout({
     payingNow.current = true;
     setPaying(true);
     setError("");
+    const paymentMethod = expressEvent ? "wallet" : "card";
+    captureCommerce("rgc_payment_attempted", BENEFITS_CHECKLIST_PRODUCT, { payment_method: paymentMethod, bump: checkoutState.current.statePack }, attribution);
     try {
       const submitted = await stripeElements.current.submit();
       if (submitted.error) throw new Error(submitted.error.message || "Please check your payment details.");
@@ -216,7 +222,13 @@ export function BenefitsChecklistCheckout({
       const response = await fetch("/api/benefits-checklist/payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...current.form, statePack: current.statePack, requestId: newRequestId(), attribution: current.attribution }),
+        body: JSON.stringify({
+          ...current.form,
+          statePack: current.statePack,
+          requestId: newRequestId(),
+          analyticsId: commerceAnalyticsId(current.attribution),
+          attribution: commerceAttribution(current.attribution),
+        }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "We could not start checkout.");
@@ -248,6 +260,7 @@ export function BenefitsChecklistCheckout({
       }
       throw new Error("Stripe is still working on the payment. Check your email for your receipt and links.");
     } catch (caught) {
+      captureCommerce("rgc_payment_failed", BENEFITS_CHECKLIST_PRODUCT, { payment_method: paymentMethod }, attribution);
       setError(caught instanceof Error ? caught.message : "That payment did not go through. You were not charged.");
       expressEvent?.paymentFailed?.({ reason: "fail" });
       payingNow.current = false;
@@ -278,7 +291,18 @@ export function BenefitsChecklistCheckout({
           <div className="mt-3 flex justify-between gap-4 border-t border-slate-300 pt-3 text-lg font-extrabold"><span>Total</span><span>{dollars(shownTotal)}</span></div>
         </div>
 
-        <form ref={formHost} className="mt-6" onSubmit={pay} noValidate>
+        <form
+          ref={formHost}
+          className="mt-6"
+          onSubmit={pay}
+          onFocusCapture={() => {
+            if (!checkoutStarted.current) {
+              checkoutStarted.current = true;
+              captureCommerce("rgc_checkout_started", BENEFITS_CHECKLIST_PRODUCT, {}, attribution);
+            }
+          }}
+          noValidate
+        >
           <p className="text-lg font-extrabold">1. Where should we send your guide?</p>
           <div className="mt-4 grid gap-4">
             <label className="grid gap-2 text-base font-bold">Email address
@@ -293,7 +317,7 @@ export function BenefitsChecklistCheckout({
               </label>
             </div>
             <label className="grid gap-2 text-base font-bold">Which state do you want help for?
-              <select required autoComplete="address-level1" value={form.state} onChange={(event) => update("state", event.target.value)} className="min-h-14 w-full rounded-lg border border-slate-400 bg-white px-4 text-lg font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25">
+              <select required autoComplete="address-level1" value={form.state} onChange={(event) => { update("state", event.target.value); if (event.target.value) captureCommerce("rgc_state_selected", BENEFITS_CHECKLIST_PRODUCT, {}, attribution); }} className="min-h-14 w-full rounded-lg border border-slate-400 bg-white px-4 text-lg font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25">
                 <option value="">Choose your state</option>
                 {US_STATES.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}
               </select>

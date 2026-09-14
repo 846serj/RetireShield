@@ -6,6 +6,7 @@ import { BENEFITS_CHECKLIST_PRODUCT } from "@/lib/benefitsChecklist";
 import { sendBenefitsChecklistPurchaseEmail } from "@/lib/benefitsChecklistEmail";
 import { BENEFITS_REPORT_PRODUCT } from "@/lib/benefitsReport";
 import { sendBenefitsReportPurchaseEmail } from "@/lib/benefitsReportEmail";
+import { captureServerEvent } from "@/lib/posthogServer";
 
 // Stripe webhook: keeps the `subscriptions` table in sync. Add this URL + signing secret in Stripe.
 // Note: this route is excluded from middleware (it needs the raw body, no session).
@@ -128,6 +129,52 @@ export async function POST(req: Request) {
         });
         if (delivered) await stripe.paymentIntents.update(intent.id, { metadata: { delivery_emailed: "1" } });
       }
+      const baseCents = intent.metadata.product === BENEFITS_CHECKLIST_PRODUCT
+        ? 4_700
+        : Math.max(0, Number(intent.metadata.list_price || intent.amount_received) - Number(intent.metadata.credit || 0));
+      const bumpCents = intent.metadata.state_pack === "1" ? Number(intent.metadata.state_pack_price || 2_700) : 0;
+      const properties: Record<string, unknown> = {
+        site: "retireshield.com",
+        mc_site: "retireshield.com",
+        product: intent.metadata.product,
+        gateway: "stripe",
+        total_cents: intent.amount_received,
+        base_cents: baseCents,
+        bump: intent.metadata.state_pack === "1",
+        bump_cents: bumpCents,
+        tax_cents: Math.max(0, intent.amount_received - baseCents - bumpCents),
+        newsletter_optin: intent.metadata.newsletter_optin === "1",
+      };
+      for (const key of ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "cid", "plat", "first_aid", "first_cid", "first_plat", "click_count", "page_variant", "source_site"]) {
+        if (intent.metadata[key]) properties[key] = intent.metadata[key];
+      }
+      await captureServerEvent(
+        "rgc_purchase",
+        intent.metadata.analytics_id || intent.metadata.cid || `rs-order-${intent.id}`,
+        properties,
+        `stripe-${event.id}`,
+      );
+      break;
+    }
+    case "charge.refunded": {
+      const charge = event.data.object;
+      const paymentIntentId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+      if (!paymentIntentId) break;
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (![BENEFITS_CHECKLIST_PRODUCT, BENEFITS_REPORT_PRODUCT].includes(intent.metadata?.product)) break;
+      await captureServerEvent(
+        "rgc_refund",
+        intent.metadata.analytics_id || intent.metadata.cid || `rs-order-${intent.id}`,
+        {
+          site: "retireshield.com",
+          mc_site: "retireshield.com",
+          product: intent.metadata.product,
+          gateway: "stripe",
+          refunded_cents: charge.amount_refunded,
+          total_cents: intent.amount_received,
+        },
+        `stripe-${event.id}`,
+      );
       break;
     }
     case "checkout.session.completed": {

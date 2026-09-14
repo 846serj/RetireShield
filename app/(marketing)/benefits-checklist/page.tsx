@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Check, ShieldCheck } from "lucide-react";
 import { BenefitsChecklistCheckout } from "@/components/BenefitsChecklistCheckout";
+import { CommercePageAnalytics } from "@/components/CommerceAnalytics";
+import { BENEFITS_CHECKLIST_PRODUCT } from "@/lib/benefitsChecklist";
 import { pageMetadata } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = pageMetadata({
   title: "The Benefits Checklist — 11 Programs Worth Checking | RetireShield",
   description: "A 69-page guide to 11 benefit programs, their current rules, and where to apply in every state.",
@@ -10,7 +13,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 type SearchParams = Record<string, string | string[] | undefined>;
-const trackedKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "plat", "cid"] as const;
+const trackedKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "plat", "cid", "first_aid", "first_cid", "first_plat", "click_count", "page_variant", "source_site"] as const;
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -29,6 +32,11 @@ function attributionFrom(searchParams: SearchParams) {
   attribution.utm_term ||= "native-checkout";
   attribution.aid ||= "retirement-shield-benefits-checklist";
   attribution.plat ||= "web";
+  attribution.first_aid ||= attribution.aid;
+  attribution.first_cid ||= attribution.cid;
+  attribution.first_plat ||= attribution.plat;
+  attribution.page_variant ||= "a";
+  attribution.source_site ||= attribution.utm_source;
   return attribution;
 }
 
@@ -50,6 +58,7 @@ function BuyButton({ label = "Get The Benefits Checklist" }: { label?: string })
   return (
     <a
       href="#secure-checkout"
+      data-rgc-cta-position={label === "Get The Benefits Checklist" ? "mid-page" : "bottom"}
       className="block w-full rounded-lg border-b-4 border-[#0E4D31] bg-[#167A4A] px-5 py-4 text-center text-xl font-extrabold leading-7 text-white no-underline shadow-lg transition hover:bg-[#0E633A] hover:text-white"
     >
       {label} — <s className="mr-2 text-white/70">$97</s> $47
@@ -65,6 +74,7 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
 
   return (
     <div className="bg-white pb-24 text-ink sm:pb-0">
+      <CommercePageAnalytics product={BENEFITS_CHECKLIST_PRODUCT} attribution={attribution} />
       <div className="bg-brand-dark px-4 py-3 text-center text-sm font-extrabold uppercase tracking-[0.08em] text-white">
         30-day refund · files sent at once · 2026–2027 guide
       </div>
@@ -182,7 +192,7 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
       <BenefitsChecklistCheckout attribution={attribution} statePacksReady={statePacksReady} stripePublishableKey={stripePublishableKey} />
 
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-4px_18px_rgba(0,0,0,.14)] sm:hidden">
-        <a href="#secure-checkout" className="block rounded-lg bg-[#167A4A] px-4 py-3 text-center text-lg font-extrabold text-white no-underline">Get the guide — <s className="text-white/70">$97</s> $47</a>
+        <a href="#secure-checkout" data-rgc-cta-position="mobile-sticky" className="block rounded-lg bg-[#167A4A] px-4 py-3 text-center text-lg font-extrabold text-white no-underline">Get the guide — <s className="text-white/70">$97</s> $47</a>
       </div>
     </div>
   );

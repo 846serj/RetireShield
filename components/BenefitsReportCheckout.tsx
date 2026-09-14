@@ -4,6 +4,8 @@ import Script from "next/script";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Check, LockKeyhole } from "lucide-react";
 import { US_STATES } from "@/lib/usStates";
+import { captureCommerce, commerceAnalyticsId, commerceAttribution, type CommerceAttribution } from "@/lib/commerceAnalytics";
+const BENEFITS_REPORT_PRODUCT = "benefits-report";
 
 type StripeElement = { mount: (target: HTMLElement) => void; destroy: () => void };
 type StripeElements = { create: (type: "payment", options?: Record<string, unknown>) => StripeElement };
@@ -24,12 +26,14 @@ export function BenefitsReportCheckout({
   credit,
   price,
   initial,
+  attribution,
 }: {
   sourcePaymentIntentId: string;
   sourceToken: string;
   credit: number;
   price: number;
   initial: { email: string; firstName: string; state: string; zip: string };
+  attribution: CommerceAttribution;
 }) {
   const [stripeReady, setStripeReady] = useState(false);
   const [stage, setStage] = useState<"details" | "payment">("details");
@@ -58,8 +62,9 @@ export function BenefitsReportCheckout({
     event.preventDefault();
     setBusy(true);
     setError("");
+    captureCommerce("rgc_checkout_started", BENEFITS_REPORT_PRODUCT, {}, attribution);
     try {
-      const response = await fetch("/api/benefits-report/payment-intent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, sourcePaymentIntentId, sourceToken, requestId }) });
+      const response = await fetch("/api/benefits-report/payment-intent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, sourcePaymentIntentId, sourceToken, requestId, analyticsId: commerceAnalyticsId(attribution), attribution: commerceAttribution(attribution) }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "We could not start checkout.");
       setIntent(payload as IntentResponse);
@@ -86,6 +91,7 @@ export function BenefitsReportCheckout({
     if (!intent || !stripeClient.current || !stripeElements.current) return setError("The payment box is still loading.");
     setBusy(true);
     setError("");
+    captureCommerce("rgc_payment_attempted", BENEFITS_REPORT_PRODUCT, { payment_method: "card", credit_cents: credit }, attribution);
     try {
       const result = await stripeClient.current.confirmPayment({
         elements: stripeElements.current,
@@ -101,6 +107,7 @@ export function BenefitsReportCheckout({
       }
       throw new Error("Stripe is still working on the payment. Please check your email.");
     } catch (caught) {
+      captureCommerce("rgc_payment_failed", BENEFITS_REPORT_PRODUCT, { payment_method: "card" }, attribution);
       setError(caught instanceof Error ? caught.message : "That payment did not go through. You were not charged.");
       setBusy(false);
     }

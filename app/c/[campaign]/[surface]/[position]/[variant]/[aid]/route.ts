@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
+import { captureServerEvent, isLikelyBot } from "@/lib/posthogServer";
 
 const allowedCampaigns = new Set(["checklist"]);
 const allowedSurfaces = new Set(["email-body", "email-button"]);
@@ -74,12 +75,38 @@ export async function GET(
   destination.searchParams.set("plat", plat);
   destination.searchParams.set("cid", cid);
   const response = NextResponse.redirect(destination, 302);
-  response.headers.set("Cache-Control", "no-store, private, max-age=0");
+  response.headers.set("Cache-Control", "private, no-store, no-cache, must-revalidate, max-age=0");
+  response.headers.set("Cloudflare-CDN-Cache-Control", "no-store");
+  response.headers.set("CDN-Cache-Control", "no-store");
   response.cookies.set("rg_cid", cid, { maxAge: 60 * 60 * 24 * 90, httpOnly: false, sameSite: "lax", secure: true, path: "/" });
   response.cookies.set(
     "rg_attr",
     JSON.stringify({ source: "rs", medium: surface, campaign, content: variant, term: position, aid, plat, cid }),
     { maxAge: 60 * 60 * 24 * 90, httpOnly: false, sameSite: "lax", secure: true, path: "/" },
   );
+  const userAgent = req.headers.get("user-agent") || "";
+  if (!isLikelyBot(userAgent, req.method)) {
+    await captureServerEvent(
+      "link_click",
+      cid,
+      {
+        campaign,
+        surface,
+        position,
+        variant,
+        aid,
+        plat,
+        cid,
+        is_bot: false,
+        site: "retireshield.com",
+        mc_site: "retireshield.com",
+        source_site: "retireshield.com",
+        dest: destination.origin + destination.pathname,
+        $raw_user_agent: userAgent.slice(0, 400),
+        $geoip_disable: true,
+      },
+      `retireshield-click-${cid}`,
+    );
+  }
   return response;
 }

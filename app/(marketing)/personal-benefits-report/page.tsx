@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Check } from "lucide-react";
 import { BenefitsReportCheckout } from "@/components/BenefitsReportCheckout";
+import { CommercePageAnalytics } from "@/components/CommerceAnalytics";
 import { BENEFITS_CHECKLIST_PRODUCT, money } from "@/lib/benefitsChecklist";
-import { BENEFITS_REPORT_PRICE, reportCredit, reportPrice } from "@/lib/benefitsReport";
+import { BENEFITS_REPORT_PRICE, BENEFITS_REPORT_PRODUCT, reportCredit, reportPrice } from "@/lib/benefitsReport";
 import { pageMetadata } from "@/lib/seo";
 import { stripe } from "@/lib/stripe";
 
@@ -29,9 +30,28 @@ export default async function PersonalBenefitsReportPage({ searchParams }: { sea
   const credit = source ? reportCredit(source.metadata.state_pack === "1") : 0;
   const price = reportPrice(credit);
   const initial = { email: source?.receipt_email || "", firstName: source?.metadata.buyer_name || "", state: source?.metadata.buyer_state || "", zip: source?.metadata.buyer_zip || "" };
+  const attributionKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "cid", "plat", "first_aid", "first_cid", "first_plat", "click_count", "page_variant", "source_site"] as const;
+  const attribution = Object.fromEntries(attributionKeys.flatMap((key) => {
+    const fromSource = source?.metadata[key];
+    const fromQuery = first(searchParams[key]);
+    const value = fromSource || fromQuery;
+    return value ? [[key, value.slice(0, 190)]] : [];
+  }));
+  attribution.utm_source ||= source ? "checklist-upgrade" : "retireshield";
+  attribution.utm_medium ||= source ? "thank-you" : "web";
+  attribution.utm_campaign ||= "personal-benefits-report";
+  attribution.aid ||= source?.metadata.aid || "retireshield-personal-benefits-report";
+  attribution.first_aid ||= source?.metadata.first_aid || attribution.aid;
+  attribution.cid ||= source?.metadata.cid || "";
+  attribution.first_cid ||= source?.metadata.first_cid || attribution.cid;
+  attribution.plat ||= source?.metadata.plat || "web";
+  attribution.first_plat ||= source?.metadata.first_plat || attribution.plat;
+  attribution.page_variant ||= "a";
+  attribution.source_site ||= source?.metadata.source_site || "retireshield.com";
 
   return (
     <div className="bg-white text-ink">
+      <CommercePageAnalytics product={BENEFITS_REPORT_PRODUCT} attribution={attribution} />
       <div className="bg-brand-dark px-4 py-3 text-center text-sm font-extrabold uppercase tracking-[0.08em] text-white">Your past payment comes off the price</div>
       <main className="mx-auto max-w-[780px] px-4 py-10 sm:px-6 sm:py-16">
         <p className="text-sm font-extrabold uppercase tracking-[0.08em] text-brand">The Personal Benefits Report</p>
@@ -77,12 +97,12 @@ export default async function PersonalBenefitsReportPage({ searchParams }: { sea
           <h2 className="text-3xl font-bold">Your price</h2>
           <div className="mt-4 font-serif text-5xl font-bold text-brand-dark">{money(price)}</div>
           {credit > 0 && <p className="mt-2 text-[#167A4A]">Your {money(credit)} credit is already in this price.</p>}
-          <a href="#report-secure-checkout" className="mt-6 block rounded-lg bg-[#167A4A] px-5 py-4 text-xl font-extrabold text-white no-underline">Start my report</a>
+          <a href="#report-secure-checkout" data-rgc-cta-position="report-offer" className="mt-6 block rounded-lg bg-[#167A4A] px-5 py-4 text-xl font-extrabold text-white no-underline">Start my report</a>
         </section>
 
         <p className="mt-10 text-sm leading-6 text-slate-600">This report is not a yes or no from an office. Each office makes its own choice. We use the facts you give us. We use the rules we can check. We cannot promise that an office will say yes.</p>
       </main>
-      <BenefitsReportCheckout sourcePaymentIntentId={source ? source.id : ""} sourceToken={source ? sourceToken : ""} credit={credit} price={price} initial={initial} />
+      <BenefitsReportCheckout sourcePaymentIntentId={source ? source.id : ""} sourceToken={source ? sourceToken : ""} credit={credit} price={price} initial={initial} attribution={attribution} />
     </div>
   );
 }

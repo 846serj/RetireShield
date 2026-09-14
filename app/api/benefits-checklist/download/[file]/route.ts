@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { BENEFITS_CHECKLIST_PRODUCT, BENEFITS_CHECKLIST_STORAGE_BUCKET, benefitsDownloadsForOrder } from "@/lib/benefitsChecklist";
 import { createServiceClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
+import { captureServerEvent } from "@/lib/posthogServer";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,17 @@ export async function GET(req: Request, { params }: { params: { file: string } }
     const { data, error } = await createServiceClient().storage.from(BENEFITS_CHECKLIST_STORAGE_BUCKET).download(file.source);
     if (error || !data) throw error || new Error("Private product file is missing");
     const buffer = await data.arrayBuffer();
+    await captureServerEvent(
+      "rgc_download_clicked",
+      intent.metadata.analytics_id || intent.metadata.cid || `rs-order-${intent.id}`,
+      {
+        site: "retireshield.com",
+        mc_site: "retireshield.com",
+        product: BENEFITS_CHECKLIST_PRODUCT,
+        package: params.file,
+      },
+      `download-${intent.id}-${params.file}`,
+    );
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",

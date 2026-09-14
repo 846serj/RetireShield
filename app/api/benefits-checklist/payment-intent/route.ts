@@ -14,7 +14,7 @@ import {
 import { getPublicBaseUrl } from "@/lib/siteUrl";
 import { stripe } from "@/lib/stripe";
 
-const ATTRIBUTION_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "plat", "cid"] as const;
+const ATTRIBUTION_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "plat", "cid", "first_aid", "first_cid", "first_plat", "click_count", "page_variant", "source_site"] as const;
 
 export async function POST(req: Request) {
   const requestOrigin = req.headers.get("origin");
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
   const state = normalizeState(body.state);
   const requestId = sanitizeShortText(body.requestId, 80);
   const wantsStatePack = body.statePack === true;
+  const analyticsId = sanitizeShortText(body.analyticsId, 200);
 
   if (!email || !firstName || !zip || !state || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) {
     return NextResponse.json({ error: "Enter a valid email, first name, ZIP code, and state." }, { status: 400 });
@@ -102,6 +103,9 @@ export async function POST(req: Request) {
       state_pack: wantsStatePack ? "1" : "0",
       state_pack_price: wantsStatePack ? String(BENEFITS_STATE_PACK_PRICE) : "0",
       tax_calculation: taxCalculationId,
+      analytics_id: analyticsId || sanitizeShortText((body.attribution as Record<string, unknown> | undefined)?.cid, 160) || `rs-${requestId}`,
+      site: "retireshield.com",
+      mc_site: "retireshield.com",
     };
     const attribution = typeof body.attribution === "object" && body.attribution ? body.attribution as Record<string, unknown> : {};
     for (const key of ATTRIBUTION_KEYS) {
