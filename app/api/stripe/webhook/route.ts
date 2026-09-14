@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/server";
 import { enrollInWinback, sendConfirmationEmail, sendToList, type EmailSegment } from "@/lib/email";
+import { BENEFITS_CHECKLIST_PRODUCT } from "@/lib/benefitsChecklist";
+import { sendBenefitsChecklistPurchaseEmail } from "@/lib/benefitsChecklistEmail";
 
 // Stripe webhook: keeps the `subscriptions` table in sync. Add this URL + signing secret in Stripe.
 // Note: this route is excluded from middleware (it needs the raw body, no session).
@@ -84,6 +86,36 @@ export async function POST(req: Request) {
   }
 
   switch (event.type) {
+    case "payment_intent.succeeded": {
+      const intent = event.data.object;
+      if (intent.metadata?.product !== BENEFITS_CHECKLIST_PRODUCT) break;
+
+      const taxCalculation = intent.metadata.tax_calculation;
+      if (taxCalculation && !intent.metadata.tax_transaction) {
+        try {
+          const transaction = await stripe.tax.transactions.createFromCalculation({
+            calculation: taxCalculation,
+            reference: `retireshield-${intent.id}`,
+            metadata: { product: BENEFITS_CHECKLIST_PRODUCT, payment_intent: intent.id },
+          }, { idempotencyKey: `retireshield-tax-${intent.id}` });
+          await stripe.paymentIntents.update(intent.id, { metadata: { tax_transaction: transaction.id } });
+        } catch (error) {
+          console.error("benefits checklist tax transaction failed", error);
+        }
+      }
+
+      if (intent.receipt_email && intent.metadata.download_token && intent.metadata.delivery_emailed !== "1") {
+        const delivered = await sendBenefitsChecklistPurchaseEmail({
+          email: intent.receipt_email,
+          firstName: intent.metadata.buyer_name || "",
+          paymentIntentId: intent.id,
+          downloadToken: intent.metadata.download_token,
+          amount: intent.amount_received,
+        });
+        if (delivered) await stripe.paymentIntents.update(intent.id, { metadata: { delivery_emailed: "1" } });
+      }
+      break;
+    }
     case "checkout.session.completed": {
       const s = event.data.object as any;
       if (s.subscription) {

@@ -10,6 +10,18 @@ services:
         value: 20
       - key: NEXT_PUBLIC_BASE_URL
         value: https://RetireShield.com
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: BENEFITS_CHECKLIST_STRIPE_TAX_ENABLED
+        value: true
+      - key: BENEFITS_CHECKLIST_STORAGE_BUCKET
+        value: retire-shield-products
+      - key: BENEFITS_CHECKLIST_DOWNLOADS_READY
+        value: false
 
   - type: cron
     name: retireshield-monthly-rescore

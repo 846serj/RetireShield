@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "node --loader ./tests/ts-loader.mjs --test tests/*.test.ts lib/*.test.ts",
-    "stripe:setup": "node scripts/setup-stripe.js"
+    "stripe:setup": "node scripts/setup-stripe.js",
+    "benefits:upload": "node scripts/upload-benefits-checklist.js"
   },
   "dependencies": {
     "next": "14.2.5",

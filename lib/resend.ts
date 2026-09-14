@@ -13,20 +13,25 @@ export async function sendTransactionalEmail({ to, subject, html, text }: Transa
 
   if (!apiKey) {
     console.log(`[Resend stub] ${subject} -> ${to}`);
-    return;
+    return false;
   }
 
   if (!from) {
     console.error("[Resend] EMAIL_FROM is missing; skipping transactional email");
-    return;
+    return false;
   }
 
   try {
     const resend = new Resend(apiKey);
     const replyTo = process.env.EMAIL_REPLY_TO || "ellen@retireshield.com";
     const { error } = await resend.emails.send({ from, to, subject, html, text, replyTo });
-    if (error) console.error("[Resend] transactional email failed", error);
+    if (error) {
+      console.error("[Resend] transactional email failed", error);
+      return false;
+    }
+    return true;
   } catch (error) {
     console.error("[Resend] transactional email error", error);
+    return false;
   }
 }
