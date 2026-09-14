@@ -81,7 +81,7 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
                 href={buyHref}
                 className="inline-flex min-h-16 w-full items-center justify-center rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-[0_18px_45px_rgba(46,158,106,0.28)] hover:bg-[#278A5C] hover:text-white sm:w-auto"
               >
-                Get The Benefits Checklist for $47
+                Get The Benefits Checklist — <s className="mx-2 opacity-70">$97</s> $47
               </a>
               <div className="text-left">
                 <div className="text-sm font-bold text-[#D9E6F3]"><s className="mr-2 text-white/65">$97 regular price</s> $47 launch price</div>
@@ -173,7 +173,7 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
           href={buyHref}
           className="mt-8 inline-flex min-h-16 w-full items-center justify-center rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-lg hover:bg-[#278A5C] hover:text-white sm:w-auto"
         >
-          Get instant access for $47
+          Get instant access — <s className="mx-2 opacity-70">$97</s> $47
         </a>
         <p className="mt-4 text-sm text-slate-500">Secure checkout and digital delivery are handled by our sister publication, The Money Overview.</p>
       </section>
