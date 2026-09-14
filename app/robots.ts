@@ -29,7 +29,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: isLeadgenOnly
-          ? ["/", "/quiz", "/benefits-checklist", "/privacy", "/terms", "/refund-policy"]
+          ? ["/", "/quiz", "/benefits-checklist", "/personal-benefits-report", "/privacy", "/terms", "/refund-policy"]
           : "/",
         disallow: isLeadgenOnly
           ? leadgenOnlyDisallow

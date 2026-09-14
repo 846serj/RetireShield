@@ -5,23 +5,12 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "The Benefits Checklist — 11 Programs Worth Checking | RetireShield",
-  description:
-    "A 69-page guide to 11 retirement benefit programs, current limits, application steps, and the right office to call in every state.",
+  description: "A 69-page guide to 11 benefit programs, their current rules, and where to apply in every state.",
   path: "/benefits-checklist/",
 });
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-const trackedKeys = [
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_content",
-  "utm_term",
-  "aid",
-  "plat",
-  "cid",
-] as const;
+const trackedKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "plat", "cid"] as const;
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -44,143 +33,150 @@ function attributionFrom(searchParams: SearchParams) {
 }
 
 const programs = [
-  "Medicare Savings Programs",
-  "Extra Help for prescriptions",
-  "State drug-cost assistance",
-  "SNAP food benefits at 60+",
-  "Heating and cooling help",
-  "Free weatherization",
-  "Senior property-tax breaks",
-  "Circuit-breaker credits",
-  "VA Pension with Aid & Attendance",
-  "State unclaimed property",
-  "SSI after age 65",
-];
+  ["Medicare Savings Programs", "May pay the full Part B premium."],
+  ["Extra Help", "May cut Part D drug costs."],
+  ["State drug help", "Some states give more help with medicine."],
+  ["SNAP after 60", "Older adults may use different rules."],
+  ["Heat and cooling help", "Help with bills and shut-off notices."],
+  ["Free weather work", "Work on the home may cut power bills."],
+  ["Property tax breaks", "Many states and towns give help after 65."],
+  ["Circuit-breaker credits", "Some renters and owners can get a tax credit."],
+  ["VA Aid and Attendance", "A single veteran may get up to $29,093 a year."],
+  ["Unclaimed property", "A free state search may find old money."],
+  ["SSI after 65", "Age can replace the disability test at 65."],
+] as const;
+
+function BuyButton({ label = "Get The Benefits Checklist" }: { label?: string }) {
+  return (
+    <a href="#secure-checkout" className="block w-full rounded-lg border-b-4 border-[#0E4D31] bg-[#167A4A] px-5 py-4 text-center text-xl font-extrabold leading-7 text-white no-underline shadow-lg hover:bg-[#0E633A] hover:text-white">
+      {label} — <s className="mr-2 opacity-70">$97</s> $47
+      <span className="mt-1 block text-sm font-semibold">Get the files now · 30-day refund</span>
+    </a>
+  );
+}
 
 export default function BenefitsChecklistPage({ searchParams }: { searchParams: SearchParams }) {
   const attribution = attributionFrom(searchParams);
+  const statePacksReady = process.env.BENEFITS_CHECKLIST_STATE_PACKS_READY === "true";
 
   return (
-    <div className="bg-white">
-      <section className="overflow-hidden bg-brand-dark text-white">
-        <div className="mx-auto grid max-w-container items-center gap-10 px-4 py-8 sm:px-6 sm:py-16 lg:grid-cols-[1.35fr_.65fr] lg:px-8 lg:py-20">
+    <div className="bg-white pb-24 text-ink sm:pb-0">
+      <div className="bg-brand-dark px-4 py-3 text-center text-sm font-extrabold uppercase tracking-[0.08em] text-white">2026–2027 guide · Get it now · 30-day refund</div>
+
+      <main className="mx-auto max-w-[820px] px-4 pb-12 sm:px-6">
+        <section className="grid items-center gap-6 py-9 sm:py-14 lg:grid-cols-[1fr_250px] lg:gap-10">
           <div>
-            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-[#8FD4B2]">Just launched · 2026–2027 edition</p>
-            <h1 className="mt-4 max-w-4xl text-3xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl sm:leading-[1.02]">
-              One program inside can be worth up to $29,093 a year.
-            </h1>
-            <p className="mt-5 max-w-3xl text-lg leading-7 text-[#D9E6F3] sm:mt-6 sm:text-2xl sm:leading-8">
-              The Benefits Checklist puts 11 programs, current limits, forms, and where to apply in one place.
-            </p>
-
-            <div className="mt-6 flex flex-col items-start gap-4 sm:mt-8 sm:flex-row sm:items-center">
-              <a
-                href="#benefits-checkout"
-                className="inline-flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-[0_18px_45px_rgba(46,158,106,0.28)] hover:bg-[#278A5C] hover:text-white sm:w-auto sm:flex-row sm:gap-3"
-              >
-                <span>Get the guide on RetireShield</span>
-                <span className="whitespace-nowrap"><s className="mr-2 opacity-70">$97</s>$47</span>
-              </a>
-              <div className="max-w-xs text-left text-sm leading-6 text-[#B9CCE4]">One payment · instant PDF download · 30-day refund</div>
+            <p className="text-sm font-extrabold uppercase tracking-[0.08em] text-brand">For adults 65+ and the family who helps them</p>
+            <h1 className="mt-3 text-4xl font-bold leading-[1.08] sm:text-6xl">One missed benefit can cost far more than $47.</h1>
+            <p className="mt-5 text-lg leading-8 text-slate-700">This guide puts 11 programs in one place. See the limits, forms, phone numbers, and next steps for your state.</p>
+          </div>
+          <div className="relative mx-auto grid min-h-[300px] w-full max-w-[250px] place-items-center" aria-label="The Benefits Checklist guide and worksheets">
+            <div className="absolute h-[245px] w-[175px] -rotate-6 rounded border border-slate-300 bg-white shadow-lg" />
+            <div className="absolute h-[245px] w-[175px] rotate-6 rounded border border-slate-300 bg-white shadow-lg" />
+            <div className="relative flex min-h-[260px] w-[190px] flex-col justify-center rounded border-[7px] border-white bg-gradient-to-br from-[#163A66] to-[#0B1D35] p-5 text-center text-white shadow-2xl">
+              <small className="text-xs font-bold uppercase tracking-[0.16em] text-[#A8D5BE]">RetireShield</small>
+              <strong className="my-5 font-serif text-3xl leading-none">The Benefits Checklist</strong>
+              <span className="border-t border-white/40 pt-4 text-xs font-semibold">2026–2027 · 11 programs · 50 states</span>
             </div>
           </div>
+        </section>
 
-          <div className="relative mx-auto w-full max-w-sm py-5" aria-label="The Benefits Checklist digital guide and worksheets">
-            <div className="absolute inset-x-10 inset-y-4 rotate-6 rounded-xl border border-white/20 bg-white/10" aria-hidden="true" />
-            <div className="absolute inset-x-10 inset-y-4 -rotate-6 rounded-xl border border-white/20 bg-white/10" aria-hidden="true" />
-            <div className="relative mx-auto flex aspect-[.76] w-64 flex-col justify-between rounded-lg border-[7px] border-white bg-gradient-to-br from-[#142F52] to-[#0B1D35] p-7 text-center shadow-2xl shadow-black/35">
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-[#8FD4B2]">RetireShield</span>
-              <strong className="font-serif text-4xl leading-none text-white">The Benefits Checklist</strong>
-              <span className="border-t border-white/30 pt-5 text-sm font-semibold leading-5 text-[#D9E6F3]">2026–2027 · 11 programs · 50 states</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-container px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-        <p className="rg-kicker">The numbers worth checking</p>
-        <h2 className="mt-3 max-w-4xl text-3xl font-bold sm:text-5xl">This can be a five-figure decision—not a coupon hunt.</h2>
-        <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">
-          A single missed program can cost far more than the guide. These are separate examples—not a combined total—and every program applies its own income, asset, service, and household rules.
-        </p>
-
-        <div className="mt-9 grid gap-5 lg:grid-cols-3">
-          <article className="min-w-0 rounded-2xl border border-slate-200 bg-surface p-6">
-            <div className="break-words font-serif text-3xl font-bold text-brand-dark sm:text-4xl">Up to $29,093/year</div>
-            <h3 className="mt-4 text-xl font-bold">VA Aid & Attendance</h3>
-            <p className="mt-2 text-base leading-7 text-slate-600">The 2026 maximum annual pension rate for a single veteran who qualifies for Aid & Attendance. The actual pension is reduced by countable income.</p>
-          </article>
-          <article className="min-w-0 rounded-2xl border border-slate-200 bg-surface p-6">
-            <div className="break-words font-serif text-3xl font-bold text-brand-dark sm:text-4xl">Up to $11,928/year</div>
-            <h3 className="mt-4 text-xl font-bold">SSI after age 65</h3>
-            <p className="mt-2 text-base leading-7 text-slate-600">The 2026 maximum federal payment is $994 a month for one person. Income, resources, and living arrangements can reduce it.</p>
-          </article>
-          <article className="min-w-0 rounded-2xl border border-slate-200 bg-surface p-6">
-            <div className="break-words font-serif text-3xl font-bold text-brand-dark sm:text-4xl">$2,434.80/year</div>
-            <h3 className="mt-4 text-xl font-bold">The Part B premium</h3>
-            <p className="mt-2 text-base leading-7 text-slate-600">At $202.90 a month in 2026, that is what a Medicare Savings Program can cover when a person qualifies.</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="border-y border-slate-200 bg-band">
-        <div className="mx-auto grid max-w-container gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[.9fr_1.1fr] lg:px-8">
-          <div>
-            <p className="rg-kicker">What you get</p>
-            <h2 className="mt-3 text-3xl font-bold sm:text-5xl">Eleven programs. One place to start.</h2>
-            <p className="mt-5 text-lg leading-8 text-slate-600">
-              The 69-page guide begins with a 10-Minute Scan, then puts the current limit, benefit, form, and next step together for each program.
-            </p>
-            <div className="mt-7 space-y-4">
-              {[
-                "A 50-state phone directory for the offices that handle the major programs",
-                "A two-page printable tracker for applications, documents, and calls",
-                "An open-settlements insert refreshed weekly",
-                "The 2027 edition included when the annual numbers change",
-              ].map((item) => (
-                <div key={item} className="flex gap-3 text-base font-semibold leading-7 text-ink">
-                  <Check className="mt-1 h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-x-8 gap-y-3 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2 sm:p-8">
-            {programs.map((program, index) => (
-              <div key={program} className="flex items-start gap-3 border-b border-slate-100 py-3 text-base font-bold text-ink">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-band text-sm font-extrabold text-brand">{index + 1}</span>
-                <span>{program}</span>
-              </div>
+        <section className="rounded-xl border-2 border-brand-dark bg-[#F7F9FC] p-5 sm:p-7">
+          <h2 className="text-2xl font-bold">Three things to know</h2>
+          <div className="mt-4 space-y-4">
+            {[
+              ["The programs are free.", "You do not pay to apply. The guide shows public facts and links to each source."],
+              ["We are not the government.", "We do not work for Social Security, Medicare, the VA, or the IRS."],
+              ["You still send the forms.", "The guide shows where to start. It does not apply for you."],
+            ].map(([title, copy]) => (
+              <div key={title} className="flex gap-3"><Check className="mt-1 h-5 w-5 shrink-0 text-[#167A4A]" /><p className="text-base leading-7"><strong>{title}</strong> {copy}</p></div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <BenefitsChecklistCheckout attribution={attribution} />
+        <section className="py-10 sm:py-14">
+          <h2 className="text-3xl font-bold sm:text-4xl">What does the $47 pay for?</h2>
+          <p className="mt-4 text-lg leading-8 text-slate-700">It pays for the work of putting the rules in one place. The programs sit on many sites. They use different forms, limits, and offices. This guide sorts them for you.</p>
+          <div className="mt-7"><BuyButton /></div>
+        </section>
 
-      <section className="mx-auto max-w-4xl px-4 py-14 text-center sm:px-6 sm:py-20">
-        <ShieldCheck className="mx-auto h-12 w-12 text-accent" aria-hidden="true" />
-        <p className="mt-5 text-sm font-extrabold uppercase tracking-[0.18em] text-accent">30-day money-back guarantee</p>
-        <h2 className="mt-3 text-3xl font-bold sm:text-5xl">Check the programs before another year gets away.</h2>
-        <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-          The regular price is $97. The launch price is $47 right now. If the guide is not useful, reply to the receipt within 30 days for a refund.
-        </p>
-        <a
-          href="#benefits-checkout"
-          className="mt-8 inline-flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-lg hover:bg-[#278A5C] hover:text-white sm:w-auto sm:flex-row sm:gap-3"
-        >
-          <span>Get the guide here</span>
-          <span className="whitespace-nowrap"><s className="mr-2 opacity-70">$97</s>$47</span>
-        </a>
-        <p className="mt-4 text-sm text-slate-500">Checkout, payment confirmation, and private downloads all stay on RetireShield.</p>
-      </section>
+        <section className="rounded-r-xl border-l-[6px] border-[#167A4A] bg-[#F1F6FA] p-6 sm:p-8">
+          <strong className="font-serif text-5xl text-brand-dark">Up to $29,093</strong>
+          <p className="mt-3 text-lg leading-8 text-slate-700">That is the 2026 top yearly VA pension rate for one veteran who gets Aid and Attendance. Your pay can be less. Income and other rules apply.</p>
+        </section>
 
-      <section className="border-t border-slate-200 bg-surface">
-        <div className="mx-auto max-w-4xl px-4 py-10 text-sm leading-6 text-slate-600 sm:px-6">
-          RetireShield is not part of the government and is not endorsed by Social Security, Medicare, the Department of Veterans Affairs, or the IRS. Every program in the guide is free to apply for. This guide is educational information, not financial, tax, or legal advice. No eligibility decision or benefit amount is guaranteed.
-        </div>
-      </section>
+        <section className="py-12">
+          <h2 className="text-3xl font-bold sm:text-4xl">The 11 programs</h2>
+          <div className="mt-6 divide-y divide-slate-200 border-y border-slate-200">
+            {programs.map(([name, copy]) => (
+              <div key={name} className="flex gap-3 py-4"><Check className="mt-1 h-5 w-5 shrink-0 text-[#167A4A]" /><p className="text-base leading-7"><strong className="block text-lg">{name}</strong>{copy}</p></div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-[#F8FAFC] p-5 sm:p-7">
+          <h2 className="text-3xl font-bold">What you get</h2>
+          <div className="mt-5 divide-y divide-slate-200">
+            {[
+              ["The Benefits Checklist", "69 pages with 11 programs and a 50-state phone list", "PDF 1"],
+              ["Print tracker", "Track forms, calls, papers, and dates", "PDF 2"],
+              ["Open settlements", "A short list of claims that are still open", "PDF 3"],
+              ["The 2027 guide", "We send it when the yearly numbers change", "Free"],
+            ].map(([name, copy, tag]) => (
+              <div key={name} className="grid gap-1 py-4 sm:grid-cols-[1fr_auto] sm:gap-5"><p className="leading-7"><strong>{name}</strong> — {copy}</p><span className="font-extrabold text-brand">{tag}</span></div>
+            ))}
+          </div>
+        </section>
+
+        <section className="py-12">
+          <h2 className="text-3xl font-bold">The full path</h2>
+          <p className="mt-3 text-lg leading-8 text-slate-700">Start small. Add more help only if you want it.</p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {[
+              ["1", "The guide", "$47", "The rules and first steps."],
+              ["2", "Your State Pack", "+$27", "State limits, dates, calls, and scripts. This is an option at checkout."],
+              ["3", "Your Personal Report", "$297 total", "Your answers, your likely matches, and your call order. What you paid for steps 1 and 2 comes off this price."],
+            ].map(([step, name, price, copy]) => (
+              <article key={step} className="rounded-xl border border-slate-200 p-5"><span className="text-sm font-extrabold text-brand">STEP {step}</span><h3 className="mt-2 text-xl font-bold">{name}</h3><strong className="mt-2 block text-2xl text-brand-dark">{price}</strong><p className="mt-3 text-sm leading-6 text-slate-600">{copy}</p></article>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-xl border-2 border-[#167A4A] p-6 text-center sm:p-8">
+          <ShieldCheck className="mx-auto h-11 w-11 text-[#167A4A]" />
+          <h2 className="mt-4 text-3xl font-bold">Try it for 30 days.</h2>
+          <p className="mx-auto mt-3 max-w-xl text-lg leading-8 text-slate-700">If it does not help, reply to your receipt in 30 days. We will send your money back.</p>
+        </section>
+
+        <section className="py-12 text-center">
+          <div className="font-serif text-5xl font-bold text-brand-dark"><s className="mr-4 text-2xl font-normal text-slate-400">$97</s>$47</div>
+          <p className="mt-2 text-slate-600">One payment · three files · no monthly bill</p>
+          <div className="mx-auto mt-6 max-w-xl"><BuyButton label="Get the guide" /></div>
+        </section>
+
+        <section className="pb-12">
+          <h2 className="text-3xl font-bold">Questions</h2>
+          <div className="mt-4 divide-y divide-slate-200 border-y border-slate-200">
+            {[
+              ["Does this apply for me?", "No. This is a guide. You send each form to the office that runs the program."],
+              ["Can I find this for free?", "Yes. The facts are on public sites. This guide saves you the work of finding and sorting them."],
+              ["Will I get a benefit?", "We cannot promise that. Each office checks your case and makes the choice."],
+              ["What happens when the numbers change?", "We send buyers the 2027 guide when the yearly numbers change."],
+              ["What if I do not like it?", "Reply to your receipt within 30 days. We will refund you."],
+            ].map(([question, answer]) => <details key={question} className="py-4"><summary className="cursor-pointer text-lg font-extrabold">{question}</summary><p className="mt-3 text-base leading-7 text-slate-700">{answer}</p></details>)}
+          </div>
+        </section>
+      </main>
+
+      <BenefitsChecklistCheckout attribution={attribution} statePacksReady={statePacksReady} />
+
+      <footer className="border-t border-slate-200 bg-white px-4 py-10">
+        <p className="mx-auto max-w-[820px] text-sm leading-6 text-slate-600">RetireShield is not part of the government. Social Security, Medicare, the VA, and the IRS do not endorse us. Each program is free to apply for. This is a guide, not financial, legal, or tax advice. Each office decides who gets help. Facts were checked in September 2026.</p>
+      </footer>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-4px_18px_rgba(0,0,0,.14)] sm:hidden">
+        <a href="#secure-checkout" className="block rounded-lg bg-[#167A4A] px-4 py-3 text-center text-lg font-extrabold text-white no-underline">Get the guide — $47</a>
+      </div>
     </div>
   );
 }

@@ -73,6 +73,7 @@ export async function GET(
   destination.searchParams.set("aid", aid);
   destination.searchParams.set("plat", plat);
   destination.searchParams.set("cid", cid);
+  destination.hash = "secure-checkout";
 
   const response = NextResponse.redirect(destination, 302);
   response.headers.set("Cache-Control", "no-store, private, max-age=0");

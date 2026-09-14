@@ -4,6 +4,7 @@ import {
   BENEFITS_CHECKLIST_PRICE,
   BENEFITS_CHECKLIST_PRODUCT,
   BENEFITS_CHECKLIST_TAX_CODE,
+  BENEFITS_STATE_PACK_PRICE,
   createDownloadToken,
   normalizeEmail,
   normalizeState,
@@ -34,6 +35,7 @@ export async function POST(req: Request) {
   const zip = normalizeZip(body.zip);
   const state = normalizeState(body.state);
   const requestId = sanitizeShortText(body.requestId, 80);
+  const wantsStatePack = body.statePack === true;
 
   if (!email || !firstName || !zip || !state || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) {
     return NextResponse.json({ error: "Enter a valid email, first name, ZIP code, and state." }, { status: 400 });
@@ -46,6 +48,10 @@ export async function POST(req: Request) {
     console.error("benefits checkout blocked: private product downloads are not marked ready");
     return NextResponse.json({ error: "Checkout is temporarily unavailable. Please contact support." }, { status: 503 });
   }
+  if (wantsStatePack && process.env.BENEFITS_CHECKLIST_STATE_PACKS_READY !== "true") {
+    console.error("benefits checkout blocked: State Packs are not marked ready");
+    return NextResponse.json({ error: "The State Pack is not ready yet. Please uncheck it or contact support." }, { status: 503 });
+  }
 
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE_KEY;
   if (!publishableKey) {
@@ -54,7 +60,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    let total = BENEFITS_CHECKLIST_PRICE;
+    const subtotal = BENEFITS_CHECKLIST_PRICE + (wantsStatePack ? BENEFITS_STATE_PACK_PRICE : 0);
+    let total = subtotal;
     let taxAmount = 0;
     let taxCalculationId = "";
 
@@ -65,12 +72,20 @@ export async function POST(req: Request) {
           address: { country: "US", postal_code: zip, state },
           address_source: "billing",
         },
-        line_items: [{
-          amount: BENEFITS_CHECKLIST_PRICE,
-          reference: BENEFITS_CHECKLIST_PRODUCT,
-          tax_behavior: "exclusive",
-          tax_code: BENEFITS_CHECKLIST_TAX_CODE,
-        }],
+        line_items: [
+          {
+            amount: BENEFITS_CHECKLIST_PRICE,
+            reference: BENEFITS_CHECKLIST_PRODUCT,
+            tax_behavior: "exclusive",
+            tax_code: BENEFITS_CHECKLIST_TAX_CODE,
+          },
+          ...(wantsStatePack ? [{
+            amount: BENEFITS_STATE_PACK_PRICE,
+            reference: `benefits-state-pack-${state.toLowerCase()}`,
+            tax_behavior: "exclusive" as const,
+            tax_code: BENEFITS_CHECKLIST_TAX_CODE,
+          }] : []),
+        ],
       });
       total = calculation.amount_total;
       taxAmount = calculation.tax_amount_exclusive;
@@ -84,6 +99,8 @@ export async function POST(req: Request) {
       buyer_state: state,
       buyer_zip: zip,
       download_token: downloadToken,
+      state_pack: wantsStatePack ? "1" : "0",
+      state_pack_price: wantsStatePack ? String(BENEFITS_STATE_PACK_PRICE) : "0",
       tax_calculation: taxCalculationId,
     };
     const attribution = typeof body.attribution === "object" && body.attribution ? body.attribution as Record<string, unknown> : {};
@@ -112,7 +129,7 @@ export async function POST(req: Request) {
       clientSecret: intent.client_secret,
       paymentIntentId: intent.id,
       publishableKey,
-      subtotal: BENEFITS_CHECKLIST_PRICE,
+      subtotal,
       tax: taxAmount,
       total,
       returnUrl: returnUrl.toString(),

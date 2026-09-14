@@ -90,20 +90,26 @@ Stripe Dashboard checklist before live launch:
 **Hard gate (Phase 6):** a lawyer must review the `/upgrade` copy, the consent checkbox, the trial-ending
 reminder, the one-click cancel, and the three legal pages **before you switch Stripe to live mode.**
 
-### Native Benefits Checklist checkout
+### Native Benefits Checklist funnel
 
-The Benefits Checklist page uses an on-page Stripe Payment Element and returns buyers to a RetireShield thank-you page with private download links. Paid PDFs must never be committed to this public repository.
+The Benefits Checklist page follows the same funnel used on The Money Overview: long-form sales page, same-page checkout, optional $27 State Pack, private downloads, and a credited Personal Benefits Report offer after purchase. The report checkout hands paid buyers to a private seven-step intake form. Paid PDFs must never be committed to this public repository.
 
 Before enabling the checkout:
 
 1. Set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in Render. The Stripe publishable and secret keys must be from the same account.
 2. Ensure the Stripe webhook for `/api/stripe/webhook` receives `payment_intent.succeeded` in addition to the existing subscription events.
-3. Upload the current guide, tracker, and settlements PDFs to the private Supabase bucket:
+3. Apply `supabase/migrations/20260914000000_create_benefits_report_intakes.sql`.
+4. Upload the current guide, tracker, and settlements PDFs to the private Supabase bucket:
 
    `npm run benefits:upload -- /absolute/path/guide.pdf /absolute/path/tracker.pdf /absolute/path/settlements.pdf`
 
-4. Run one test-mode purchase end to end. Confirm the RetireShield thank-you links and email downloads work.
-5. Only then set `BENEFITS_CHECKLIST_DOWNLOADS_READY=true`. The payment-intent endpoint returns 503 while this flag is false, so the site cannot charge a buyer before fulfillment is ready.
+5. Upload all 51 State Packs from the product folder:
+
+   `npm run benefits:upload-packs -- /absolute/path/state-packs`
+
+6. Set `BENEFITS_REPORT_NOTIFY_EMAIL` to the inbox that will receive completed-report alerts. Confirm `RESEND_API_KEY`, `EMAIL_FROM`, and `EMAIL_REPLY_TO` are set for receipts.
+7. Run three test-mode orders end to end: guide only; guide with a State Pack; and the credited Personal Benefits Report through final intake submission.
+8. Set `BENEFITS_CHECKLIST_DOWNLOADS_READY=true`, `BENEFITS_CHECKLIST_STATE_PACKS_READY=true`, and `BENEFITS_REPORT_INTAKE_READY=true` only after their matching test passes. Each part stays closed while its flag is false.
 
 Known TODO: the quiz is anonymous (email-gated), so a freshly created account starts with no saved score —
 add a step that links the just-taken Score to the new `scores` row on signup. Noted in the runbook.

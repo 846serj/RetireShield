@@ -9,7 +9,8 @@
     "lint": "next lint",
     "test": "node --loader ./tests/ts-loader.mjs --test tests/*.test.ts lib/*.test.ts",
     "stripe:setup": "node scripts/setup-stripe.js",
-    "benefits:upload": "node scripts/upload-benefits-checklist.js"
+    "benefits:upload": "node scripts/upload-benefits-checklist.js",
+    "benefits:upload-packs": "node scripts/upload-benefits-state-packs.js"
   },
   "dependencies": {
     "next": "14.2.5",

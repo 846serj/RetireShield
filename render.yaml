@@ -21,7 +21,13 @@ services:
       - key: BENEFITS_CHECKLIST_STORAGE_BUCKET
         value: retire-shield-products
       - key: BENEFITS_CHECKLIST_DOWNLOADS_READY
-        value: false
+        sync: false
+      - key: BENEFITS_CHECKLIST_STATE_PACKS_READY
+        sync: false
+      - key: BENEFITS_REPORT_INTAKE_READY
+        sync: false
+      - key: BENEFITS_REPORT_NOTIFY_EMAIL
+        sync: false
 
   - type: cron
     name: retireshield-monthly-rescore

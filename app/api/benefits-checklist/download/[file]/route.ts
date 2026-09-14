@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-import { BENEFITS_CHECKLIST_DOWNLOADS, BENEFITS_CHECKLIST_PRODUCT, BENEFITS_CHECKLIST_STORAGE_BUCKET, type BenefitsChecklistDownloadKey } from "@/lib/benefitsChecklist";
+import { BENEFITS_CHECKLIST_PRODUCT, BENEFITS_CHECKLIST_STORAGE_BUCKET, benefitsDownloadsForOrder } from "@/lib/benefitsChecklist";
 import { createServiceClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: { file: string } }) {
-  const file = BENEFITS_CHECKLIST_DOWNLOADS[params.file as BenefitsChecklistDownloadKey];
   const url = new URL(req.url);
   const paymentIntentId = url.searchParams.get("payment_intent") || "";
   const token = url.searchParams.get("token") || "";
 
-  if (!file || !/^pi_[A-Za-z0-9]+$/.test(paymentIntentId) || !/^[a-f0-9]{48}$/.test(token)) {
+  if (!/^[-a-z]+$/.test(params.file) || !/^pi_[A-Za-z0-9]+$/.test(paymentIntentId) || !/^[a-f0-9]{48}$/.test(token)) {
     return NextResponse.json({ error: "Invalid download link." }, { status: 400 });
   }
 
@@ -23,6 +22,9 @@ export async function GET(req: Request, { params }: { params: { file: string } }
     if (!paid || refunded || intent.metadata.product !== BENEFITS_CHECKLIST_PRODUCT || intent.metadata.download_token !== token) {
       return NextResponse.json({ error: "This download is not available." }, { status: 403 });
     }
+
+    const file = benefitsDownloadsForOrder(intent.metadata.buyer_state || "", intent.metadata.state_pack === "1").find((item) => item.key === params.file);
+    if (!file) return NextResponse.json({ error: "This file was not part of the order." }, { status: 403 });
 
     const { data, error } = await createServiceClient().storage.from(BENEFITS_CHECKLIST_STORAGE_BUCKET).download(file.source);
     if (error || !data) throw error || new Error("Private product file is missing");

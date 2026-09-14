@@ -4,7 +4,7 @@ import { resourceArticles } from "@/content/resources";
 
 const shareRoutes = ["/s/secure", "/s/mostly-secure", "/s/at-risk", "/s/vulnerable"];
 
-const leadgenOnlyRoutes = ["", "/quiz", "/benefits-checklist", "/privacy", "/terms", "/refund-policy", ...shareRoutes];
+const leadgenOnlyRoutes = ["", "/quiz", "/benefits-checklist", "/personal-benefits-report", "/privacy", "/terms", "/refund-policy", ...shareRoutes];
 
 const staticRoutes = [
   "",
@@ -20,6 +20,7 @@ const staticRoutes = [
   "/about",
   "/resources",
   "/benefits-checklist",
+  "/personal-benefits-report",
   "/privacy",
   "/terms",
   "/refund-policy",
