@@ -7,6 +7,7 @@ const allowedPositions = new Set(["top", "inline", "footer", "end", "slot-1", "s
 const variantPattern = /^[a-z0-9]{1,12}[-_][a-z0-9][a-z0-9_-]{0,30}$/;
 const aidPattern = /^[a-z0-9][a-z0-9-]{0,120}$/;
 const base32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+const publicOrigin = "https://retireshield.com";
 
 function clickId() {
   const bytes = randomBytes(10);
@@ -58,12 +59,12 @@ export async function GET(
     !variantPattern.test(variant) ||
     !aidPattern.test(aid)
   ) {
-    return NextResponse.redirect(new URL("/", req.url), 302);
+    return NextResponse.redirect(new URL("/", publicOrigin), 302);
   }
 
   const cid = clickId();
   const plat = platform(req);
-  const destination = new URL("/benefits-checklist/", req.url);
+  const destination = new URL("/benefits-checklist/", publicOrigin);
   destination.searchParams.set("utm_source", "rs");
   destination.searchParams.set("utm_medium", surface);
   destination.searchParams.set("utm_campaign", campaign);
