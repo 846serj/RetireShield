@@ -4,12 +4,12 @@ import { BENEFITS_REPORT_NAME, BENEFITS_REPORT_PRICE, BENEFITS_REPORT_PRODUCT, B
 import { getPublicBaseUrl } from "@/lib/siteUrl";
 import { stripe } from "@/lib/stripe";
 
-async function creditFromSource(sourcePaymentIntentId: string) {
+async function creditFromSource(sourcePaymentIntentId: string, sourceToken: string) {
   if (!sourcePaymentIntentId) return 0;
-  if (!/^pi_[A-Za-z0-9]+$/.test(sourcePaymentIntentId)) return -1;
+  if (!/^pi_[A-Za-z0-9]+$/.test(sourcePaymentIntentId) || !/^[a-f0-9]{48}$/.test(sourceToken)) return -1;
   const source = await stripe.paymentIntents.retrieve(sourcePaymentIntentId, { expand: ["latest_charge"] });
   const charge = typeof source.latest_charge === "object" ? source.latest_charge : null;
-  const valid = source.status === "succeeded" && source.amount_received >= source.amount && source.metadata.product === BENEFITS_CHECKLIST_PRODUCT && !charge?.refunded && (charge?.amount_refunded ?? 0) < source.amount_received;
+  const valid = source.status === "succeeded" && source.amount_received >= source.amount && source.metadata.product === BENEFITS_CHECKLIST_PRODUCT && source.metadata.download_token === sourceToken && !charge?.refunded && (charge?.amount_refunded ?? 0) < source.amount_received;
   return valid ? reportCredit(source.metadata.state_pack === "1") : -1;
 }
 
@@ -26,12 +26,13 @@ export async function POST(req: Request) {
   const state = normalizeState(body.state);
   const requestId = sanitizeShortText(body.requestId, 80);
   const sourcePaymentIntentId = sanitizeShortText(body.sourcePaymentIntentId, 120);
+  const sourceToken = sanitizeShortText(body.sourceToken, 80);
   if (!email || !firstName || !zip || !state || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) return NextResponse.json({ error: "Enter a valid email, name, ZIP code, and state." }, { status: 400 });
   if (!process.env.STRIPE_SECRET_KEY || !(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE_KEY)) return NextResponse.json({ error: "Checkout is not ready. Please contact support." }, { status: 503 });
   if (process.env.BENEFITS_REPORT_INTAKE_READY !== "true") return NextResponse.json({ error: "The report order form is not open yet. Please contact support." }, { status: 503 });
 
   try {
-    const credit = await creditFromSource(sourcePaymentIntentId);
+    const credit = await creditFromSource(sourcePaymentIntentId, sourceToken);
     if (credit < 0) return NextResponse.json({ error: "We could not match that credit to a paid order." }, { status: 403 });
     const subtotal = reportPrice(credit);
     let total = subtotal;

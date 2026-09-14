@@ -20,11 +20,13 @@ function dollars(cents: number) {
 
 export function BenefitsReportCheckout({
   sourcePaymentIntentId,
+  sourceToken,
   credit,
   price,
   initial,
 }: {
   sourcePaymentIntentId: string;
+  sourceToken: string;
   credit: number;
   price: number;
   initial: { email: string; firstName: string; state: string; zip: string };
@@ -57,7 +59,7 @@ export function BenefitsReportCheckout({
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/benefits-report/payment-intent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, sourcePaymentIntentId, requestId }) });
+      const response = await fetch("/api/benefits-report/payment-intent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, sourcePaymentIntentId, sourceToken, requestId }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "We could not start checkout.");
       setIntent(payload as IntentResponse);

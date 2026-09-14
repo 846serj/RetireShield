@@ -142,11 +142,16 @@ export function BenefitsChecklistCheckout({
   }
 
   return (
-    <section id="benefits-checkout" className="border-y border-slate-200 bg-[#F4F7FB] px-4 py-12 sm:px-6 sm:py-16">
+    <section className="border-y border-slate-200 bg-[#F4F7FB] px-4 py-10 sm:px-6 sm:py-14">
       <Script src="https://js.stripe.com/v3/" strategy="afterInteractive" onLoad={() => setStripeReady(true)} />
-      <div id="secure-checkout" className="mx-auto max-w-xl scroll-mt-24 rounded-xl border-2 border-brand-dark bg-white p-5 shadow-xl shadow-slate-900/10 sm:p-8">
+      <div id="secure-checkout" className="mx-auto max-w-xl scroll-mt-20 rounded-xl border-2 border-brand-dark bg-white p-5 shadow-xl shadow-slate-900/10 sm:p-8">
         <div className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-[0.1em] text-brand"><LockKeyhole className="h-4 w-4" />Secure checkout</div>
-        <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Get the guide now.</h2>
+        <div className="mt-4 flex flex-wrap items-end gap-x-4 gap-y-1">
+          <span className="text-base font-bold text-slate-500">Normal price <s>$97.00</s></span>
+          <strong className="font-serif text-5xl leading-none text-brand-dark">$47.00</strong>
+        </div>
+        <p className="mt-3 rounded-lg bg-[#F1FAF5] px-4 py-3 font-bold text-[#0E633A]">You save $50 off the normal $97 price.</p>
+
         <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
           <div className="flex justify-between gap-4"><span>The Benefits Checklist</span><strong>$47.00</strong></div>
           {statePack && <div className="mt-2 flex justify-between gap-4"><span>{stateName} State Pack</span><strong>$27.00</strong></div>}
@@ -156,7 +161,7 @@ export function BenefitsChecklistCheckout({
 
         {stage === "details" ? (
           <form className="mt-6" onSubmit={continueToPayment} noValidate>
-            <p className="text-lg font-extrabold">1. Where should we send your files?</p>
+            <p className="text-lg font-extrabold">1. Where should we send your guide?</p>
             <div className="mt-4 grid gap-4">
               <label className="grid gap-2 text-base font-bold">Email address
                 <input required type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(event) => update("email", event.target.value)} className="min-h-14 w-full rounded-lg border border-slate-400 bg-white px-4 text-lg font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25" />
@@ -169,12 +174,12 @@ export function BenefitsChecklistCheckout({
                   <input required autoComplete="postal-code" inputMode="numeric" maxLength={10} value={form.zip} onChange={(event) => update("zip", event.target.value)} className="min-h-14 w-full rounded-lg border border-slate-400 bg-white px-4 text-lg font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25" />
                 </label>
               </div>
-              <label className="grid gap-2 text-base font-bold">Which state do you need?
+              <label className="grid gap-2 text-base font-bold">Which state do you want help for?
                 <select required autoComplete="address-level1" value={form.state} onChange={(event) => update("state", event.target.value)} className="min-h-14 w-full rounded-lg border border-slate-400 bg-white px-4 text-lg font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25">
                   <option value="">Choose your state</option>
                   {US_STATES.map((state) => <option key={state.code} value={state.code}>{state.name}</option>)}
                 </select>
-                <span className="text-sm font-normal leading-5 text-slate-600">Many rules change by state. Pick the state where the person lives.</span>
+                <span className="text-sm font-normal leading-5 text-slate-600">Some rules and forms change by state. Pick the state where the person lives.</span>
               </label>
             </div>
 
@@ -183,34 +188,34 @@ export function BenefitsChecklistCheckout({
                 <input type="checkbox" checked={statePack} onChange={(event) => setStatePack(event.target.checked)} className="mt-1 h-6 w-6 shrink-0 accent-[#167A4A]" />
                 <span>
                   <strong className="block text-lg">Add the {stateName} State Pack for $27</strong>
-                  <span className="mt-1 block text-base leading-6 text-slate-700">Get the state limits, local programs, tax dates, phone numbers, and short call scripts. It is more than 12 pages. This box starts unchecked.</span>
+                  <span className="mt-1 block text-base leading-6 text-slate-700">Get 13–15 pages of state limits, local programs, dates, phone numbers, and short call scripts. This box starts off.</span>
                 </span>
               </label>
             )}
 
             {error && <p role="alert" className="mt-5 rounded-lg border border-red-300 bg-red-50 p-3 font-semibold text-red-800">{error}</p>}
             <button disabled={busy} className="mt-6 min-h-16 w-full rounded-lg bg-brand-dark px-5 py-4 text-xl font-extrabold text-white shadow-md transition hover:bg-brand disabled:cursor-wait disabled:opacity-70">
-              {busy ? "Loading payment…" : `Go to secure payment — ${dollars(shownSubtotal)}`}
+              {busy ? "Loading card form…" : `Continue to card payment — ${dollars(shownSubtotal)}`}
             </button>
           </form>
         ) : (
           <form className="mt-6" onSubmit={pay}>
             <div className="flex items-center justify-between gap-4">
               <p className="text-lg font-extrabold">2. Pay by card</p>
-              <button type="button" onClick={editDetails} className="text-sm font-bold text-brand underline">Change my details</button>
+              <button type="button" onClick={editDetails} className="text-sm font-bold text-brand underline">Change details</button>
             </div>
             <div ref={paymentHost} className="mt-4 min-h-28" />
             {error && <p role="alert" className="mt-5 rounded-lg border border-red-300 bg-red-50 p-3 font-semibold text-red-800">{error}</p>}
             <button disabled={paying || !stripeReady} className="mt-6 min-h-16 w-full rounded-lg bg-[#167A4A] px-5 py-4 text-xl font-extrabold text-white shadow-md transition hover:bg-[#0E633A] disabled:cursor-wait disabled:opacity-70">
-              {paying ? "Sending payment…" : `Pay ${dollars(intent?.total ?? shownSubtotal)} and get my files`}
+              {paying ? "Sending payment…" : `Buy now — ${dollars(intent?.total ?? shownSubtotal)}`}
             </button>
           </form>
         )}
 
         <ul className="mt-6 space-y-2 border-t border-slate-200 pt-5 text-sm leading-6 text-slate-700">
           <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#167A4A]" />30-day refund. Just reply to your receipt.</li>
-          <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#167A4A]" />Your files show here and come by email.</li>
-          <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#167A4A]" />Stripe handles your card details.</li>
+          <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#167A4A]" />Your files show after you pay and come by email.</li>
+          <li className="flex gap-2"><Check className="mt-1 h-4 w-4 shrink-0 text-[#167A4A]" />Stripe handles your card. RetireShield does not store it.</li>
         </ul>
       </div>
     </section>

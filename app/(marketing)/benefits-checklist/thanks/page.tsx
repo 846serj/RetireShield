@@ -88,7 +88,7 @@ export default async function BenefitsChecklistThanks({ searchParams }: { search
               <div className="mt-2 flex justify-between gap-3 text-[#167A4A]"><span>What you paid today</span><span>− {money(credit)}</span></div>
               <div className="mt-3 flex justify-between gap-3 border-t border-slate-300 pt-3 text-xl font-extrabold"><span>Your price</span><span>{money(upgradePrice)}</span></div>
             </div>
-            <Link href={`/personal-benefits-report/?from=${encodeURIComponent(intent.id)}`} className="mt-5 block rounded-lg bg-[#167A4A] px-5 py-4 text-center text-lg font-extrabold text-white no-underline hover:bg-[#0E633A] hover:text-white">See what my report includes</Link>
+            <Link href={`/personal-benefits-report/?from=${encodeURIComponent(intent.id)}&source_token=${encodeURIComponent(token)}`} className="mt-5 block rounded-lg bg-[#167A4A] px-5 py-4 text-center text-lg font-extrabold text-white no-underline hover:bg-[#0E633A] hover:text-white">Use my {money(credit)} credit — finish for {money(upgradePrice)}</Link>
             <p className="mt-3 text-sm leading-6 text-slate-600">Your downloads are already safe. You do not need to buy the report.</p>
           </section>
         </div>

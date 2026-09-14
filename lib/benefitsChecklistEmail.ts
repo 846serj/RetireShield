@@ -25,7 +25,7 @@ export async function sendBenefitsChecklistPurchaseEmail(input: {
     label: file.label,
     url: `${base}/api/benefits-checklist/download/${file.key}?payment_intent=${encodeURIComponent(input.paymentIntentId)}&token=${encodeURIComponent(input.downloadToken)}`,
   }));
-  const reportUrl = `${base}/personal-benefits-report/?from=${encodeURIComponent(input.paymentIntentId)}`;
+  const reportUrl = `${base}/personal-benefits-report/?from=${encodeURIComponent(input.paymentIntentId)}&source_token=${encodeURIComponent(input.downloadToken)}`;
   const greeting = input.firstName ? `Hi ${escapeHtml(input.firstName)},` : "Hello,";
 
   return sendTransactionalEmail({
