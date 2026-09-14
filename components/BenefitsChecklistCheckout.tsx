@@ -221,4 +221,3 @@ export function BenefitsChecklistCheckout({ attribution }: { attribution: Record
     </section>
   );
 }
-

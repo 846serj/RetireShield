@@ -32,4 +32,3 @@ export async function sendBenefitsChecklistPurchaseEmail(input: {
     text: `${greeting.replace(/&#039;/g, "'")}\n\nYour Benefits Checklist is ready. Your payment of ${money(input.amount)} was successful.\n\n${downloads.map((item) => `${item.label}: ${item.url}`).join("\n")}\n\nIf the guide is not useful, reply within 30 days for a refund.`,
   });
 }
-
