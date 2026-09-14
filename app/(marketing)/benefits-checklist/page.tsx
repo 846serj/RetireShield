@@ -167,7 +167,7 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
         <p className="mt-5 text-sm font-extrabold uppercase tracking-[0.18em] text-accent">30-day money-back guarantee</p>
         <h2 className="mt-3 text-3xl font-bold sm:text-5xl">Check the programs before another year gets away.</h2>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-          The regular price is $97. The new-launch price is $47 right now. If the guide is not useful, reply to the receipt within 30 days for a refund.
+          The regular price is $97. The launch price is $47 right now. If the guide is not useful, reply to the receipt within 30 days for a refund.
         </p>
         <a
           href={buyHref}
