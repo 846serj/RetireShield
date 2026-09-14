@@ -52,7 +52,7 @@ function Logo({ compact = false, href }: { compact?: boolean; href?: string }) {
 export function SiteHeader({ userEmail }: { userEmail?: string | null }) {
   const pathname = usePathname();
   // Dedicated conversion page: strip every off-ramp so visitors only see the signup form.
-  const distractionFree = pathname === "/newsletter";
+  const distractionFree = pathname === "/newsletter" || pathname === "/benefits-checklist";
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const featuresRef = useRef<HTMLDivElement>(null);

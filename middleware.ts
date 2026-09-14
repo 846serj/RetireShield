@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { LEADGEN_ONLY } from "@/lib/flags";
 import { withPersistentAuthCookie } from "@/lib/supabase/cookies";
 
-const LEADGEN_ALLOWLIST_EXACT_PATHS = new Set(["/quiz", "/newsletter", "/privacy", "/terms", "/refund-policy"]);
-const LEADGEN_ALLOWLIST_PREFIXES = ["/api/lead", "/api/newsletter", "/auth", "/_next", "/favicon", "/robots", "/sitemap", "/manifest", "/s"];
+const LEADGEN_ALLOWLIST_EXACT_PATHS = new Set(["/quiz", "/newsletter", "/benefits-checklist", "/benefits-checklist/", "/privacy", "/terms", "/refund-policy"]);
+const LEADGEN_ALLOWLIST_PREFIXES = ["/api/lead", "/api/newsletter", "/auth", "/_next", "/favicon", "/robots", "/sitemap", "/manifest", "/s", "/c"];
 const STATIC_ASSET_PATH = /\.[^/]+$/;
 
 function isLeadgenAllowedPath(pathname: string) {
