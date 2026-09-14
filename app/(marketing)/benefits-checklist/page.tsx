@@ -66,27 +66,25 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
   return (
     <div className="bg-white">
       <section className="overflow-hidden bg-brand-dark text-white">
-        <div className="mx-auto grid max-w-container items-center gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[1.35fr_.65fr] lg:px-8 lg:py-20">
+        <div className="mx-auto grid max-w-container items-center gap-10 px-4 py-8 sm:px-6 sm:py-16 lg:grid-cols-[1.35fr_.65fr] lg:px-8 lg:py-20">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-[#8FD4B2]">Just launched · 2026–2027 edition</p>
-            <h1 className="mt-4 max-w-4xl text-4xl font-bold leading-[1.02] tracking-tight text-white sm:text-6xl">
+            <h1 className="mt-4 max-w-4xl text-3xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl sm:leading-[1.02]">
               One program inside can be worth up to $29,093 a year.
             </h1>
-            <p className="mt-6 max-w-3xl text-xl leading-8 text-[#D9E6F3] sm:text-2xl">
-              The Benefits Checklist shows you 11 programs that can change the math on a fixed income—plus the current limits, the forms, and where to apply.
+            <p className="mt-5 max-w-3xl text-lg leading-7 text-[#D9E6F3] sm:mt-6 sm:text-2xl sm:leading-8">
+              The Benefits Checklist puts 11 programs, current limits, forms, and where to apply in one place.
             </p>
 
-            <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <div className="mt-6 flex flex-col items-start gap-4 sm:mt-8 sm:flex-row sm:items-center">
               <a
                 href={buyHref}
-                className="inline-flex min-h-16 w-full items-center justify-center rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-[0_18px_45px_rgba(46,158,106,0.28)] hover:bg-[#278A5C] hover:text-white sm:w-auto"
+                className="inline-flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-[0_18px_45px_rgba(46,158,106,0.28)] hover:bg-[#278A5C] hover:text-white sm:w-auto sm:flex-row sm:gap-3"
               >
-                Get The Benefits Checklist — <s className="mx-2 opacity-70">$97</s> $47
+                <span>Get The Benefits Checklist</span>
+                <span className="whitespace-nowrap"><s className="mr-2 opacity-70">$97</s>$47</span>
               </a>
-              <div className="text-left">
-                <div className="text-sm font-bold text-[#D9E6F3]"><s className="mr-2 text-white/65">$97 regular price</s> $47 launch price</div>
-                <div className="mt-1 text-sm text-[#B9CCE4]">One payment · instant PDF download · 30-day refund</div>
-              </div>
+              <div className="max-w-xs text-left text-sm leading-6 text-[#B9CCE4]">One payment · instant PDF download · 30-day refund</div>
             </div>
           </div>
 
@@ -110,18 +108,18 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
         </p>
 
         <div className="mt-9 grid gap-5 lg:grid-cols-3">
-          <article className="rounded-2xl border border-slate-200 bg-surface p-6">
-            <div className="font-serif text-4xl font-bold text-brand-dark">Up to $29,093/year</div>
+          <article className="min-w-0 rounded-2xl border border-slate-200 bg-surface p-6">
+            <div className="break-words font-serif text-3xl font-bold text-brand-dark sm:text-4xl">Up to $29,093/year</div>
             <h3 className="mt-4 text-xl font-bold">VA Aid & Attendance</h3>
             <p className="mt-2 text-base leading-7 text-slate-600">The 2026 maximum annual pension rate for a single veteran who qualifies for Aid & Attendance. The actual pension is reduced by countable income.</p>
           </article>
-          <article className="rounded-2xl border border-slate-200 bg-surface p-6">
-            <div className="font-serif text-4xl font-bold text-brand-dark">Up to $11,928/year</div>
+          <article className="min-w-0 rounded-2xl border border-slate-200 bg-surface p-6">
+            <div className="break-words font-serif text-3xl font-bold text-brand-dark sm:text-4xl">Up to $11,928/year</div>
             <h3 className="mt-4 text-xl font-bold">SSI after age 65</h3>
             <p className="mt-2 text-base leading-7 text-slate-600">The 2026 maximum federal payment is $994 a month for one person. Income, resources, and living arrangements can reduce it.</p>
           </article>
-          <article className="rounded-2xl border border-slate-200 bg-surface p-6">
-            <div className="font-serif text-4xl font-bold text-brand-dark">$2,434.80/year</div>
+          <article className="min-w-0 rounded-2xl border border-slate-200 bg-surface p-6">
+            <div className="break-words font-serif text-3xl font-bold text-brand-dark sm:text-4xl">$2,434.80/year</div>
             <h3 className="mt-4 text-xl font-bold">The Part B premium</h3>
             <p className="mt-2 text-base leading-7 text-slate-600">At $202.90 a month in 2026, that is what a Medicare Savings Program can cover when a person qualifies.</p>
           </article>
@@ -171,9 +169,10 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
         </p>
         <a
           href={buyHref}
-          className="mt-8 inline-flex min-h-16 w-full items-center justify-center rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-lg hover:bg-[#278A5C] hover:text-white sm:w-auto"
+          className="mt-8 inline-flex min-h-16 w-full flex-col items-center justify-center gap-1 rounded-xl bg-[#2E9E6A] px-7 py-4 text-center text-xl font-extrabold text-white no-underline shadow-lg hover:bg-[#278A5C] hover:text-white sm:w-auto sm:flex-row sm:gap-3"
         >
-          Get instant access — <s className="mx-2 opacity-70">$97</s> $47
+          <span>Get instant access</span>
+          <span className="whitespace-nowrap"><s className="mr-2 opacity-70">$97</s>$47</span>
         </a>
         <p className="mt-4 text-sm text-slate-500">Secure checkout and digital delivery are handled by our sister publication, The Money Overview.</p>
       </section>
