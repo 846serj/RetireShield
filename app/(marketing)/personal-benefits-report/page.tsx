@@ -6,6 +6,7 @@ import { BENEFITS_CHECKLIST_PRODUCT, money } from "@/lib/benefitsChecklist";
 import { BENEFITS_REPORT_PRICE, BENEFITS_REPORT_PRODUCT, reportCredit, reportPrice } from "@/lib/benefitsReport";
 import { pageMetadata } from "@/lib/seo";
 import { stripe } from "@/lib/stripe";
+import { getBenefitsOrder } from "@/lib/benefitsOrders";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = pageMetadata({ title: "The Personal Benefits Report | RetireShield", description: "A report based on your own answers, state rules, and benefit limits.", path: "/personal-benefits-report/" });
@@ -23,31 +24,46 @@ async function sourceOrder(id: string, token: string) {
   } catch { return null; }
 }
 
+async function durableSourceOrder(id: string, token: string) {
+  if (!/^[0-9a-f-]{36}$/.test(id) || !/^[a-f0-9]{48}$/.test(token)) return null;
+  try {
+    const order = await getBenefitsOrder(id, token);
+    return order?.status === "paid" ? order : null;
+  } catch { return null; }
+}
+
 export default async function PersonalBenefitsReportPage({ searchParams }: { searchParams: SearchParams }) {
   const from = first(searchParams.from) || "";
+  const orderId = first(searchParams.order) || "";
   const sourceToken = first(searchParams.source_token) || "";
   const source = await sourceOrder(from, sourceToken);
-  const credit = source ? reportCredit(source.metadata.state_pack === "1") : 0;
+  const durableSource = source ? null : await durableSourceOrder(orderId, sourceToken);
+  const credit = source ? reportCredit(source.metadata.state_pack === "1") : durableSource ? reportCredit(durableSource.state_pack) : 0;
   const price = reportPrice(credit);
-  const initial = { email: source?.receipt_email || "", firstName: source?.metadata.buyer_name || "", state: source?.metadata.buyer_state || "", zip: source?.metadata.buyer_zip || "" };
+  const initial = {
+    email: source?.receipt_email || durableSource?.email || "",
+    firstName: source?.metadata.buyer_name || durableSource?.first_name || "",
+    state: source?.metadata.buyer_state || durableSource?.state || "",
+    zip: source?.metadata.buyer_zip || durableSource?.zip || "",
+  };
   const attributionKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "cid", "plat", "first_aid", "first_cid", "first_plat", "click_count", "page_variant", "source_site"] as const;
   const attribution = Object.fromEntries(attributionKeys.flatMap((key) => {
-    const fromSource = source?.metadata[key];
+    const fromSource = source?.metadata[key] || durableSource?.attribution?.[key];
     const fromQuery = first(searchParams[key]);
     const value = fromSource || fromQuery;
     return value ? [[key, value.slice(0, 190)]] : [];
   }));
-  attribution.utm_source ||= source ? "checklist-upgrade" : "retireshield";
-  attribution.utm_medium ||= source ? "thank-you" : "web";
+  attribution.utm_source ||= source || durableSource ? "checklist-upgrade" : "retireshield";
+  attribution.utm_medium ||= source || durableSource ? "thank-you" : "web";
   attribution.utm_campaign ||= "personal-benefits-report";
-  attribution.aid ||= source?.metadata.aid || "retireshield-personal-benefits-report";
-  attribution.first_aid ||= source?.metadata.first_aid || attribution.aid;
-  attribution.cid ||= source?.metadata.cid || "";
-  attribution.first_cid ||= source?.metadata.first_cid || attribution.cid;
-  attribution.plat ||= source?.metadata.plat || "web";
-  attribution.first_plat ||= source?.metadata.first_plat || attribution.plat;
+  attribution.aid ||= source?.metadata.aid || durableSource?.attribution?.aid || "retireshield-personal-benefits-report";
+  attribution.first_aid ||= source?.metadata.first_aid || durableSource?.attribution?.first_aid || attribution.aid;
+  attribution.cid ||= source?.metadata.cid || durableSource?.attribution?.cid || "";
+  attribution.first_cid ||= source?.metadata.first_cid || durableSource?.attribution?.first_cid || attribution.cid;
+  attribution.plat ||= source?.metadata.plat || durableSource?.attribution?.plat || "web";
+  attribution.first_plat ||= source?.metadata.first_plat || durableSource?.attribution?.first_plat || attribution.plat;
   attribution.page_variant ||= "a";
-  attribution.source_site ||= source?.metadata.source_site || "retireshield.com";
+  attribution.source_site ||= source?.metadata.source_site || durableSource?.attribution?.source_site || "retireshield.com";
 
   return (
     <div className="bg-white text-ink">
@@ -102,7 +118,7 @@ export default async function PersonalBenefitsReportPage({ searchParams }: { sea
 
         <p className="mt-10 text-sm leading-6 text-slate-600">This report is not a yes or no from an office. Each office makes its own choice. We use the facts you give us. We use the rules we can check. We cannot promise that an office will say yes.</p>
       </main>
-      <BenefitsReportCheckout sourcePaymentIntentId={source ? source.id : ""} sourceToken={source ? sourceToken : ""} credit={credit} price={price} initial={initial} attribution={attribution} />
+      <BenefitsReportCheckout sourcePaymentIntentId={source ? source.id : ""} sourceOrderId={durableSource ? durableSource.id : ""} sourceToken={source || durableSource ? sourceToken : ""} credit={credit} price={price} initial={initial} attribution={attribution} />
     </div>
   );
 }

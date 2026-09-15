@@ -28,6 +28,41 @@ services:
         sync: false
       - key: BENEFITS_REPORT_NOTIFY_EMAIL
         sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: PAYPAL_ENV
+        value: live
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_REPLY_TO
+        value: ellen@retireshield.com
+      - key: BEEHIIV_API_KEY
+        sync: false
+      - key: BEEHIIV_PUBLICATION_ID
+        sync: false
+
+  - type: cron
+    name: retireshield-benefits-fulfillment
+    runtime: node
+    plan: free
+    schedule: "*/15 * * * *"
+    buildCommand: npm ci && npm run build
+    startCommand: 'curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" $NEXT_PUBLIC_BASE_URL/api/cron/benefits-fulfillment'
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_BASE_URL
+        value: https://RetireShield.com
+      - key: CRON_SECRET
+        sync: false
 
   - type: cron
     name: retireshield-monthly-rescore

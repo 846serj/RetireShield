@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
-import {
-  BENEFITS_CHECKLIST_PRICE,
-  BENEFITS_CHECKLIST_PRODUCT,
-  BENEFITS_CHECKLIST_TAX_CODE,
-  BENEFITS_STATE_PACK_PRICE,
-  normalizeState,
-  normalizeZip,
-} from "@/lib/benefitsChecklist";
+import { normalizeState, normalizeZip } from "@/lib/benefitsChecklist";
+import { calculateBenefitsQuote } from "@/lib/benefitsCheckoutPricing";
 import { getPublicBaseUrl } from "@/lib/siteUrl";
-import { stripe } from "@/lib/stripe";
 
 export async function POST(req: Request) {
   const requestOrigin = req.headers.get("origin");
@@ -34,40 +27,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "The State Pack is not ready yet. Please uncheck it or contact support." }, { status: 503 });
   }
 
-  const subtotal = BENEFITS_CHECKLIST_PRICE + (wantsStatePack ? BENEFITS_STATE_PACK_PRICE : 0);
-  if (process.env.BENEFITS_CHECKLIST_STRIPE_TAX_ENABLED === "false") {
-    return NextResponse.json({ subtotal, tax: 0, total: subtotal });
-  }
-  if (!process.env.STRIPE_SECRET_KEY) {
+  if (process.env.BENEFITS_CHECKLIST_STRIPE_TAX_ENABLED !== "false" && !process.env.STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: "Checkout is temporarily unavailable. Please contact support." }, { status: 503 });
   }
 
   try {
-    const calculation = await stripe.tax.calculations.create({
-      currency: "usd",
-      customer_details: {
-        address: { country: "US", postal_code: zip, state },
-        address_source: "billing",
-      },
-      line_items: [
-        {
-          amount: BENEFITS_CHECKLIST_PRICE,
-          reference: BENEFITS_CHECKLIST_PRODUCT,
-          tax_behavior: "exclusive",
-          tax_code: BENEFITS_CHECKLIST_TAX_CODE,
-        },
-        ...(wantsStatePack ? [{
-          amount: BENEFITS_STATE_PACK_PRICE,
-          reference: `benefits-state-pack-${state.toLowerCase()}`,
-          tax_behavior: "exclusive" as const,
-          tax_code: BENEFITS_CHECKLIST_TAX_CODE,
-        }] : []),
-      ],
-    });
+    const quote = await calculateBenefitsQuote(zip, state, wantsStatePack);
     return NextResponse.json({
-      subtotal,
-      tax: calculation.tax_amount_exclusive,
-      total: calculation.amount_total,
+      subtotal: quote.subtotal,
+      tax: quote.tax,
+      total: quote.total,
     });
   } catch (error) {
     console.error("benefits checklist quote failed", error);

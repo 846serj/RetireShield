@@ -5,6 +5,7 @@ type BeehiivSubscriberOptions = {
   tier?: string;
   firstName?: string;
   xxTrustedFormCertUrl?: string;
+  sendWelcomeEmail?: boolean;
 };
 
 export async function addBeehiivSubscriber(
@@ -18,7 +19,7 @@ export async function addBeehiivSubscriber(
     console.log(
       `[Beehiiv stub] add ${email}${opts?.tier ? ` as ${opts.tier}` : ""}`,
     );
-    return;
+    return false;
   }
 
   try {
@@ -44,7 +45,7 @@ export async function addBeehiivSubscriber(
         body: JSON.stringify({
           email,
           reactivate_existing: true,
-          send_welcome_email: true,
+          send_welcome_email: opts?.sendWelcomeEmail ?? true,
           utm_source: opts?.utmSource ?? "retireshield",
           // Which surface (sidebar / sticky / popup / article) and which copy
           // variant produced the signup. Without these the on-site capture
@@ -62,8 +63,11 @@ export async function addBeehiivSubscriber(
         `[Beehiiv] subscriber push failed (${response.status} ${response.statusText})`,
         details,
       );
+      return false;
     }
+    return true;
   } catch (error) {
     console.error("[Beehiiv] subscriber push error", error);
+    return false;
   }
 }

@@ -41,6 +41,13 @@ type IntentResponse = {
 
 type Quote = { key: string; subtotal: number; tax: number; total: number };
 type Buyer = { email: string; firstName: string; zip: string; state: string };
+type PayPalActions = { reject: () => Promise<void> | void };
+type PayPalApproveData = { orderID: string };
+type PayPalButtons = {
+  render: (target: HTMLElement) => Promise<void>;
+  close?: () => Promise<void>;
+};
+type PayPalFactory = (options: Record<string, unknown>) => PayPalButtons;
 
 function dollars(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -81,30 +88,37 @@ export function BenefitsChecklistCheckout({
   attribution,
   statePacksReady,
   stripePublishableKey,
+  paypalClientId,
 }: {
   attribution: Record<string, string>;
   statePacksReady: boolean;
   stripePublishableKey: string;
+  paypalClientId: string;
 }) {
   const [stripeReady, setStripeReady] = useState(false);
   const [paymentReady, setPaymentReady] = useState(false);
   const [expressReady, setExpressReady] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [alternatePaying, setAlternatePaying] = useState(false);
+  const [paypalReady, setPaypalReady] = useState(false);
   const [error, setError] = useState("");
   const [intent, setIntent] = useState<IntentResponse | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [statePack, setStatePack] = useState(false);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [form, setForm] = useState<Buyer>({ email: "", firstName: "", zip: "", state: "" });
   const formHost = useRef<HTMLFormElement>(null);
   const paymentHost = useRef<HTMLDivElement>(null);
   const expressHost = useRef<HTMLDivElement>(null);
+  const paypalHost = useRef<HTMLDivElement>(null);
+  const paypalButtons = useRef<PayPalButtons | null>(null);
   const stripeClient = useRef<StripeClient | null>(null);
   const stripeElements = useRef<StripeElements | null>(null);
   const paymentElement = useRef<StripeElement | null>(null);
   const expressElement = useRef<StripeElement | null>(null);
   const paymentReadyTimer = useRef<number | null>(null);
-  const checkoutState = useRef({ form, statePack, attribution });
+  const checkoutState = useRef({ form, statePack, newsletterOptIn, attribution });
   const payingNow = useRef(false);
   const checkoutStarted = useRef(false);
   const stateName = US_STATES.find((item) => item.code === form.state)?.name || "your state";
@@ -113,7 +127,18 @@ export function BenefitsChecklistCheckout({
   const currentQuote = quote?.key === quoteKey ? quote : null;
   const shownTotal = intent?.total ?? currentQuote?.total ?? shownSubtotal;
 
-  checkoutState.current = { form, statePack, attribution };
+  checkoutState.current = { form, statePack, newsletterOptIn, attribution };
+
+  async function captureCheckoutLead() {
+    const current = checkoutState.current;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(current.form.email.trim())) return;
+    await fetch("/api/benefits-checklist/lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...current.form, statePack: current.statePack, newsletterOptIn: current.newsletterOptIn, attribution: commerceAttribution(current.attribution) }),
+      keepalive: true,
+    }).catch(() => undefined);
+  }
 
   const markPaymentLoading = useCallback(() => {
     setPaymentReady(false);
@@ -204,6 +229,55 @@ export function BenefitsChecklistCheckout({
   }, [markPaymentLoading, shownTotal]);
 
   useEffect(() => {
+    const paypalFactory = (window as unknown as { paypal?: { Buttons?: PayPalFactory } }).paypal?.Buttons;
+    if (!paypalReady || !paypalFactory || !paypalHost.current || paypalButtons.current) return;
+    const buttons = paypalFactory({
+      style: { layout: "vertical", color: "gold", shape: "rect", label: "paypal", height: 52, tagline: false },
+      onClick: async (_data: unknown, actions: PayPalActions) => {
+        if (!formHost.current?.reportValidity()) return actions.reject();
+        await captureCheckoutLead();
+      },
+      createOrder: async () => {
+        const current = checkoutState.current;
+        const attemptId = newRequestId();
+        captureCommerce("rgc_payment_submit_clicked", BENEFITS_CHECKLIST_PRODUCT, { payment_method: "paypal", bump: current.statePack, newsletter_optin: current.newsletterOptIn, attempt_id: attemptId }, current.attribution);
+        const response = await fetch("/api/benefits-checklist/paypal/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...current.form, statePack: current.statePack, newsletterOptIn: current.newsletterOptIn, requestId: attemptId, attribution: commerceAttribution(current.attribution) }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.id) throw new Error(payload.error || "PayPal could not start.");
+        captureCommerce("rgc_payment_attempted", BENEFITS_CHECKLIST_PRODUCT, { payment_method: "paypal", bump: current.statePack, newsletter_optin: current.newsletterOptIn, attempt_id: attemptId }, current.attribution);
+        return payload.id;
+      },
+      onApprove: async (data: PayPalApproveData) => {
+        setAlternatePaying(true);
+        const response = await fetch("/api/benefits-checklist/paypal/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderID: data.orderID }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.redirect) throw new Error(payload.error || "PayPal could not finish the payment.");
+        window.location.assign(payload.redirect);
+      },
+      onCancel: () => setAlternatePaying(false),
+      onError: (caught: unknown) => {
+        setAlternatePaying(false);
+        setError(caught instanceof Error ? caught.message : "PayPal could not finish the payment. Please try again.");
+        captureCommerce("rgc_payment_failed", BENEFITS_CHECKLIST_PRODUCT, { payment_method: "paypal", failure_stage: "paypal_confirmation" }, checkoutState.current.attribution);
+      },
+    });
+    paypalButtons.current = buttons;
+    void buttons.render(paypalHost.current);
+    return () => {
+      void buttons.close?.();
+      paypalButtons.current = null;
+    };
+  }, [paypalReady]);
+
+  useEffect(() => {
     const zip = form.zip.trim();
     if (!/^\d{5}(?:-\d{4})?$/.test(zip) || !form.state) {
       setQuote(null);
@@ -251,6 +325,31 @@ export function BenefitsChecklistCheckout({
     captureCommerce("rgc_bump_changed", BENEFITS_CHECKLIST_PRODUCT, { accepted: checked }, attribution);
   }
 
+  async function useHostedStripe() {
+    if (!formHost.current?.reportValidity() || alternatePaying) return;
+    setAlternatePaying(true);
+    setError("");
+    const current = checkoutState.current;
+    const attemptId = newRequestId();
+    captureCommerce("rgc_payment_submit_clicked", BENEFITS_CHECKLIST_PRODUCT, { payment_method: "stripe_hosted", bump: current.statePack, newsletter_optin: current.newsletterOptIn, attempt_id: attemptId }, current.attribution);
+    await captureCheckoutLead();
+    try {
+      const response = await fetch("/api/benefits-checklist/stripe-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...current.form, statePack: current.statePack, newsletterOptIn: current.newsletterOptIn, requestId: attemptId, analyticsId: commerceAnalyticsId(current.attribution), attribution: commerceAttribution(current.attribution) }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.url) throw new Error(payload.error || "The backup card checkout could not start.");
+      captureCommerce("rgc_payment_attempted", BENEFITS_CHECKLIST_PRODUCT, { payment_method: "stripe_hosted", bump: current.statePack, newsletter_optin: current.newsletterOptIn, attempt_id: attemptId }, current.attribution);
+      window.location.assign(payload.url);
+    } catch (caught) {
+      setAlternatePaying(false);
+      setError(caught instanceof Error ? caught.message : "The backup card checkout could not start. Please choose PayPal or try again.");
+      captureCommerce("rgc_payment_failed", BENEFITS_CHECKLIST_PRODUCT, failureProperties(caught, "hosted_checkout", "stripe_hosted", attemptId, ""), current.attribution);
+    }
+  }
+
   async function runPayment(expressEvent?: StripeElementEvent) {
     if (payingNow.current) return;
     if (!formHost.current?.reportValidity()) {
@@ -288,6 +387,7 @@ export function BenefitsChecklistCheckout({
         body: JSON.stringify({
           ...current.form,
           statePack: current.statePack,
+          newsletterOptIn: current.newsletterOptIn,
           requestId: attemptId,
           analyticsId: commerceAnalyticsId(current.attribution),
           attribution: commerceAttribution(current.attribution),
@@ -378,7 +478,7 @@ export function BenefitsChecklistCheckout({
           <p className="text-lg font-extrabold">1. Where should we send your guide?</p>
           <div className="mt-4 grid gap-4">
             <label className="grid gap-2 text-base font-bold">Email address
-              <input required type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(event) => update("email", event.target.value)} className="min-h-14 w-full rounded-lg border border-slate-400 bg-white px-4 text-lg font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25" />
+              <input required type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(event) => update("email", event.target.value)} onBlur={() => void captureCheckoutLead()} className="min-h-14 w-full rounded-lg border border-slate-400 bg-white px-4 text-lg font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/25" />
             </label>
             <div className="grid gap-4 sm:grid-cols-[1fr_9rem]">
               <label className="grid gap-2 text-base font-bold">First name
@@ -407,6 +507,11 @@ export function BenefitsChecklistCheckout({
             </label>
           )}
 
+          <label className="mt-5 flex cursor-pointer gap-3 rounded-lg border border-slate-300 bg-slate-50 p-4">
+            <input type="checkbox" checked={newsletterOptIn} onChange={(event) => { setNewsletterOptIn(event.target.checked); captureCommerce("rgc_newsletter_consent_changed", BENEFITS_CHECKLIST_PRODUCT, { accepted: event.target.checked }, attribution); }} className="mt-1 h-6 w-6 shrink-0 accent-[#167A4A]" />
+            <span><strong className="block text-base">Yes, send me the free Retirement Shield newsletter.</strong><span className="mt-1 block text-sm leading-6 text-slate-600">Practical retirement benefit, Medicare, Social Security, and scam-protection updates. Unsubscribe anytime. This box starts off.</span></span>
+          </label>
+
           <div className={expressReady ? "mt-6" : "hidden"}>
             <p className="text-lg font-extrabold">2. Pay in one tap</p>
             <div ref={expressHost} className="mt-4 min-h-[52px]" />
@@ -420,6 +525,18 @@ export function BenefitsChecklistCheckout({
           <button disabled={paying || !paymentReady} className="mt-6 min-h-16 w-full rounded-lg bg-[#167A4A] px-5 py-4 text-xl font-extrabold text-white shadow-md transition hover:bg-[#0E633A] disabled:cursor-wait disabled:opacity-70">
             {paying ? "Sending payment…" : !paymentReady ? "Loading secure card fields…" : `Get the Benefits Checklist — ${dollars(shownTotal)}`}
           </button>
+
+          <div className="my-6 flex items-center gap-3 text-sm font-bold text-slate-500"><span className="h-px flex-1 bg-slate-300" /><span>other secure ways to pay</span><span className="h-px flex-1 bg-slate-300" /></div>
+          {paypalClientId ? (
+            <>
+              <Script src={`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(paypalClientId)}&currency=USD&intent=capture&components=buttons`} strategy="afterInteractive" onLoad={() => setPaypalReady(true)} onReady={() => setPaypalReady(true)} />
+              <div ref={paypalHost} className="min-h-[52px]" aria-label="Pay with PayPal" />
+            </>
+          ) : <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">PayPal is being connected. Please use the card option above.</p>}
+          <button type="button" disabled={alternatePaying} onClick={() => void useHostedStripe()} className="mt-4 min-h-14 w-full rounded-lg border-2 border-brand-dark bg-white px-4 py-3 text-base font-extrabold text-brand-dark hover:bg-band disabled:opacity-60">
+            {alternatePaying ? "Opening secure checkout…" : "Open backup secure card checkout"}
+          </button>
+          <p className="mt-2 text-center text-xs leading-5 text-slate-500">Use the backup card page if the card box above will not load.</p>
         </form>
 
         <ul className="mt-6 space-y-2 border-t border-slate-200 pt-5 text-sm leading-6 text-slate-700">

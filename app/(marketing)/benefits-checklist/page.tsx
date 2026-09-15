@@ -71,6 +71,7 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
   const attribution = attributionFrom(searchParams);
   const statePacksReady = process.env.BENEFITS_CHECKLIST_STATE_PACKS_READY === "true";
   const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE_KEY || "";
+  const paypalClientId = process.env.PAYPAL_CLIENT_ID || "";
 
   return (
     <div className="bg-white pb-24 text-ink sm:pb-0">
@@ -189,7 +190,7 @@ export default function BenefitsChecklistPage({ searchParams }: { searchParams: 
         <p className="pb-10 text-sm leading-6 text-slate-600">RetireShield is not part of the government. Social Security, Medicare, the VA, and the IRS do not endorse us. Each program is free to apply for. This is a guide, not financial, legal, or tax advice. Each office decides who gets help.</p>
       </main>
 
-      <BenefitsChecklistCheckout attribution={attribution} statePacksReady={statePacksReady} stripePublishableKey={stripePublishableKey} />
+      <BenefitsChecklistCheckout attribution={attribution} statePacksReady={statePacksReady} stripePublishableKey={stripePublishableKey} paypalClientId={paypalClientId} />
 
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 p-3 shadow-[0_-4px_18px_rgba(0,0,0,.14)] sm:hidden">
         <a href="#secure-checkout" data-rgc-cta-position="mobile-sticky" className="block rounded-lg bg-[#167A4A] px-4 py-3 text-center text-lg font-extrabold text-white no-underline">Get the guide — <s className="text-white/70">$97</s> $47</a>

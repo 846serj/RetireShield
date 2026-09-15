@@ -22,6 +22,7 @@ function dollars(cents: number) {
 
 export function BenefitsReportCheckout({
   sourcePaymentIntentId,
+  sourceOrderId,
   sourceToken,
   credit,
   price,
@@ -29,6 +30,7 @@ export function BenefitsReportCheckout({
   attribution,
 }: {
   sourcePaymentIntentId: string;
+  sourceOrderId: string;
   sourceToken: string;
   credit: number;
   price: number;
@@ -64,7 +66,7 @@ export function BenefitsReportCheckout({
     setError("");
     captureCommerce("rgc_checkout_started", BENEFITS_REPORT_PRODUCT, {}, attribution);
     try {
-      const response = await fetch("/api/benefits-report/payment-intent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, sourcePaymentIntentId, sourceToken, requestId, analyticsId: commerceAnalyticsId(attribution), attribution: commerceAttribution(attribution) }) });
+      const response = await fetch("/api/benefits-report/payment-intent", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, sourcePaymentIntentId, sourceOrderId, sourceToken, requestId, analyticsId: commerceAnalyticsId(attribution), attribution: commerceAttribution(attribution) }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "We could not start checkout.");
       setIntent(payload as IntentResponse);

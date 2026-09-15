@@ -7,6 +7,7 @@ import { sendBenefitsChecklistPurchaseEmail } from "@/lib/benefitsChecklistEmail
 import { BENEFITS_REPORT_PRODUCT } from "@/lib/benefitsReport";
 import { sendBenefitsReportPurchaseEmail } from "@/lib/benefitsReportEmail";
 import { captureServerEvent } from "@/lib/posthogServer";
+import { findBenefitsOrder, markBenefitsOrderPaid } from "@/lib/benefitsOrders";
 
 // Stripe webhook: keeps the `subscriptions` table in sync. Add this URL + signing secret in Stripe.
 // Note: this route is excluded from middleware (it needs the raw body, no session).
@@ -107,6 +108,15 @@ export async function POST(req: Request) {
         }
       }
 
+      if (intent.metadata.product === BENEFITS_CHECKLIST_PRODUCT) {
+        if (intent.metadata.checkout_route === "hosted") break;
+        const durableOrder = await findBenefitsOrder("stripe", intent.id);
+        if (durableOrder) {
+          await markBenefitsOrderPaid("stripe", intent.id, intent.id, intent.amount_received);
+          break;
+        }
+      }
+
       if (intent.metadata.product === BENEFITS_CHECKLIST_PRODUCT && intent.receipt_email && intent.metadata.download_token && intent.metadata.delivery_emailed !== "1") {
         const delivered = await sendBenefitsChecklistPurchaseEmail({
           email: intent.receipt_email,
@@ -179,7 +189,11 @@ export async function POST(req: Request) {
     }
     case "checkout.session.completed": {
       const s = event.data.object as any;
-      if (s.subscription) {
+      if (s.metadata?.product === BENEFITS_CHECKLIST_PRODUCT && s.payment_status === "paid" && s.payment_intent) {
+        const paymentIntentId = typeof s.payment_intent === "string" ? s.payment_intent : s.payment_intent.id;
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+        await markBenefitsOrderPaid("stripe", s.id, paymentIntentId, paymentIntent.amount_received);
+      } else if (s.subscription) {
         const sub = await stripe.subscriptions.retrieve(s.subscription);
         await upsert(sub);
         await syncSubscriptionSegment(sub);

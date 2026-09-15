@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   BENEFITS_CHECKLIST_NAME,
-  BENEFITS_CHECKLIST_PRICE,
   BENEFITS_CHECKLIST_PRODUCT,
-  BENEFITS_CHECKLIST_TAX_CODE,
   BENEFITS_STATE_PACK_PRICE,
   createDownloadToken,
   normalizeEmail,
@@ -11,6 +9,8 @@ import {
   normalizeZip,
   sanitizeShortText,
 } from "@/lib/benefitsChecklist";
+import { calculateBenefitsQuote } from "@/lib/benefitsCheckoutPricing";
+import { benefitsThanksUrl, createBenefitsOrder } from "@/lib/benefitsOrders";
 import { getPublicBaseUrl } from "@/lib/siteUrl";
 import { stripe } from "@/lib/stripe";
 
@@ -36,6 +36,7 @@ export async function POST(req: Request) {
   const state = normalizeState(body.state);
   const requestId = sanitizeShortText(body.requestId, 80);
   const wantsStatePack = body.statePack === true;
+  const newsletterOptIn = body.newsletterOptIn === true;
   const analyticsId = sanitizeShortText(body.analyticsId, 200);
 
   if (!email || !firstName || !zip || !state || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) {
@@ -61,37 +62,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const subtotal = BENEFITS_CHECKLIST_PRICE + (wantsStatePack ? BENEFITS_STATE_PACK_PRICE : 0);
-    let total = subtotal;
-    let taxAmount = 0;
-    let taxCalculationId = "";
-
-    if (process.env.BENEFITS_CHECKLIST_STRIPE_TAX_ENABLED !== "false") {
-      const calculation = await stripe.tax.calculations.create({
-        currency: "usd",
-        customer_details: {
-          address: { country: "US", postal_code: zip, state },
-          address_source: "billing",
-        },
-        line_items: [
-          {
-            amount: BENEFITS_CHECKLIST_PRICE,
-            reference: BENEFITS_CHECKLIST_PRODUCT,
-            tax_behavior: "exclusive",
-            tax_code: BENEFITS_CHECKLIST_TAX_CODE,
-          },
-          ...(wantsStatePack ? [{
-            amount: BENEFITS_STATE_PACK_PRICE,
-            reference: `benefits-state-pack-${state.toLowerCase()}`,
-            tax_behavior: "exclusive" as const,
-            tax_code: BENEFITS_CHECKLIST_TAX_CODE,
-          }] : []),
-        ],
-      });
-      total = calculation.amount_total;
-      taxAmount = calculation.tax_amount_exclusive;
-      taxCalculationId = calculation.id || "";
-    }
+    const quote = await calculateBenefitsQuote(zip, state, wantsStatePack);
+    const { subtotal, total, tax: taxAmount, taxCalculationId } = quote;
 
     const downloadToken = createDownloadToken();
     const metadata: Record<string, string> = {
@@ -102,6 +74,7 @@ export async function POST(req: Request) {
       download_token: downloadToken,
       state_pack: wantsStatePack ? "1" : "0",
       state_pack_price: wantsStatePack ? String(BENEFITS_STATE_PACK_PRICE) : "0",
+      newsletter_optin: newsletterOptIn ? "1" : "0",
       tax_calculation: taxCalculationId,
       analytics_id: analyticsId || sanitizeShortText((body.attribution as Record<string, unknown> | undefined)?.cid, 160) || `rs-${requestId}`,
       site: "retireshield.com",
@@ -126,8 +99,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Stripe did not return a payment form. Please try again." }, { status: 502 });
     }
 
-    const returnUrl = new URL("/benefits-checklist/thanks", getPublicBaseUrl(req.url));
-    returnUrl.searchParams.set("token", downloadToken);
+    let order;
+    try {
+      order = await createBenefitsOrder({
+        order_token: downloadToken,
+        product: BENEFITS_CHECKLIST_PRODUCT,
+        provider: "stripe",
+        provider_order_id: intent.id,
+        email,
+        first_name: firstName,
+        zip,
+        state,
+        state_pack: wantsStatePack,
+        newsletter_optin: newsletterOptIn,
+        subtotal_cents: subtotal,
+        tax_cents: taxAmount,
+        tax_calculation_id: taxCalculationId || null,
+        tax_transaction_id: null,
+        total_cents: total,
+        currency: "usd",
+        attribution: Object.fromEntries(Object.entries(metadata).filter(([key]) => ATTRIBUTION_KEYS.includes(key as typeof ATTRIBUTION_KEYS[number]))),
+      });
+      await stripe.paymentIntents.update(intent.id, { metadata: { order_id: order.id, order_token: order.order_token, download_token: order.order_token } });
+    } catch (orderError) {
+      await stripe.paymentIntents.cancel(intent.id).catch(() => undefined);
+      throw orderError;
+    }
+
+    const returnUrl = new URL(benefitsThanksUrl(order), getPublicBaseUrl(req.url));
 
     return NextResponse.json({
       clientSecret: intent.client_secret,

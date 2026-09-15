@@ -5,9 +5,10 @@ type TransactionalEmailInput = {
   subject: string;
   html: string;
   text?: string;
+  idempotencyKey?: string;
 };
 
-export async function sendTransactionalEmail({ to, subject, html, text }: TransactionalEmailInput) {
+export async function sendTransactionalEmail({ to, subject, html, text, idempotencyKey }: TransactionalEmailInput) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
 
@@ -24,7 +25,7 @@ export async function sendTransactionalEmail({ to, subject, html, text }: Transa
   try {
     const resend = new Resend(apiKey);
     const replyTo = process.env.EMAIL_REPLY_TO || "ellen@retireshield.com";
-    const { error } = await resend.emails.send({ from, to, subject, html, text, replyTo });
+    const { error } = await resend.emails.send({ from, to, subject, html, text, replyTo }, idempotencyKey ? { idempotencyKey } : undefined);
     if (error) {
       console.error("[Resend] transactional email failed", error);
       return false;

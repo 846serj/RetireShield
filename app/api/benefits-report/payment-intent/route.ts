@@ -3,8 +3,14 @@ import { BENEFITS_CHECKLIST_PRODUCT, normalizeEmail, normalizeState, normalizeZi
 import { BENEFITS_REPORT_NAME, BENEFITS_REPORT_PRICE, BENEFITS_REPORT_PRODUCT, BENEFITS_REPORT_TAX_CODE, createReportToken, reportCredit, reportPrice } from "@/lib/benefitsReport";
 import { getPublicBaseUrl } from "@/lib/siteUrl";
 import { stripe } from "@/lib/stripe";
+import { getBenefitsOrder } from "@/lib/benefitsOrders";
 
-async function creditFromSource(sourcePaymentIntentId: string, sourceToken: string) {
+async function creditFromSource(sourcePaymentIntentId: string, sourceOrderId: string, sourceToken: string) {
+  if (sourceOrderId) {
+    if (!/^[0-9a-f-]{36}$/.test(sourceOrderId) || !/^[a-f0-9]{48}$/.test(sourceToken)) return -1;
+    const order = await getBenefitsOrder(sourceOrderId, sourceToken);
+    return order?.status === "paid" ? reportCredit(order.state_pack) : -1;
+  }
   if (!sourcePaymentIntentId) return 0;
   if (!/^pi_[A-Za-z0-9]+$/.test(sourcePaymentIntentId) || !/^[a-f0-9]{48}$/.test(sourceToken)) return -1;
   const source = await stripe.paymentIntents.retrieve(sourcePaymentIntentId, { expand: ["latest_charge"] });
@@ -26,6 +32,7 @@ export async function POST(req: Request) {
   const state = normalizeState(body.state);
   const requestId = sanitizeShortText(body.requestId, 80);
   const sourcePaymentIntentId = sanitizeShortText(body.sourcePaymentIntentId, 120);
+  const sourceOrderId = sanitizeShortText(body.sourceOrderId, 120);
   const sourceToken = sanitizeShortText(body.sourceToken, 80);
   const analyticsId = sanitizeShortText(body.analyticsId, 200);
   if (!email || !firstName || !zip || !state || !/^[a-zA-Z0-9-]{16,80}$/.test(requestId)) return NextResponse.json({ error: "Enter a valid email, name, ZIP code, and state." }, { status: 400 });
@@ -33,7 +40,7 @@ export async function POST(req: Request) {
   if (process.env.BENEFITS_REPORT_INTAKE_READY !== "true") return NextResponse.json({ error: "The report order form is not open yet. Please contact support." }, { status: 503 });
 
   try {
-    const credit = await creditFromSource(sourcePaymentIntentId, sourceToken);
+    const credit = await creditFromSource(sourcePaymentIntentId, sourceOrderId, sourceToken);
     if (credit < 0) return NextResponse.json({ error: "We could not match that credit to a paid order." }, { status: 403 });
     const subtotal = reportPrice(credit);
     let total = subtotal;
@@ -54,6 +61,7 @@ export async function POST(req: Request) {
       buyer_zip: zip,
       intake_token: intakeToken,
       source_payment_intent: sourcePaymentIntentId,
+      source_order_id: sourceOrderId,
       credit: String(credit),
       list_price: String(BENEFITS_REPORT_PRICE),
       tax_calculation: taxCalculation,

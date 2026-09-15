@@ -5,6 +5,7 @@ import { BENEFITS_CHECKLIST_PRODUCT, benefitsDownloadsForOrder, money } from "@/
 import { BENEFITS_REPORT_PRICE, reportCredit, reportPrice } from "@/lib/benefitsReport";
 import { stripe } from "@/lib/stripe";
 import { CommerceThanksAnalytics } from "@/components/CommerceAnalytics";
+import { findBenefitsOrder, fulfillBenefitsOrder, getBenefitsOrder, markBenefitsOrderPaid, type BenefitsOrder } from "@/lib/benefitsOrders";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,38 @@ function first(value: string | string[] | undefined) {
 
 export default async function BenefitsChecklistThanks({ searchParams }: { searchParams: SearchParams }) {
   const paymentIntentId = first(searchParams.payment_intent) || "";
+  const orderId = first(searchParams.order) || "";
+  const sessionId = first(searchParams.session_id) || "";
   const token = first(searchParams.token) || "";
   let intent = null;
+  let order: BenefitsOrder | null = null;
+
+  try {
+    if (/^[0-9a-f-]{36}$/.test(orderId) && /^[a-f0-9]{48}$/.test(token)) {
+      order = await getBenefitsOrder(orderId, token);
+    } else if (/^cs_[A-Za-z0-9_]+$/.test(sessionId) && /^[a-f0-9]{48}$/.test(token)) {
+      order = await findBenefitsOrder("stripe", sessionId);
+      if (order?.order_token !== token) order = null;
+    }
+
+    if (order?.provider === "stripe" && order.status === "pending") {
+      if (/^pi_[A-Za-z0-9]+$/.test(order.provider_order_id)) {
+        const payment = await stripe.paymentIntents.retrieve(order.provider_order_id, { expand: ["latest_charge"] });
+        if (payment.status === "succeeded" && payment.amount_received >= order.total_cents && payment.metadata.order_token === token) {
+          order = await markBenefitsOrderPaid("stripe", order.provider_order_id, payment.id, payment.amount_received);
+        }
+      } else if (/^cs_[A-Za-z0-9_]+$/.test(order.provider_order_id)) {
+        const session = await stripe.checkout.sessions.retrieve(order.provider_order_id, { expand: ["payment_intent"] });
+        const payment = typeof session.payment_intent === "object" ? session.payment_intent : null;
+        if (session.payment_status === "paid" && payment && payment.status === "succeeded") {
+          order = await markBenefitsOrderPaid("stripe", order.provider_order_id, payment.id, payment.amount_received);
+        }
+      }
+    }
+    if (order?.status === "paid") await fulfillBenefitsOrder(order);
+  } catch (error) {
+    console.error("benefits checklist durable order lookup failed", error);
+  }
 
   if (/^pi_[A-Za-z0-9]+$/.test(paymentIntentId) && /^[a-f0-9]{48}$/.test(token) && process.env.STRIPE_SECRET_KEY) {
     try {
@@ -43,7 +74,9 @@ export default async function BenefitsChecklistThanks({ searchParams }: { search
     intent.metadata.download_token === token,
   );
 
-  if (!paid || !intent) {
+  const durablePaid = order?.status === "paid";
+
+  if (!durablePaid && (!paid || !intent)) {
     return (
       <section className="bg-surface py-16 sm:py-24">
         <div className="mx-auto max-w-2xl px-4 text-center sm:px-6">
@@ -56,14 +89,16 @@ export default async function BenefitsChecklistThanks({ searchParams }: { search
     );
   }
 
-  const hasStatePack = intent.metadata.state_pack === "1";
-  const downloads = benefitsDownloadsForOrder(intent.metadata.buyer_state || "", hasStatePack);
+  const hasStatePack = durablePaid ? Boolean(order?.state_pack) : intent!.metadata.state_pack === "1";
+  const buyerState = durablePaid ? order!.state : intent!.metadata.buyer_state || "";
+  const amountPaid = durablePaid ? order!.total_cents : intent!.amount_received;
+  const downloads = benefitsDownloadsForOrder(buyerState, hasStatePack);
   const credit = reportCredit(hasStatePack);
   const upgradePrice = reportPrice(credit);
-  const attribution = Object.fromEntries(
+  const attribution = durablePaid ? order!.attribution : Object.fromEntries(
     ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "aid", "cid", "plat", "first_aid", "first_cid", "first_plat", "click_count", "page_variant", "source_site"]
-      .filter((key) => Boolean(intent.metadata[key]))
-      .map((key) => [key, intent.metadata[key]]),
+      .filter((key) => Boolean(intent!.metadata[key]))
+      .map((key) => [key, intent!.metadata[key]]),
   );
 
   return (
@@ -73,10 +108,13 @@ export default async function BenefitsChecklistThanks({ searchParams }: { search
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/10 sm:p-10">
           <div className="flex items-center gap-3 text-sm font-extrabold uppercase tracking-[0.12em] text-[#167A4A]"><CheckCircle2 className="h-6 w-6" />Payment complete</div>
           <h1 className="mt-4 text-3xl font-bold sm:text-5xl">Your downloads are ready.</h1>
-          <p className="mt-5 text-lg leading-8 text-slate-600">We got your payment of {money(intent.amount_received)}. We also sent these links to your email.</p>
+          <p className="mt-5 text-lg leading-8 text-slate-600">We got your payment of {money(amountPaid)}. We also sent these links to your email.</p>
+          {durablePaid && <a href={`/api/benefits-checklist/download/all?order=${encodeURIComponent(order!.id)}&token=${encodeURIComponent(token)}`} data-rgc-download="all" className="mt-8 flex min-h-16 items-center justify-center gap-3 rounded-xl bg-[#167A4A] px-5 py-4 text-center text-lg font-extrabold text-white no-underline hover:bg-[#0E633A] hover:text-white"><Download className="h-5 w-5" />Download everything</a>}
           <div className="mt-8 grid gap-4">
             {downloads.map((file) => {
-              const href = `/api/benefits-checklist/download/${file.key}?payment_intent=${encodeURIComponent(intent.id)}&token=${encodeURIComponent(token)}`;
+              const href = durablePaid
+                ? `/api/benefits-checklist/download/${file.key}?order=${encodeURIComponent(order!.id)}&token=${encodeURIComponent(token)}`
+                : `/api/benefits-checklist/download/${file.key}?payment_intent=${encodeURIComponent(intent!.id)}&token=${encodeURIComponent(token)}`;
               return (
                 <a key={file.key} href={href} data-rgc-download="single" className="flex min-h-16 items-center justify-between gap-4 rounded-xl border-2 border-brand-dark bg-white px-5 py-4 text-left font-extrabold text-brand-dark no-underline transition hover:bg-band hover:text-brand-dark">
                   <span>{file.label}</span><Download className="h-5 w-5 shrink-0" />
@@ -95,7 +133,7 @@ export default async function BenefitsChecklistThanks({ searchParams }: { search
               <div className="mt-2 flex justify-between gap-3 text-[#167A4A]"><span>What you paid today</span><span>− {money(credit)}</span></div>
               <div className="mt-3 flex justify-between gap-3 border-t border-slate-300 pt-3 text-xl font-extrabold"><span>Your price</span><span>{money(upgradePrice)}</span></div>
             </div>
-            <Link href={`/personal-benefits-report/?from=${encodeURIComponent(intent.id)}&source_token=${encodeURIComponent(token)}`} className="mt-5 block rounded-lg bg-[#167A4A] px-5 py-4 text-center text-lg font-extrabold text-white no-underline hover:bg-[#0E633A] hover:text-white">Use my {money(credit)} credit — finish for {money(upgradePrice)}</Link>
+            <Link href={durablePaid ? `/personal-benefits-report/?order=${encodeURIComponent(order!.id)}&source_token=${encodeURIComponent(token)}` : `/personal-benefits-report/?from=${encodeURIComponent(intent!.id)}&source_token=${encodeURIComponent(token)}`} className="mt-5 block rounded-lg bg-[#167A4A] px-5 py-4 text-center text-lg font-extrabold text-white no-underline hover:bg-[#0E633A] hover:text-white">Use my {money(credit)} credit — finish for {money(upgradePrice)}</Link>
             <p className="mt-3 text-sm leading-6 text-slate-600">Your downloads are already safe. You do not need to buy the report.</p>
           </section>
         </div>

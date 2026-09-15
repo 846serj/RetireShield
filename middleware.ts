@@ -27,7 +27,8 @@ function mustNeverCache(pathname: string) {
     pathname.startsWith("/benefits-report-intake") ||
     pathname.startsWith("/api/benefits-checklist") ||
     pathname.startsWith("/api/benefits-report") ||
-    pathname === "/api/stripe/webhook";
+    pathname === "/api/stripe/webhook" ||
+    pathname === "/api/paypal/webhook";
 }
 
 // Refreshes the Supabase session cookie on each request.
@@ -63,5 +64,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|api/paypal/webhook).*)"],
 };
