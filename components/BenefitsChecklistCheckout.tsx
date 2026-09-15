@@ -7,7 +7,7 @@ import { US_STATES } from "@/lib/usStates";
 import { captureCommerce, commerceAnalyticsId, commerceAttribution } from "@/lib/commerceAnalytics";
 const BENEFITS_CHECKLIST_PRODUCT = "benefits-checklist";
 
-type StripeError = { message?: string };
+type StripeError = { message?: string; code?: string; type?: string; decline_code?: string };
 type StripeElementEvent = {
   availablePaymentMethods?: Record<string, boolean>;
   resolve?: (options?: Record<string, unknown>) => void;
@@ -49,6 +49,31 @@ function newRequestId() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+type CheckoutError = Error & { code?: string; type?: string; decline_code?: string; httpStatus?: number };
+
+function checkoutError(source: StripeError | undefined, fallback: string): CheckoutError {
+  const error = new Error(source?.message || fallback) as CheckoutError;
+  error.code = source?.code;
+  error.type = source?.type;
+  error.decline_code = source?.decline_code;
+  return error;
+}
+
+function failureProperties(caught: unknown, stage: string, paymentMethod: string, attemptId: string, paymentIntentId: string) {
+  const error = caught instanceof Error ? caught as CheckoutError : undefined;
+  return {
+    payment_method: paymentMethod,
+    failure_stage: stage,
+    attempt_id: attemptId,
+    payment_intent_id: paymentIntentId,
+    error_code: error?.code || "",
+    error_type: error?.type || "",
+    decline_code: error?.decline_code || "",
+    error_message: error?.message || "Unknown checkout failure",
+    http_status: error?.httpStatus || 0,
+  };
 }
 
 export function BenefitsChecklistCheckout({
@@ -213,29 +238,42 @@ export function BenefitsChecklistCheckout({
     setPaying(true);
     setError("");
     const paymentMethod = expressEvent ? "wallet" : "card";
-    captureCommerce("rgc_payment_attempted", BENEFITS_CHECKLIST_PRODUCT, { payment_method: paymentMethod, bump: checkoutState.current.statePack }, attribution);
+    const attemptId = newRequestId();
+    let failureStage = expressEvent ? "wallet_validation" : "card_validation";
+    let paymentIntentId = "";
+    captureCommerce("rgc_payment_submit_clicked", BENEFITS_CHECKLIST_PRODUCT, { payment_method: paymentMethod, bump: checkoutState.current.statePack, attempt_id: attemptId }, attribution);
     try {
       const submitted = await stripeElements.current.submit();
-      if (submitted.error) throw new Error(submitted.error.message || "Please check your payment details.");
+      if (submitted.error) throw checkoutError(submitted.error, "Please check your payment details.");
 
       const current = checkoutState.current;
+      failureStage = "payment_intent";
+      captureCommerce("rgc_payment_attempted", BENEFITS_CHECKLIST_PRODUCT, { payment_method: paymentMethod, bump: current.statePack, attempt_id: attemptId }, attribution);
       const response = await fetch("/api/benefits-checklist/payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...current.form,
           statePack: current.statePack,
-          requestId: newRequestId(),
+          requestId: attemptId,
           analyticsId: commerceAnalyticsId(current.attribution),
           attribution: commerceAttribution(current.attribution),
         }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "We could not start checkout.");
+      if (!response.ok) {
+        const error = new Error(payload.error || "We could not start checkout.") as CheckoutError;
+        error.code = typeof payload.code === "string" ? payload.code : `http_${response.status}`;
+        error.type = "checkout_api";
+        error.httpStatus = response.status;
+        throw error;
+      }
       const nextIntent = payload as IntentResponse;
+      paymentIntentId = nextIntent.paymentIntentId;
       setIntent(nextIntent);
       stripeElements.current.update({ amount: nextIntent.total });
 
+      failureStage = "payment_confirmation";
       const result = await stripeClient.current.confirmPayment({
         elements: stripeElements.current,
         clientSecret: nextIntent.clientSecret,
@@ -251,7 +289,7 @@ export function BenefitsChecklistCheckout({
         },
         redirect: "if_required",
       });
-      if (result.error) throw new Error(result.error.message || "That payment did not go through. You were not charged.");
+      if (result.error) throw checkoutError(result.error, "That payment did not go through. You were not charged.");
       if (result.paymentIntent?.status === "succeeded") {
         const completed = new URL(nextIntent.returnUrl);
         completed.searchParams.set("payment_intent", result.paymentIntent.id);
@@ -260,8 +298,9 @@ export function BenefitsChecklistCheckout({
       }
       throw new Error("Stripe is still working on the payment. Check your email for your receipt and links.");
     } catch (caught) {
-      captureCommerce("rgc_payment_failed", BENEFITS_CHECKLIST_PRODUCT, { payment_method: paymentMethod }, attribution);
-      setError(caught instanceof Error ? caught.message : "That payment did not go through. You were not charged.");
+      captureCommerce("rgc_payment_failed", BENEFITS_CHECKLIST_PRODUCT, failureProperties(caught, failureStage, paymentMethod, attemptId, paymentIntentId), attribution);
+      const message = caught instanceof Error ? caught.message : "That payment did not go through. You were not charged.";
+      setError(failureStage === "card_validation" ? `${message} Check the card number, expiration date, and security code, then try again.` : message);
       expressEvent?.paymentFailed?.({ reason: "fail" });
       payingNow.current = false;
       setPaying(false);

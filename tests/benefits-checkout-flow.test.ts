@@ -22,5 +22,8 @@ test("buyer details and Stripe payment fields render in one form", () => {
   assert.match(checkout, /elements\.create\("payment"/);
   assert.match(checkout, /elements\.create\("expressCheckout"/);
   assert.match(checkout, /Get the Benefits Checklist/);
+  assert.match(checkout, /rgc_payment_submit_clicked/);
+  assert.match(checkout, /failure_stage/);
+  assert.match(checkout, /payment_intent_id/);
   assert.doesNotMatch(checkout, /Continue to card payment|stage === "payment"|setStage/);
 });

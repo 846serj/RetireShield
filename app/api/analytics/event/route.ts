@@ -7,6 +7,7 @@ const allowedEvents = new Set([
   "rgc_checkout_started",
   "rgc_state_selected",
   "rgc_bump_changed",
+  "rgc_payment_submit_clicked",
   "rgc_payment_attempted",
   "rgc_payment_failed",
   "rgc_thankyou_view",
@@ -18,6 +19,8 @@ const allowedProperties = new Set([
   "utm_content", "utm_term", "aid", "cid", "plat", "first_aid", "first_cid", "first_plat",
   "click_count", "page_variant", "source_site", "position", "accepted", "payment_method", "bump",
   "credit_cents", "status", "package",
+  "failure_stage", "attempt_id", "payment_intent_id", "error_code", "error_type",
+  "decline_code", "error_message", "http_status",
 ]);
 
 function clean(value: unknown, max = 200) {
