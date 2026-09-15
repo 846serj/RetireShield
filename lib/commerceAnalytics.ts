@@ -57,14 +57,12 @@ export function commerceAttribution(incoming: CommerceAttribution = {}) {
 }
 
 export function commerceAnalyticsId(attribution: CommerceAttribution = {}) {
-  if (posthog.__loaded) return clean(posthog.get_distinct_id(), 200);
   const merged = commerceAttribution(attribution);
-  if (merged.cid) return merged.cid;
   if (typeof window !== "undefined") {
     try {
       const saved = window.sessionStorage.getItem("rs_commerce_analytics_id");
       if (saved) return saved;
-      const created = crypto.randomUUID();
+      const created = clean(posthog.__loaded ? posthog.get_distinct_id() : "", 200) || merged.cid || crypto.randomUUID();
       window.sessionStorage.setItem("rs_commerce_analytics_id", created);
       return created;
     } catch {
@@ -76,7 +74,7 @@ export function commerceAnalyticsId(attribution: CommerceAttribution = {}) {
 
 export function captureCommerce(event: string, product: string, properties: Record<string, unknown> = {}, attribution: CommerceAttribution = {}) {
   const merged = commerceAttribution(attribution);
-  posthog.capture(event, {
+  const payload = {
     site: "retireshield.com",
     mc_site: "retireshield.com",
     product,
@@ -84,5 +82,17 @@ export function captureCommerce(event: string, product: string, properties: Reco
     ...merged,
     ...properties,
     $process_person_profile: false,
-  });
+  };
+  if (typeof window !== "undefined") {
+    void fetch("/api/analytics/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, distinctId: payload.analytics_id, properties: payload }),
+      cache: "no-store",
+      keepalive: true,
+      credentials: "same-origin",
+    }).catch(() => {
+      // Analytics must never interrupt checkout.
+    });
+  }
 }
