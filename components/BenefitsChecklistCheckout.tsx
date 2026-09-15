@@ -1,7 +1,7 @@
 "use client";
 
 import Script from "next/script";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Check, LockKeyhole } from "lucide-react";
 import { US_STATES } from "@/lib/usStates";
 import { captureCommerce, commerceAnalyticsId, commerceAttribution } from "@/lib/commerceAnalytics";
@@ -22,6 +22,7 @@ type StripeElements = {
   create: (type: "payment" | "expressCheckout", options?: Record<string, unknown>) => StripeElement;
   submit: () => Promise<{ error?: StripeError }>;
   update: (options: Record<string, unknown>) => void;
+  on?: (event: string, callback: () => void) => void;
 };
 type StripeResult = { error?: StripeError; paymentIntent?: { id: string; status: string } };
 type StripeClient = {
@@ -102,6 +103,7 @@ export function BenefitsChecklistCheckout({
   const stripeElements = useRef<StripeElements | null>(null);
   const paymentElement = useRef<StripeElement | null>(null);
   const expressElement = useRef<StripeElement | null>(null);
+  const paymentReadyTimer = useRef<number | null>(null);
   const checkoutState = useRef({ form, statePack, attribution });
   const payingNow = useRef(false);
   const checkoutStarted = useRef(false);
@@ -112,6 +114,22 @@ export function BenefitsChecklistCheckout({
   const shownTotal = intent?.total ?? currentQuote?.total ?? shownSubtotal;
 
   checkoutState.current = { form, statePack, attribution };
+
+  const markPaymentLoading = useCallback(() => {
+    setPaymentReady(false);
+    if (paymentReadyTimer.current) window.clearTimeout(paymentReadyTimer.current);
+    paymentReadyTimer.current = window.setTimeout(() => {
+      if (!payingNow.current) {
+        setError("The secure card fields are taking too long to load. Refresh this page or try again in another browser. You have not been charged.");
+      }
+    }, 12_000);
+  }, []);
+
+  const markPaymentReady = useCallback(() => {
+    if (paymentReadyTimer.current) window.clearTimeout(paymentReadyTimer.current);
+    paymentReadyTimer.current = null;
+    setPaymentReady(true);
+  }, []);
 
   useEffect(() => {
     const stripeFactory = (window as unknown as { Stripe?: (key: string) => StripeClient }).Stripe;
@@ -132,6 +150,14 @@ export function BenefitsChecklistCheckout({
       layout: { type: "accordion", defaultCollapsed: false, radios: "if_multiple", spacedAccordionItems: true },
       fields: { billingDetails: { name: "never", email: "never", address: { country: "never", postalCode: "never" } } },
     });
+    payment.on?.("loaderstart", markPaymentLoading);
+    payment.on?.("ready", markPaymentReady);
+    payment.on?.("loaderror", () => {
+      markPaymentLoading();
+      setError("The secure card fields could not load. Refresh this page or try again in another browser. You have not been charged.");
+    });
+    elements.on?.("update-end", markPaymentReady);
+    markPaymentLoading();
     payment.mount(paymentHost.current);
 
     let express: StripeElement | null = null;
@@ -154,9 +180,10 @@ export function BenefitsChecklistCheckout({
     stripeElements.current = elements;
     paymentElement.current = payment;
     expressElement.current = express;
-    setPaymentReady(true);
 
     return () => {
+      if (paymentReadyTimer.current) window.clearTimeout(paymentReadyTimer.current);
+      paymentReadyTimer.current = null;
       payment.destroy();
       express?.destroy();
       paymentElement.current = null;
@@ -167,12 +194,14 @@ export function BenefitsChecklistCheckout({
       setExpressReady(false);
     };
     // Stripe Elements must mount once; price changes are sent through elements.update below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stripePublishableKey, stripeReady]);
+  }, [markPaymentLoading, markPaymentReady, stripePublishableKey, stripeReady]);
 
   useEffect(() => {
-    stripeElements.current?.update({ amount: shownTotal });
-  }, [shownTotal]);
+    if (!stripeElements.current) return;
+    markPaymentLoading();
+    stripeElements.current.update({ amount: shownTotal });
+    // Stripe Elements emits update-end when the card fields are usable again.
+  }, [markPaymentLoading, shownTotal]);
 
   useEffect(() => {
     const zip = form.zip.trim();
@@ -231,6 +260,10 @@ export function BenefitsChecklistCheckout({
     if (!stripeClient.current || !stripeElements.current) {
       setError("The secure payment box is still loading. Please wait a moment.");
       expressEvent?.paymentFailed?.({ reason: "fail" });
+      return;
+    }
+    if (!expressEvent && !paymentReady) {
+      setError("The secure card fields are still loading. Wait a moment, refresh this page, or try again in another browser. You have not been charged.");
       return;
     }
 
@@ -385,7 +418,7 @@ export function BenefitsChecklistCheckout({
           {!paymentReady && stripePublishableKey && <p className="mt-3 text-sm text-slate-600">Loading the secure payment box…</p>}
           {error && <p role="alert" className="mt-5 rounded-lg border border-red-300 bg-red-50 p-3 font-semibold text-red-800">{error}</p>}
           <button disabled={paying || !paymentReady} className="mt-6 min-h-16 w-full rounded-lg bg-[#167A4A] px-5 py-4 text-xl font-extrabold text-white shadow-md transition hover:bg-[#0E633A] disabled:cursor-wait disabled:opacity-70">
-            {paying ? "Sending payment…" : `Get the Benefits Checklist — ${dollars(shownTotal)}`}
+            {paying ? "Sending payment…" : !paymentReady ? "Loading secure card fields…" : `Get the Benefits Checklist — ${dollars(shownTotal)}`}
           </button>
         </form>
 
